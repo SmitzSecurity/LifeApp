@@ -178,19 +178,33 @@ function runInitWizard() {
     if (value) profileSet_(step.key, value);
   }
 
-  // Optional API key step at the end.
-  const hasKey = !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY);
-  const keyResp = ui.alert(
+  // Optional API key step at the end. We do this inline (rather than
+  // delegating to setApiKey()) so the prompt stays tied to the wizard's
+  // dialog flow and the value is read and persisted in one place.
+  const props = PropertiesService.getScriptProperties();
+  const hasKey = !!props.getProperty(PROP_API_KEY);
+  const keyResp = ui.prompt(
     'Gemini API key',
-    hasKey
-      ? 'An API key is already stored. Would you like to replace it?'
-      : 'Would you like to set your Gemini API key now? It will be stored privately in Script Properties.',
-    ui.ButtonSet.YES_NO
+    (hasKey
+      ? 'An API key is already stored. Paste a new one to replace it, or leave blank to keep the existing key.'
+      : 'Paste your Gemini API key. It will be stored privately in Script Properties (not in the spreadsheet, not in source).') +
+    '\n\nGet a key at https://aistudio.google.com/app/apikey',
+    ui.ButtonSet.OK_CANCEL
   );
-  if (keyResp === ui.Button.YES) setApiKey();
+  if (keyResp.getSelectedButton() === ui.Button.OK) {
+    const k = (keyResp.getResponseText() || '').trim();
+    if (k) props.setProperty(PROP_API_KEY, k);
+  }
 
   refreshDashboard();
-  ui.alert('Setup complete', 'Your User_Profile has been saved. Open the Dashboard tab to run reports with one click.', ui.ButtonSet.OK);
+  const finalKey = !!props.getProperty(PROP_API_KEY);
+  ui.alert(
+    'Setup complete',
+    'Your User_Profile has been saved.\n\nGemini API key: ' +
+    (finalKey ? '✓ stored' : '✗ not set — use Dashboard → "Set Gemini API key" any time.') +
+    '\n\nOpen the Dashboard tab to add context columns, add habits, and run reports.',
+    ui.ButtonSet.OK
+  );
 }
 
 
@@ -202,12 +216,25 @@ function runInitWizard() {
  * ========================================================================= */
 
 const DASHBOARD_ACTIONS = [
+  // Setup & identity
   { label: 'Run initialization wizard',  fn: 'runInitWizard',
     note:  'Walks you through filling in User_Profile.' },
   { label: 'Set Gemini API key',         fn: 'setApiKey',
     note:  'Opens a prompt. Stored privately in Script Properties.' },
   { label: 'Re-run setup',               fn: 'setupSpreadsheet',
     note:  'Recreates missing tabs and tops up any new defaults.' },
+
+  // Schema management — let users shape their own Responses sheet
+  { label: 'Add context column',         fn: 'addContextColumn',
+    note:  'Free-text journal/reflection column (e.g. Journal, Spirit_Life, Exercise).' },
+  { label: 'Add habit column',           fn: 'addHabitColumn',
+    note:  'Daily Success/Fail/Exempt habit, phrased positively (e.g. Read 20 minutes).' },
+  { label: 'Remove a column',            fn: 'removeColumn',
+    note:  'Pick a column from the Responses sheet and delete it.' },
+  { label: 'List Responses columns',     fn: 'listResponsesColumns',
+    note:  'Shows current context columns, habits, and markers.' },
+
+  // Manual report triggers
   { label: 'Run daily audit now',        fn: 'runDailyAudit',
     note:  'Generates today\'s briefing and emails it.' },
   { label: 'Run weekly report now',      fn: 'runWeeklyReport',
@@ -218,6 +245,7 @@ const DASHBOARD_ACTIONS = [
     note:  'Year-in-review narrative.' },
   { label: 'Run spiritual report now',   fn: 'runSpiritualReport',
     note:  'Pastoral review and biography chapter.' },
+
   { label: 'Refresh dashboard status',   fn: 'refreshDashboard',
     note:  'Re-reads User_Profile and the sheets to update the panel below.' }
 ];
@@ -384,6 +412,190 @@ function ensureDashboardEditTrigger_() {
   ScriptApp.newTrigger('dashboardOnEdit_').forSpreadsheet(ss).onEdit().create();
 }
 
+/* -------------------------------------------------------------------------
+ * Schema management — Responses tab
+ *
+ * The Responses tab is divided by three markers from User_Profile:
+ *   col_spacer  (default '>> HABITS >>')   – everything to the LEFT is context
+ *   col_end     (default 'AI_Feedback_Log') – AI feedback column
+ *   col_score   (default 'Daily_Score')     – numeric score column
+ *
+ * The functions below let users grow this schema from the Dashboard
+ * without ever touching the header row by hand.
+ * -----------------------------------------------------------------------*/
+
+function getResponsesLayout_() {
+  const ss = getSpreadsheet_();
+  const sh = ss.getSheetByName(TAB_RESPONSES);
+  if (!sh) throw new Error(`Missing '${TAB_RESPONSES}' tab. Run setup from the Dashboard.`);
+
+  const profile = getProfile();
+  const spacer = profile.col_spacer || '>> HABITS >>';
+  const endCol = profile.col_end    || 'AI_Feedback_Log';
+  const scoreCol = profile.col_score || 'Daily_Score';
+
+  const lastCol = sh.getLastColumn();
+  const headers = lastCol > 0
+    ? sh.getRange(1, 1, 1, lastCol).getValues()[0]
+    : [];
+
+  const idxSpacer = headers.indexOf(spacer);
+  const idxEnd    = headers.indexOf(endCol);
+  const idxScore  = headers.indexOf(scoreCol);
+
+  if (idxSpacer === -1) {
+    throw new Error(`Could not find the '${spacer}' marker on the Responses sheet. Re-run setup from the Dashboard.`);
+  }
+  if (idxEnd === -1) {
+    throw new Error(`Could not find the '${endCol}' marker on the Responses sheet. Re-run setup from the Dashboard.`);
+  }
+
+  const reserved = new Set(['ID', 'Date', spacer, endCol, scoreCol, '_RowNumber']);
+  const contextCols = [];
+  const habitCols = [];
+  for (let c = 0; c < idxSpacer; c++) {
+    const h = String(headers[c] || '').trim();
+    if (h && !reserved.has(h)) contextCols.push({ name: h, col: c + 1 });
+  }
+  for (let c = idxSpacer + 1; c < idxEnd; c++) {
+    const h = String(headers[c] || '').trim();
+    if (h && !reserved.has(h)) habitCols.push({ name: h, col: c + 1 });
+  }
+
+  return {
+    sheet: sh,
+    headers: headers,
+    spacer: spacer,
+    endCol: endCol,
+    scoreCol: scoreCol,
+    idxSpacer: idxSpacer,
+    idxEnd: idxEnd,
+    idxScore: idxScore,
+    contextCols: contextCols,
+    habitCols: habitCols
+  };
+}
+
+function addContextColumn() {
+  const ui = SpreadsheetApp.getUi();
+  const layout = getResponsesLayout_();
+
+  const resp = ui.prompt(
+    'Add context column',
+    'Name a new free-text column (e.g. "Journal", "Exercise", "Financial", "Spirit_Life").\n\n' +
+    'Tip: prefix with "Spirit_" to feed it to the spiritual subsystem as rich context.\n\n' +
+    'It will be inserted just before the "' + layout.spacer + '" marker.',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  const name = (resp.getResponseText() || '').trim();
+  if (!name) return;
+
+  if (layout.headers.indexOf(name) !== -1) {
+    ui.alert('A column named "' + name + '" already exists.');
+    return;
+  }
+
+  const insertAt = layout.idxSpacer + 1; // 1-indexed column to insert BEFORE
+  layout.sheet.insertColumnBefore(insertAt);
+  layout.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
+  ui.alert('Added context column "' + name + '".');
+}
+
+function addHabitColumn() {
+  const ui = SpreadsheetApp.getUi();
+  const layout = getResponsesLayout_();
+
+  const resp = ui.prompt(
+    'Add habit column',
+    'Phrase the habit positively, so that "Success" means the habit was kept.\n' +
+    '  Good: "Read 20 minutes", "Cold shower", "Two-drink maximum".\n' +
+    '  Bad:  "Skipped reading" (negative phrasing inverts the score).\n\n' +
+    'Tip: prefix with "Spirit_" if this is part of your spiritual rule of life.\n\n' +
+    'The column will be inserted just before "' + layout.endCol + '".',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  const name = (resp.getResponseText() || '').trim();
+  if (!name) return;
+
+  if (layout.headers.indexOf(name) !== -1) {
+    ui.alert('A column named "' + name + '" already exists.');
+    return;
+  }
+
+  const insertAt = layout.idxEnd + 1; // 1-indexed column to insert BEFORE
+  layout.sheet.insertColumnBefore(insertAt);
+  layout.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
+
+  // Add Success / Fail / Exempt data validation to the new column for
+  // existing data rows, so users can pick from a dropdown rather than
+  // typing the values. Future rows added via AppSheet won't be affected.
+  const lastRow = layout.sheet.getLastRow();
+  if (lastRow > 1) {
+    const rule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Success', 'Fail', 'Exempt'], true)
+      .setAllowInvalid(true)
+      .build();
+    layout.sheet.getRange(2, insertAt, lastRow - 1, 1).setDataValidation(rule);
+  }
+
+  ui.alert('Added habit column "' + name + '". Mark each day as Success / Fail / Exempt.');
+}
+
+function removeColumn() {
+  const ui = SpreadsheetApp.getUi();
+  const layout = getResponsesLayout_();
+
+  const all = layout.contextCols.concat(layout.habitCols);
+  if (all.length === 0) {
+    ui.alert('There are no removable columns yet. ID, Date, the spacer, AI_Feedback_Log, and Daily_Score are protected.');
+    return;
+  }
+
+  let listing = 'Type the EXACT name of the column to delete:\n\n';
+  listing += 'Context columns:\n  ' + (layout.contextCols.map(c => c.name).join(', ') || '(none)') + '\n\n';
+  listing += 'Habit columns:\n  ' + (layout.habitCols.map(c => c.name).join(', ') || '(none)');
+
+  const resp = ui.prompt('Remove a column', listing, ui.ButtonSet.OK_CANCEL);
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  const name = (resp.getResponseText() || '').trim();
+  if (!name) return;
+
+  const target = all.find(c => c.name === name);
+  if (!target) {
+    ui.alert('No column named "' + name + '" found, or the column is protected.');
+    return;
+  }
+
+  const confirm = ui.alert(
+    'Delete column?',
+    'This will permanently delete the "' + name + '" column and ALL its data on the Responses sheet. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  layout.sheet.deleteColumn(target.col);
+  ui.alert('Deleted "' + name + '".');
+}
+
+function listResponsesColumns() {
+  const ui = SpreadsheetApp.getUi();
+  const layout = getResponsesLayout_();
+
+  const ctx = layout.contextCols.map(c => '  • ' + c.name).join('\n') || '  (none yet — use "Add context column")';
+  const hab = layout.habitCols.map(c => '  • ' + c.name).join('\n') || '  (none yet — use "Add habit column")';
+
+  ui.alert(
+    'Responses columns',
+    'Context (free text, left of the spacer):\n' + ctx + '\n\n' +
+    'Habits (Success / Fail / Exempt, right of the spacer):\n' + hab + '\n\n' +
+    'Markers: ID, Date | ' + layout.spacer + ' | ' + layout.endCol + ', ' + layout.scoreCol,
+    ui.ButtonSet.OK
+  );
+}
+
+
 /**
  * Internal: write a single key/value into User_Profile, updating the
  * row if it exists or appending a new one if not.
@@ -480,33 +692,24 @@ function ensureTab_(ss, name, seedRows) {
  * ========================================================================= */
 
 /**
- * Default header row for the Responses tab. The script keys off three
- * markers from User_Profile (col_spacer, col_end, col_score), so the
- * convention is: free-text context columns to the left of the spacer,
- * binary habit columns to its right, then the AI feedback and score
- * columns at the end.
+ * Default header row for the Responses tab — kept intentionally minimal.
  *
- * This is a starter set — rename, reorder, add, or delete columns to
- * fit the user's life. Anything starting with `Spirit_` is read by the
- * spiritual subsystem; the un-prefixed `Journal` is included in
- * `spiritual_columns_explicit` so it's read too.
+ * The script keys off three markers from User_Profile (col_spacer,
+ * col_end, col_score). Free-text context columns go to the left of the
+ * spacer, binary habit columns go to its right, and the AI feedback
+ * and score columns go at the end.
+ *
+ * Users build their own schema from the Dashboard via "Add context
+ * column" and "Add habit column", so we ship just one of each (Journal
+ * for context, no habits) plus the markers. Anything starting with
+ * `Spirit_` is automatically read by the spiritual subsystem; the
+ * un-prefixed `Journal` is in `spiritual_columns_explicit` so it is
+ * read too.
  */
 const DEFAULT_RESPONSES_HEADERS = [
-  // Identity & timing (left of spacer, mostly metadata)
-  'ID', 'Date', 'Waketime', 'Bedtime',
-  // Rich free-text context columns (left of spacer)
-  'Journal', 'Spirit_Life', 'Exercise', 'Financial',
-  // Spacer marker — must match User_Profile.col_spacer
+  'ID', 'Date',
+  'Journal',
   '>> HABITS >>',
-  // Binary habit trackers (right of spacer): Success / Fail / Exempt
-  'Tracked Calories', 'Spirit_Fasted', 'Alarm Dismissed', 'Cold Shower',
-  'Spirit_Prostrations', 'Spirit_JesusPrayer', 'Spirit_MorningRite', 'Spirit_EveningRite',
-  'Exercised', 'Clean Eating', 'Arrived Early', 'Read',
-  'Spirit_ServiceCharity', 'Spirit_AvoidedDigitalBypass', 'Spirit_AvoidedJudgement',
-  'Spirit_IgnoredLustfulThoughts', 'Spirit_AvoidedLust', 'Spirit_AvoidedLustfulGazing',
-  'Spirit_AvoidedMediaBinge', 'Spirit_AvoidedCriticism', 'Spirit_AvoidedGluttony',
-  'Spirit_TwoDrinkMax', 'Spirit_AvoidedCrudeJokes',
-  // End markers — must match User_Profile.col_end and col_score
   'AI_Feedback_Log', 'Daily_Score'
 ];
 

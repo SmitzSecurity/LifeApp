@@ -102,31 +102,32 @@ SECTION 10 — Markdown -> HTML formatting
    *Note:* the Apps Script editor's Run button cannot pass parameters,
    which is why `setApiKey` is wired to the menu/dashboard and falls
    back to a prompt dialog when called with no argument.
-7. **Tune the `Responses` sheet** if needed. Setup seeds these headers:
+7. **Build out the `Responses` sheet from the Dashboard.** Setup seeds
+   only the bare minimum so you can shape the schema yourself:
 
    ```
-   ID, Date, Waketime, Bedtime,
-   Journal, Spirit_Life, Exercise, Financial,
-   >> HABITS >>,
-   Tracked Calories, Spirit_Fasted, Alarm Dismissed, Cold Shower,
-   Spirit_Prostrations, Spirit_JesusPrayer, Spirit_MorningRite, Spirit_EveningRite,
-   Exercised, Clean Eating, Arrived Early, Read,
-   Spirit_ServiceCharity, Spirit_AvoidedDigitalBypass, Spirit_AvoidedJudgement,
-   Spirit_IgnoredLustfulThoughts, Spirit_AvoidedLust, Spirit_AvoidedLustfulGazing,
-   Spirit_AvoidedMediaBinge, Spirit_AvoidedCriticism, Spirit_AvoidedGluttony,
-   Spirit_TwoDrinkMax, Spirit_AvoidedCrudeJokes,
-   AI_Feedback_Log, Daily_Score
+   ID, Date, Journal, >> HABITS >>, AI_Feedback_Log, Daily_Score
    ```
 
-   Convention:
-   - Free-text context columns go to the **left** of the
-     `>> HABITS >>` spacer.
-   - Binary habit columns (Success / Fail / Exempt or TRUE / FALSE) go
-     to the **right** of the spacer.
-   - The last two columns are `AI_Feedback_Log` (daily report writes
-     here) and `Daily_Score`.
-   - The Spirit_* columns drive the spiritual subsystem; rename, add,
-     or remove them to fit your tradition.
+   From the Dashboard, use:
+
+   - **Add context column** — inserts a free-text column to the LEFT
+     of the `>> HABITS >>` spacer. Used for journaling, finance notes,
+     workout logs, "Spirit_Life" reflections, etc. Prefix with
+     `Spirit_` to feed the column to the spiritual subsystem.
+   - **Add habit column** — inserts a Success/Fail/Exempt column to
+     the RIGHT of the spacer. **Phrase habits positively** so that
+     marking "Success" is a good thing — e.g. *"Read 20 minutes"*,
+     *"Cold shower"*, *"Two-drink maximum"*. The action also seeds a
+     dropdown validation on existing rows.
+   - **Remove a column** — deletes any non-protected column. ID, Date,
+     the spacer, AI_Feedback_Log, and Daily_Score are protected.
+   - **List Responses columns** — quick summary of what currently
+     exists.
+
+   You can also still rename or rearrange columns by hand on the sheet
+   if you prefer; just don't touch the four protected names unless you
+   also update them in `User_Profile`.
 
    Then point AppSheet at this sheet so you can enter data through a
    GUI rather than editing the spreadsheet directly.
@@ -150,13 +151,14 @@ The first tab — `Dashboard` — is the home screen. It has two parts:
    Tick the checkbox in column A and the matching action runs (the
    checkbox automatically resets afterwards). Available actions:
 
-   - Run initialization wizard
-   - Set Gemini API key
-   - Re-run setup
-   - Run daily audit / weekly report / monthly review / annual review
-     / spiritual report — useful for testing without waiting on a
-     time-based trigger.
-   - Refresh dashboard status
+   - **Setup & identity:** Run initialization wizard, Set Gemini API
+     key, Re-run setup.
+   - **Schema management:** Add context column, Add habit column,
+     Remove a column, List Responses columns.
+   - **Manual report runs:** Run daily audit / weekly report /
+     monthly review / annual review / spiritual report — useful for
+     testing without waiting on a time-based trigger.
+   - **Refresh dashboard status.**
 
 2. **Status** — a live snapshot of email, timezone, location, faith,
    career, goals, whether an API key is stored, model name,
