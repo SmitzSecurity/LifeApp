@@ -88,14 +88,21 @@ SECTION 10 — Markdown -> HTML formatting
    - registers an installable edit-trigger so the Dashboard buttons
      work,
    - moves you to the Dashboard tab, and
-   - on the *first* run, offers to launch the **initialization
-     wizard** — a single-page HTML dialog with `<textarea>` fields,
-     a timezone dropdown, and a stored-or-replace API-key field. You
-     scroll through Identity / Life context / Gemini API key and
-     click Save once. Re-run any time to update individual fields.
-5. **(If you skipped the wizard above)** Run it any time from
-   **Dashboard → "Run initialization wizard"** or from
-   **Life OS → Run initialization wizard**.
+   - on the *first* run, offers to open the **profile editor** — a
+     single-page HTML dialog with `<textarea>` fields, a timezone
+     dropdown, and a stored-or-replace API-key field. You scroll
+     through Identity / Life context / Spiritual context / Gemini
+     API key and click Save once.
+
+   The same dialog is your home for `User_Profile`. Re-open it any
+   time from **Dashboard → "Edit profile"** or
+   **Life OS → Edit profile…** — every field is repopulated with
+   your saved value, blank fields are kept as-is, and a *"Loaded
+   your saved profile"* banner makes it obvious that you're editing
+   rather than starting fresh.
+5. **(If you skipped the profile editor above)** Open it any time
+   from **Dashboard → "Edit profile"** or
+   **Life OS → Edit profile…**.
 6. **(If you skipped the API key step)** Use **Dashboard → "Set
    Gemini API key"** or **Life OS → Set Gemini API key…** A prompt
    opens; paste your key. The key is stored in Script Properties
@@ -165,8 +172,8 @@ The first tab — `Dashboard` — is the home screen. It has two parts:
    Tick the checkbox in column A and the matching action runs (the
    checkbox automatically resets afterwards). Available actions:
 
-   - **Setup & identity:** Run initialization wizard, Set Gemini API
-     key, Re-run setup.
+   - **Setup & identity:** Edit profile, Set Gemini API key, Re-run
+     setup.
    - **Schema:** edit the on-sheet Schema region directly, then click
      **Sync schema to Responses**. Or **Import selected from library**
      to copy ticked rows from the `Habit_Library` tab into the Schema
@@ -193,7 +200,8 @@ permissions.)
 Equivalent menu access for everything on the Dashboard:
 
 - **Run setup** — `setupSpreadsheet`
-- **Run initialization wizard** — `runInitWizard`
+- **Edit profile…** — `runProfileWizard` (alias `runInitWizard` is
+  preserved for backward compatibility)
 - **Set Gemini API key…** — opens a prompt
 - **Refresh dashboard** — `refreshDashboard`
 - **Run daily audit** / **weekly report** / **monthly review** /

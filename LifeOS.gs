@@ -59,7 +59,7 @@ function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Life OS')
     .addItem('Run setup',                'setupSpreadsheet')
-    .addItem('Run initialization wizard','runInitWizard')
+    .addItem('Edit profile…',            'runProfileWizard')
     .addItem('Set Gemini API key…',      'setApiKey')
     .addItem('Refresh dashboard',        'refreshDashboard')
     .addSeparator()
@@ -117,15 +117,15 @@ function setupSpreadsheet() {
 
   if (!ui) return;
 
-  // Offer to walk first-time users through the init wizard.
+  // Offer to open the profile editor for first-time users.
   if (!profileExisted || !profileGet('email', '')) {
     const resp = ui.alert(
       'Life OS is set up',
-      'Would you like to run the initialization wizard now? It will fill in your User_Profile (email, timezone, location, faith, career, goals) and prompt for your Gemini API key.',
+      'Open your profile now? You can fill in email, timezone, location, faith, career, goals, your spiritual context, and your Gemini API key. The same dialog can be re-opened any time to update individual fields.',
       ui.ButtonSet.YES_NO
     );
     if (resp === ui.Button.YES) {
-      runInitWizard();
+      runProfileWizard();
       return;
     }
   }
@@ -135,25 +135,24 @@ function setupSpreadsheet() {
     '• Open the Dashboard tab.\n' +
     '• Edit the Schema region (or tick items on Habit_Library + click "Import selected from library").\n' +
     '• Click "Sync schema to Responses" to apply.\n' +
-    '• Run the wizard any time to update your profile.'
+    '• Click "Edit profile" any time to update your saved profile fields.'
   );
 }
 
 
 /**
- * Conversational setup, served as an HtmlService modal dialog. Uses real
- * <textarea> fields so users can see everything they've typed, and lets
- * them move freely back and forth between questions before saving.
+ * Profile editor, served as an HtmlService modal dialog.
  *
- * The wizard collects everything client-side, then makes a single
- * google.script.run call to wizardSubmit_() which writes User_Profile
- * and (optionally) the Gemini API key.
+ * This is the home for User_Profile. Run it the first time to set
+ * everything up, and re-run it any time to update individual fields.
+ * Existing values are loaded into the form so it functions as a
+ * profile editor rather than a one-time wizard.
  */
-function runInitWizard() {
+function runProfileWizard() {
   let ui;
   try { ui = SpreadsheetApp.getUi(); }
   catch (e) {
-    throw new Error('runInitWizard must be invoked from the spreadsheet, not the script editor.');
+    throw new Error('runProfileWizard must be invoked from the spreadsheet, not the script editor.');
   }
 
   const ss = getSpreadsheet_();
@@ -162,8 +161,14 @@ function runInitWizard() {
   const html = HtmlService.createHtmlOutput(buildWizardHtml_())
     .setWidth(680)
     .setHeight(720);
-  ui.showModalDialog(html, 'Life OS — Initialization Wizard');
+  ui.showModalDialog(html, 'Life OS — Profile');
 }
+
+/**
+ * Backward-compatible alias for any existing triggers, menu bindings,
+ * or muscle memory pointing at the old name.
+ */
+function runInitWizard() { return runProfileWizard(); }
 
 
 /**
@@ -175,16 +180,34 @@ function runInitWizard() {
 
 /** Returns the current wizard state for prefilling the dialog. */
 function wizardLoad() {
+  // Tolerate a missing User_Profile tab (e.g. if the user opened the
+  // dialog before running setup): bootstrap on demand and continue.
+  try { getProfile(); } catch (e) { setupSpreadsheet(); }
+
+  const email    = profileGet('email', '');
+  const tz       = profileGet('timezone', '');
+  const location = profileGet('location', '');
+  const faith    = profileGet('faith', '');
+  const career   = profileGet('career', '');
+  const goals    = profileGet('goals', '');
+  const sctx     = profileGet('spiritual_context', '');
+
+  // "isExisting" is true if the user has saved at least one of the
+  // profile fields previously. The dialog uses it to decide between
+  // "Edit profile" and "Set up profile" framing.
+  const isExisting = !!(email || tz || location || faith || career || goals || sctx);
+
   return {
-    email:             profileGet('email', ''),
-    timezone:          profileGet('timezone', '') || (Session.getScriptTimeZone && Session.getScriptTimeZone()) || 'America/New_York',
-    location:          profileGet('location', ''),
-    faith:             profileGet('faith', ''),
-    career:            profileGet('career', ''),
-    goals:             profileGet('goals', ''),
-    spiritual_context: profileGet('spiritual_context', ''),
+    email:             email,
+    timezone:          tz || (Session.getScriptTimeZone && Session.getScriptTimeZone()) || 'America/New_York',
+    location:          location,
+    faith:             faith,
+    career:            career,
+    goals:             goals,
+    spiritual_context: sctx,
     apiKeySet:         !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY),
-    timezoneOptions:   TIMEZONE_OPTIONS
+    timezoneOptions:   TIMEZONE_OPTIONS,
+    isExisting:        isExisting
   };
 }
 
@@ -297,8 +320,8 @@ function buildWizardHtml_() {
   .err { color: #c0392b; }
 </style></head><body>
 <div class="wrap">
-  <h2>Life OS — Initialization</h2>
-  <p class="lead">Fill in what you know; everything except <b>email</b> is optional. You can re-run this wizard any time from the Dashboard or the Life OS menu.</p>
+  <h2 id="title">Life OS — Profile</h2>
+  <p class="lead" id="lead">Loading…</p>
 
   <fieldset>
     <legend>Identity</legend>
@@ -370,7 +393,8 @@ google.script.run
     set('spiritual_context', loaded.spiritual_context);
 
     // Timezone: pick the loaded value if present in the dropdown,
-    // otherwise default to the first option.
+    // otherwise insert it at the top so the user's saved value is
+    // always preserved.
     var tz = document.getElementById('timezone');
     var want = loaded.timezone || '';
     var found = false;
@@ -388,6 +412,17 @@ google.script.run
       document.getElementById('apiKey').placeholder = 'A key is already stored — leave blank to keep it';
       document.getElementById('keyHelp').innerHTML =
         '<span class="ok">A key is already stored.</span> Paste a new one to replace it, or leave blank to keep the existing key.';
+    }
+
+    // Re-frame the dialog based on whether this is first-time setup
+    // or an edit of an already-populated profile.
+    var lead = document.getElementById('lead');
+    if (loaded.isExisting) {
+      document.getElementById('title').textContent = 'Life OS — Edit profile';
+      lead.innerHTML = '<span class="ok">Loaded your saved profile.</span> Update any field; blank fields are kept as-is. Email is required.';
+    } else {
+      document.getElementById('title').textContent = 'Life OS — Profile setup';
+      lead.textContent = 'Fill in what you know. Everything except email is optional, and you can re-open this any time to update individual fields.';
     }
 
     document.getElementById('save').disabled = false;
@@ -446,8 +481,8 @@ document.getElementById('save').onclick = function() {
 
 const DASHBOARD_ACTIONS = [
   // Setup & identity
-  { label: 'Run initialization wizard',  fn: 'runInitWizard',
-    note:  'Opens a dialog. Edit any field, navigate Back/Next, save once.' },
+  { label: 'Edit profile',               fn: 'runProfileWizard',
+    note:  'Opens a dialog prefilled with your saved User_Profile values. Edit any field, save.' },
   { label: 'Set Gemini API key',         fn: 'setApiKey',
     note:  'Opens a prompt. Stored privately in Script Properties.' },
   { label: 'Re-run setup',               fn: 'setupSpreadsheet',
