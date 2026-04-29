@@ -65,6 +65,7 @@ function onOpen() {
     .addSeparator()
     .addItem('Sync schema → Responses',  'syncSchemaToResponses')
     .addItem('Import library selections','importLibrarySelections')
+    .addItem('Reformat Responses table', 'formatResponsesNow')
     .addSeparator()
     .addItem('Run daily audit',          'runDailyAudit')
     .addItem('Run weekly report',        'runWeeklyReport')
@@ -101,6 +102,11 @@ function setupSpreadsheet() {
   ensureTab_(ss, TAB_SYS_DOCS,   getDefaultDocs_());
   ensureTab_(ss, TAB_SPIRIT_BIO, [['date', 'type', 'title', 'narrative', 'tags']]);
   ensureLibraryTab_(ss);
+
+  // Format Responses as a banded table with frozen header + habit
+  // dropdown validation. Safe on first run (empty sheet) and on
+  // re-runs (idempotent).
+  formatResponsesTable_(ss.getSheetByName(TAB_RESPONSES));
 
   buildDashboard_(ss);
   ensureDashboardEditTrigger_();
@@ -493,6 +499,8 @@ const DASHBOARD_ACTIONS = [
     note:  'Adds any new rows in the Schema region as columns; removes columns that no longer appear.' },
   { label: 'Import selected from library', fn: 'importLibrarySelections',
     note:  'Copies ticked rows from the Habit_Library tab into the Schema region.' },
+  { label: 'Reformat Responses table',   fn: 'formatResponsesNow',
+    note:  'Re-applies banding, frozen header, and Success/Fail/Exempt validation across all habit columns.' },
 
   // Manual report triggers
   { label: 'Run daily audit now',        fn: 'runDailyAudit',
@@ -923,11 +931,6 @@ function syncSchemaToResponses() {
   // Re-read the layout because deletions shifted columns.
   let live = getResponsesLayout_();
 
-  const habitRule = SpreadsheetApp.newDataValidation()
-    .requireValueInList(['Success', 'Fail', 'Exempt'], true)
-    .setAllowInvalid(true)
-    .build();
-
   toAddContext.forEach(name => {
     const insertAt = live.idxSpacer + 1; // 1-indexed: insert BEFORE spacer
     live.sheet.insertColumnBefore(insertAt);
@@ -939,23 +942,108 @@ function syncSchemaToResponses() {
     const insertAt = live.idxEnd + 1; // 1-indexed: insert BEFORE end marker
     live.sheet.insertColumnBefore(insertAt);
     live.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
-    const lastRow = live.sheet.getLastRow();
-    if (lastRow > 1) {
-      live.sheet.getRange(2, insertAt, lastRow - 1, 1).setDataValidation(habitRule);
-    }
     live = getResponsesLayout_();
   });
+
+  // Apply Success/Fail/Exempt validation across every habit column
+  // (over the full sheet, not just existing rows) and re-apply table
+  // formatting so AppSheet sees a clean banded table region.
+  formatResponsesTable_(live.sheet);
 
   refreshDashboard();
   ui.alert(
     'Schema synced',
     'Added: ' + (toAddContext.length + toAddHabit.length) +
-    '   |   Removed: ' + toDelete.length,
+    '   |   Removed: ' + toDelete.length +
+    '\n\nResponses formatted as a table; habit columns now have a Success/Fail/Exempt dropdown.',
     ui.ButtonSet.OK
   );
 }
 
 function toAdd_summary(a, b) { return (a ? a.length : 0) + (b ? b.length : 0); }
+
+
+/**
+ * Public action: re-apply table formatting and habit-column data
+ * validation on Responses. Safe to run any time. Idempotent.
+ */
+function formatResponsesNow() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet_();
+  const sh = ss.getSheetByName(TAB_RESPONSES);
+  if (!sh) { ui.alert('Run setup first.'); return; }
+  formatResponsesTable_(sh);
+  ui.alert(
+    'Responses formatted',
+    'Table banding, frozen header, and Success / Fail / Exempt validation on habit columns have been refreshed.',
+    ui.ButtonSet.OK
+  );
+}
+
+
+/**
+ * Formats the Responses tab as a banded table with a frozen header
+ * and applies Success/Fail/Exempt data validation across every habit
+ * column for the full sheet (every row, including future rows).
+ *
+ * Rationale: AppSheet auto-detects column types. When a column has a
+ * "value-in-list" validation rule, AppSheet picks Enum and uses the
+ * list as the allowed values. Applying the rule to the whole column
+ * (not just existing rows) ensures rows AppSheet adds later inherit
+ * the rule, so the GUI keeps its enum dropdown.
+ */
+function formatResponsesTable_(sh) {
+  if (!sh) return;
+  const lastCol = sh.getLastColumn();
+  const maxRow  = sh.getMaxRows();
+  if (lastCol < 1 || maxRow < 2) return;
+
+  // Frozen + styled header row.
+  sh.setFrozenRows(1);
+  sh.getRange(1, 1, 1, lastCol)
+    .setFontWeight('bold')
+    .setBackground('#eef1f5')
+    .setVerticalAlignment('middle');
+
+  // Re-apply banding so it covers the whole column range. Drop any
+  // existing bandings on the sheet first to avoid duplicates.
+  sh.getBandings().forEach(b => b.remove());
+  sh.getRange(1, 1, maxRow, lastCol)
+    .applyRowBanding(SpreadsheetApp.BandingTheme.LIGHT_GREY)
+    .setHeaderRowColor('#eef1f5')
+    .setFirstRowColor('#ffffff')
+    .setSecondRowColor('#f7f7f7');
+
+  // Habit-column validation across the entire column range.
+  const headers = sh.getRange(1, 1, 1, lastCol).getValues()[0];
+  const profile = (function () {
+    try { return getProfile(); } catch (e) { return {}; }
+  })();
+  const spacer = profile.col_spacer || '>> HABITS >>';
+  const endCol = profile.col_end    || 'AI_Feedback_Log';
+  const idxSpacer = headers.indexOf(spacer);
+  const idxEnd    = headers.indexOf(endCol);
+  if (idxSpacer === -1 || idxEnd === -1) return;
+
+  const habitRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Success', 'Fail', 'Exempt'], true)
+    .setAllowInvalid(true)  // tolerate TRUE/FALSE history without yelling
+    .setHelpText('Pick Success, Fail, or Exempt.')
+    .build();
+
+  const dataRows = maxRow - 1;
+  if (dataRows < 1) return;
+
+  // Habit columns are between the spacer and the end marker. Indexes
+  // from headers.indexOf are 0-based; sheet columns are 1-based, so
+  // the first habit column is (idxSpacer + 2) and the last is idxEnd
+  // (the end marker itself sits at idxEnd + 1).
+  const firstHabit = idxSpacer + 2;
+  const lastHabit  = idxEnd;
+  for (let c = firstHabit; c <= lastHabit; c++) {
+    sh.getRange(2, c, dataRows, 1).setDataValidation(habitRule);
+  }
+}
 
 
 /**

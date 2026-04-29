@@ -140,18 +140,25 @@ SECTION 10 — Markdown -> HTML formatting
 
    - inserts new context columns to the LEFT of the `>> HABITS >>`
      spacer,
-   - inserts new habit columns to the RIGHT of the spacer (with a
-     Success/Fail/Exempt dropdown applied to existing rows),
+   - inserts new habit columns to the RIGHT of the spacer,
    - removes columns from `Responses` that you've removed from the
      Schema region (with a confirmation dialog before any deletion),
-     and
+   - re-applies table formatting: frozen header, banded rows, and a
+     **Success / Fail / Exempt** dropdown on every habit column for
+     the *entire sheet* (not just existing rows), so AppSheet picks
+     the right Enum type and future rows keep the dropdown, and
    - leaves protected columns (ID, Date, spacer, AI_Feedback_Log,
      Daily_Score) untouched.
 
    Re-running setup preserves your Schema rows; nothing is lost.
 
+   You can re-apply the table formatting and validation any time
+   from **Dashboard → "Reformat Responses table"**.
+
    Once your schema is settled, point AppSheet at the `Responses`
-   sheet so you can enter data through a GUI.
+   sheet. Because the habit columns already carry value-in-list
+   validation, AppSheet auto-detects them as Enum columns with the
+   correct allowed values — no per-column re-typing in AppSheet's UI.
 8. **Add time-based triggers** (Triggers tab in the editor) for the
    functions you want:
    - `runDailyAudit` — daily, late evening
@@ -177,7 +184,8 @@ The first tab — `Dashboard` — is the home screen. It has two parts:
    - **Schema:** edit the on-sheet Schema region directly, then click
      **Sync schema to Responses**. Or **Import selected from library**
      to copy ticked rows from the `Habit_Library` tab into the Schema
-     region.
+     region. **Reformat Responses table** re-applies banding, frozen
+     header, and habit-column validation on demand.
    - **Manual report runs:** Run daily audit / weekly report /
      monthly review / annual review / spiritual report — useful for
      testing without waiting on a time-based trigger.
