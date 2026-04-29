@@ -209,9 +209,8 @@ Equivalent menu access for everything on the Dashboard:
 | `model_name` | Gemini model (e.g. `gemini-2.5-pro`). |
 | `timezone` | For dating biography entries. |
 | `location`, `faith`, `career`, `goals` | Free text, injected into prompts. |
+| `spiritual_context` | Free text. Your spiritual goals, situation, tradition, and rule of life. Appended verbatim to the spiritual report prompt as authoritative framing. Update whenever the situation shifts. |
 | `col_spacer`, `col_end`, `col_score` | Column markers on the `Responses` sheet. |
-| `spiritual_col_prefix` | Header prefix that flags a spiritual column (default `Spirit_`). |
-| `spiritual_columns_explicit` | Comma-separated extra spiritual columns (default `Journal`). |
 | `spiritual_lookback_days` | Days to read for the spiritual review (default `14`). |
 | `spiritual_bio_max_chars` | Cap on biography text fed back as memory (default `6000`). |
 | `enable_search_daily` / `enable_search_weekly` / `enable_search_spiritual` | Toggle Google Search grounding per report. |
@@ -256,33 +255,30 @@ Placeholders supported in any template:
 
 ## Spiritual subsystem specifics
 
-The spiritual subsystem analyzes only the columns flagged as spiritual
-and grows a long-running narrative biography on the
-`Spiritual_Biography` tab. Each row is
-`(date, type, title, narrative, tags)`. The most recent rows are
-concatenated and fed back into the next run as memory, capped at
-`spiritual_bio_max_chars` characters so the system scales as the
-biography grows.
+The spiritual subsystem reads the **entire daily log** — every habit
+and every free-text context column over the lookback window — and
+weighs the whole life as one life. There is no `Spirit_*` column
+prefix or "spiritual columns" filter; the model is trusted to extract
+the spiritual signal from the full log in conversation with two
+sources of explicit framing:
 
-Recommended spiritual column naming on `Responses` (binary trackers):
+1. **`spiritual_context` in `User_Profile`** — a free-text field where
+   you describe your spiritual situation, goals, tradition, current
+   rule of prayer/fasting, and what season you're in. The wizard
+   surfaces it as a `<textarea>`. Update it whenever your situation
+   shifts; the next spiritual report will pick up the change.
+2. **The `Spiritual_Biography` tab** — append-only narrative chapters
+   `(date, type, title, narrative, tags)`. The most recent chapters
+   are concatenated and fed back into the next run as memory, capped
+   at `spiritual_bio_max_chars` characters so the system scales as the
+   biography grows.
 
-`Spirit_Fasted`, `Spirit_Prostrations`, `Spirit_JesusPrayer`,
-`Spirit_MorningRite`, `Spirit_EveningRite`, `Spirit_ServiceCharity`,
-`Spirit_AvoidedDigitalBypass`, `Spirit_AvoidedJudgement`,
-`Spirit_IgnoredLustfulThoughts`, `Spirit_AvoidedLust`,
-`Spirit_AvoidedLustfulGazing`, `Spirit_AvoidedMediaBinge`,
-`Spirit_AvoidedCriticism`, `Spirit_AvoidedGluttony`,
-`Spirit_TwoDrinkMax`, `Spirit_AvoidedCrudeJokes`.
+If you want a different framing, edit `persona_spiritual`,
+`spiritual_column_semantics`, or `prompt_spiritual` in `System_Docs`.
+No code change required.
 
-Free-text spiritual columns:
-
-- `Spirit_Life` — saints' lives, gospel readings, parish events,
-  notable spiritual moments.
-- `Journal` — internal dispositions; left un-prefixed so the daily
-  audit still uses it, and added to `spiritual_columns_explicit` so
-  the spiritual subsystem reads it too.
-
-If your tradition or column conventions differ, change
-`spiritual_col_prefix` / `spiritual_columns_explicit` in
-`User_Profile` and edit `spiritual_column_semantics` and
-`persona_spiritual` in `System_Docs`. No code change required.
+The `Habit_Library` tab ships with neutral, positively-phrased habits
+(Morning prayer rule, Jesus Prayer, Kept the fast, Almsgiving, etc.)
+and a `Spiritual_Life` context column for free-form spiritual
+reflection. Use them or roll your own — there are no required column
+names.

@@ -161,7 +161,7 @@ function runInitWizard() {
 
   const html = HtmlService.createHtmlOutput(buildWizardHtml_())
     .setWidth(680)
-    .setHeight(640);
+    .setHeight(720);
   ui.showModalDialog(html, 'Life OS — Initialization Wizard');
 }
 
@@ -176,20 +176,21 @@ function runInitWizard() {
 /** Returns the current wizard state for prefilling the dialog. */
 function wizardLoad() {
   return {
-    email:    profileGet('email', ''),
-    timezone: profileGet('timezone', '') || (Session.getScriptTimeZone && Session.getScriptTimeZone()) || 'America/New_York',
-    location: profileGet('location', ''),
-    faith:    profileGet('faith', ''),
-    career:   profileGet('career', ''),
-    goals:    profileGet('goals', ''),
-    apiKeySet: !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY),
-    timezoneOptions: TIMEZONE_OPTIONS
+    email:             profileGet('email', ''),
+    timezone:          profileGet('timezone', '') || (Session.getScriptTimeZone && Session.getScriptTimeZone()) || 'America/New_York',
+    location:          profileGet('location', ''),
+    faith:             profileGet('faith', ''),
+    career:            profileGet('career', ''),
+    goals:             profileGet('goals', ''),
+    spiritual_context: profileGet('spiritual_context', ''),
+    apiKeySet:         !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY),
+    timezoneOptions:   TIMEZONE_OPTIONS
   };
 }
 
 /** Persists wizard answers and (optionally) the API key. */
 function wizardSubmit(answers) {
-  const fields = ['email', 'timezone', 'location', 'faith', 'career', 'goals'];
+  const fields = ['email', 'timezone', 'location', 'faith', 'career', 'goals', 'spiritual_context'];
   fields.forEach(k => {
     const v = (answers && answers[k] != null) ? String(answers[k]).trim() : '';
     if (v) profileSet_(k, v);
@@ -330,6 +331,13 @@ function buildWizardHtml_() {
   </fieldset>
 
   <fieldset>
+    <legend>Spiritual context (optional)</legend>
+    <label for="spiritual_context">Your spiritual situation, goals, and rule of life</label>
+    <textarea id="spiritual_context" style="min-height:140px"></textarea>
+    <p class="help">Free-form. Anything you'd want a spiritual director to know — tradition, current rule of prayer, fasting practice, struggles, what season you're in. The spiritual report appends this to its prompt as authoritative framing, so update it whenever your situation shifts.</p>
+  </fieldset>
+
+  <fieldset>
     <legend>Gemini API key</legend>
     <label for="apiKey">API key</label>
     <input type="text" id="apiKey" autocomplete="off" placeholder="" />
@@ -354,11 +362,12 @@ function setStatus(msg, cls) {
 
 google.script.run
   .withSuccessHandler(function(loaded) {
-    set('email',    loaded.email);
-    set('location', loaded.location);
-    set('faith',    loaded.faith);
-    set('career',   loaded.career);
-    set('goals',    loaded.goals);
+    set('email',             loaded.email);
+    set('location',          loaded.location);
+    set('faith',             loaded.faith);
+    set('career',            loaded.career);
+    set('goals',             loaded.goals);
+    set('spiritual_context', loaded.spiritual_context);
 
     // Timezone: pick the loaded value if present in the dropdown,
     // otherwise default to the first option.
@@ -402,13 +411,14 @@ document.getElementById('save').onclick = function() {
   setStatus('Saving…');
 
   var answers = {
-    email:    email,
-    timezone: val('timezone'),
-    location: val('location'),
-    faith:    val('faith'),
-    career:   val('career'),
-    goals:    val('goals'),
-    apiKey:   val('apiKey')
+    email:             email,
+    timezone:          val('timezone'),
+    location:          val('location'),
+    faith:             val('faith'),
+    career:            val('career'),
+    goals:             val('goals'),
+    spiritual_context: val('spiritual_context'),
+    apiKey:            val('apiKey')
   };
 
   google.script.run
@@ -470,15 +480,16 @@ const DASHBOARD_ACTIONS = [
 // without recomputing offsets.
 const DASH_ACTION_HEADER_ROW = 3;   // "Actions" header
 const DASH_ACTION_START_ROW  = 4;   // first action checkbox
-const DASH_SCHEMA_BLANK_ROWS = 4;   // blank slots appended after preserved schema rows
-const DASH_STATUS_BLANK_ROWS = 2;   // gap rows between schema and status panel
+const DASH_STATUS_BLANK_ROWS = 2;   // gap between Actions and Status
+const DASH_SCHEMA_GAP_ROWS   = 2;   // gap between Status and Schema
+const DASH_SCHEMA_BLANK_ROWS = 8;   // blank slots appended after preserved schema rows
 // (Schema and Status header rows are computed at build time and stored
 // in DocumentProperties so the rest of the code can find them later.)
 
 // Row 1 of the schema region holds the column header for the editable
 // table; row 2..N are the data rows. Schema columns:
 //   B = Type   ('Context' | 'Habit'),  validated dropdown
-//   C = Name   (e.g. Journal, Spirit_JesusPrayer, ReadDaily)
+//   C = Name   (e.g. Journal, JesusPrayer, ReadDaily)
 //   D = Description (free text, used by the library and human readers)
 
 function buildDashboard_(ss) {
@@ -498,12 +509,19 @@ function buildDashboard_(ss) {
   sh.setHiddenGridlines(true);
   sh.setColumnWidth(1, 30);    // checkbox
   sh.setColumnWidth(2, 200);   // label / Type
-  sh.setColumnWidth(3, 280);   // note / Name
-  sh.setColumnWidth(4, 360);   // Description / Status value
+  sh.setColumnWidth(3, 280);   // note / Name / Status value
+  sh.setColumnWidth(4, 360);   // Description (schema) / overflow
+
+  // Layout (top → bottom):
+  //   Title (rows 1–2)
+  //   Actions
+  //   Status   ← fixed-height
+  //   Schema   ← grows downward, last region on the sheet so it can
+  //              expand without cutting into anything else.
 
   // ---- Title ----
   sh.getRange('B1').setValue('Life OS').setFontSize(22).setFontWeight('bold');
-  sh.getRange('B2').setValue('Tick a checkbox to run an action. Edit the Schema region directly, then click "Sync schema to Responses".')
+  sh.getRange('B2').setValue('Tick a checkbox to run an action. Schema region at the bottom — edit it, then click "Sync schema to Responses".')
                    .setFontStyle('italic').setFontColor('#555');
   sh.getRange('A1:D2').setBackground('#f5f1fa');
 
@@ -518,9 +536,18 @@ function buildDashboard_(ss) {
     sh.getRange(row, 3).setValue(a.note).setFontColor('#666');
   });
 
-  // ---- Schema region ----
-  const schemaHeaderRow = DASH_ACTION_START_ROW + DASHBOARD_ACTIONS.length + 2;
+  // ---- Status (between actions and schema) ----
+  const statusRow = DASH_ACTION_START_ROW + DASHBOARD_ACTIONS.length + DASH_STATUS_BLANK_ROWS;
+  sh.getRange(statusRow, 2).setValue('Status').setFontWeight('bold').setFontSize(14);
+  STATUS_LABELS.forEach((label, i) => {
+    sh.getRange(statusRow + 1 + i, 2).setValue(label).setFontWeight('bold');
+  });
+  PropertiesService.getDocumentProperties().setProperty('DASH_STATUS_HEADER_ROW', String(statusRow));
+
+  // ---- Schema (last region — extends downward freely) ----
+  const schemaHeaderRow = statusRow + 1 + STATUS_LABELS.length + DASH_SCHEMA_GAP_ROWS;
   sh.getRange(schemaHeaderRow, 2).setValue('Schema (edit me, then click "Sync schema to Responses")').setFontWeight('bold').setFontSize(14);
+  sh.getRange(schemaHeaderRow, 2, 1, 3).setBackground('#f5f1fa');
   sh.getRange(schemaHeaderRow + 1, 2, 1, 3).setValues([['Type', 'Name', 'Description']])
     .setFontWeight('bold').setBackground('#eee');
 
@@ -532,39 +559,36 @@ function buildDashboard_(ss) {
   if (seedRows.length > 0) {
     sh.getRange(schemaDataStart, 2, seedRows.length, 3).setValues(seedRows);
   }
-  // Always provide a few blank rows so the user can keep typing.
-  const totalSlots = seedRows.length + DASH_SCHEMA_BLANK_ROWS;
-  if (totalSlots > seedRows.length) {
-    const blanks = [];
-    for (let i = 0; i < DASH_SCHEMA_BLANK_ROWS; i++) blanks.push(['', '', '']);
-    sh.getRange(schemaDataStart + seedRows.length, 2, DASH_SCHEMA_BLANK_ROWS, 3).setValues(blanks);
+  const blanks = [];
+  for (let i = 0; i < DASH_SCHEMA_BLANK_ROWS; i++) blanks.push(['', '', '']);
+  if (blanks.length) {
+    sh.getRange(schemaDataStart + seedRows.length, 2, blanks.length, 3).setValues(blanks);
   }
-  // Type dropdown for the whole schema region.
+  const totalSlots = seedRows.length + blanks.length;
+
+  // Type dropdown across the whole schema region. Apply it to a
+  // generous range below the seeded rows too, so when the user types
+  // into a blank row the Type cell already has the dropdown.
+  const ruleRows = Math.max(totalSlots, 200);
   const typeRule = SpreadsheetApp.newDataValidation()
     .requireValueInList(['Context', 'Habit'], true)
     .setAllowInvalid(false)
     .build();
-  sh.getRange(schemaDataStart, 2, totalSlots, 1).setDataValidation(typeRule);
+  sh.getRange(schemaDataStart, 2, ruleRows, 1).setDataValidation(typeRule);
 
-  // Persist the row index of the schema header so other functions can
-  // find it without recomputing.
   PropertiesService.getDocumentProperties().setProperty('DASH_SCHEMA_HEADER_ROW', String(schemaHeaderRow));
-
-  // ---- Status ----
-  const statusRow = schemaDataStart + totalSlots + DASH_STATUS_BLANK_ROWS;
-  sh.getRange(statusRow, 2).setValue('Status').setFontWeight('bold').setFontSize(14);
-  const statusKeys = [
-    'Email', 'Timezone', 'Location', 'Faith', 'Career', 'Goals',
-    'Gemini API key', 'Model', 'Responses rows', 'Latest daily score',
-    'Biography chapters', 'Last memory entry'
-  ];
-  statusKeys.forEach((label, i) => {
-    sh.getRange(statusRow + 1 + i, 2).setValue(label).setFontWeight('bold');
-  });
-  PropertiesService.getDocumentProperties().setProperty('DASH_STATUS_HEADER_ROW', String(statusRow));
 
   refreshDashboard();
 }
+
+// Status panel labels — defined once so buildDashboard_ and
+// refreshDashboard agree on layout.
+const STATUS_LABELS = [
+  'Email', 'Timezone', 'Location', 'Faith', 'Career', 'Goals',
+  'Spiritual context', 'Gemini API key', 'Model',
+  'Responses rows', 'Latest daily score',
+  'Biography chapters', 'Last memory entry'
+];
 
 /**
  * Reads the editable schema region on the Dashboard, returning rows of
@@ -580,10 +604,9 @@ function readDashboardSchema_(sh) {
   const lastRow = sh.getLastRow();
   if (lastRow < dataStart) return [];
 
-  // We read until we hit the Status header (or the end of the sheet).
-  const statusHeaderRow = parseInt(props.getProperty('DASH_STATUS_HEADER_ROW') || '0', 10);
-  const stopRow = statusHeaderRow > dataStart ? statusHeaderRow - 1 : lastRow;
-  const numRows = stopRow - dataStart + 1;
+  // Schema is the last region on the sheet, so we read all the way to
+  // the end. Empty rows are skipped.
+  const numRows = lastRow - dataStart + 1;
   if (numRows <= 0) return [];
 
   const values = sh.getRange(dataStart, 2, numRows, 3).getValues();
@@ -648,6 +671,7 @@ function refreshDashboard() {
     [profile.faith     || '(not set)'],
     [profile.career    || '(not set)'],
     [profile.goals     || '(not set)'],
+    [profile.spiritual_context ? truncate_(profile.spiritual_context, 240) : '(not set)'],
     [apiKeySet ? '✓ stored in Script Properties' : '✗ not set — use the action above'],
     [profile.model_name || '(default)'],
     [respRows],
@@ -656,6 +680,11 @@ function refreshDashboard() {
     [lastMemoryLabel]
   ];
   sh.getRange(statusHeaderRow + 1, 3, values.length, 1).setValues(values);
+}
+
+function truncate_(s, n) {
+  s = String(s || '');
+  return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 
 
@@ -940,20 +969,28 @@ function importLibrarySelections() {
   if (!headerRow) { ui.alert('Schema region not found. Re-run setup.'); return; }
   const dataStart = headerRow + 2;
 
-  // Find the first empty schema row (search the existing table top to bottom).
-  const statusHeader = parseInt(props.getProperty('DASH_STATUS_HEADER_ROW') || '0', 10);
-  const stopRow = statusHeader > dataStart ? statusHeader - 1 : dash.getLastRow();
-  let writeRow = -1;
-  if (stopRow >= dataStart) {
-    const region = dash.getRange(dataStart, 2, stopRow - dataStart + 1, 3).getValues();
-    for (let i = 0; i < region.length; i++) {
-      if (!String(region[i][1] || '').trim()) { writeRow = dataStart + i; break; }
+  // Schema is the last region on the sheet — append after the last
+  // populated row, or at dataStart if the region is empty.
+  const lastRow = dash.getLastRow();
+  let writeRow = lastRow >= dataStart
+    ? Math.max(dataStart + current.length, dataStart)
+    : dataStart;
+  if (lastRow >= dataStart) {
+    const scan = dash.getRange(dataStart, 2, lastRow - dataStart + 1, 3).getValues();
+    for (let i = 0; i < scan.length; i++) {
+      if (!String(scan[i][1] || '').trim()) { writeRow = dataStart + i; break; }
     }
   }
-  if (writeRow === -1) writeRow = dataStart + current.length;
 
   const out = toAdd.map(t => [t.type, t.name, t.desc]);
   dash.getRange(writeRow, 2, out.length, 3).setValues(out);
+
+  // Make sure Type cells in the newly-written rows have the dropdown.
+  const typeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Context', 'Habit'], true)
+    .setAllowInvalid(false)
+    .build();
+  dash.getRange(writeRow, 2, out.length, 1).setDataValidation(typeRule);
 
   // Reset the checkboxes we just consumed.
   ticked.forEach(t => lib.getRange(t.row, 1).setValue(false));
@@ -986,7 +1023,7 @@ const DEFAULT_SCHEMA_SEED = [
 
 const DEFAULT_LIBRARY = [
   // Context columns
-  ['Context', 'Spirit_Life',         'Spiritual life: gospel readings, lives of saints, parish events, notable moments.'],
+  ['Context', 'Spiritual_Life',      'Spiritual life: gospel readings, lives of saints, parish events, notable moments.'],
   ['Context', 'Exercise',            'What movement happened today (run, lift, walk, mobility).'],
   ['Context', 'Financial',           'Notable spending, earning, budgeting, or financial decisions.'],
   ['Context', 'Work',                'Work / study output, meetings, projects worked on.'],
@@ -1025,19 +1062,20 @@ const DEFAULT_LIBRARY = [
   ['Habit',   'Acted with kindness',   'Did one deliberate act of kindness or service today.'],
   ['Habit',   'Listened well',         'Held back from interrupting in at least one conversation.'],
 
-  // Habits — Christian / Orthodox spiritual rule (prefix Spirit_ so the
-  // spiritual subsystem reads them automatically)
-  ['Habit',   'Spirit_MorningRite',     'Completed your morning prayer rule.'],
-  ['Habit',   'Spirit_EveningRite',     'Completed your evening prayer rule.'],
-  ['Habit',   'Spirit_JesusPrayer',     'Said the Jesus / Theotokos prayer rope today.'],
-  ['Habit',   'Spirit_Prostrations',    'Completed your prostrations.'],
-  ['Habit',   'Spirit_Fasted',          'Kept the fasting rule for today.'],
-  ['Habit',   'Spirit_ScriptureRead',   'Read scripture today.'],
-  ['Habit',   'Spirit_LivesOfSaints',   'Read a saint\'s life today.'],
-  ['Habit',   'Spirit_Liturgy',         'Attended Liturgy or a service today.'],
-  ['Habit',   'Spirit_Almsgiving',      'Gave alms / acted in charity today.'],
-  ['Habit',   'Spirit_KeptSilence',     'Held silence rather than gossip / idle words.'],
-  ['Habit',   'Spirit_GuardedMind',     'Caught a passion early and resisted it before it took root.']
+  // Habits — spiritual rule of life (any tradition). The spiritual
+  // report reads the entire log and weighs every habit, so no special
+  // prefix is needed.
+  ['Habit',   'Morning prayer rule',  'Completed your morning prayer rule.'],
+  ['Habit',   'Evening prayer rule',  'Completed your evening prayer rule.'],
+  ['Habit',   'Jesus Prayer',         'Said the Jesus / Theotokos prayer rope today.'],
+  ['Habit',   'Prostrations',         'Completed your prostrations.'],
+  ['Habit',   'Kept the fast',        'Kept the fasting rule for today.'],
+  ['Habit',   'Scripture reading',    'Read scripture today.'],
+  ['Habit',   'Read a saint\'s life', 'Read a saint\'s life or a spiritual classic today.'],
+  ['Habit',   'Attended liturgy',     'Attended Liturgy or a service today.'],
+  ['Habit',   'Almsgiving',           'Gave alms / acted in charity today.'],
+  ['Habit',   'Kept silence',         'Held silence rather than gossip / idle words.'],
+  ['Habit',   'Guarded the mind',     'Caught a passion early and resisted it before it took root.']
 ];
 
 function getLibraryHeaders_() {
@@ -1200,12 +1238,10 @@ function ensureTab_(ss, name, seedRows) {
  * spacer, binary habit columns go to its right, and the AI feedback
  * and score columns go at the end.
  *
- * Users build their own schema from the Dashboard via "Add context
- * column" and "Add habit column", so we ship just one of each (Journal
- * for context, no habits) plus the markers. Anything starting with
- * `Spirit_` is automatically read by the spiritual subsystem; the
- * un-prefixed `Journal` is in `spiritual_columns_explicit` so it is
- * read too.
+ * Users build their own schema from the Dashboard. We ship one
+ * context column (Journal), the spacer, the AI feedback column, and
+ * the score column. The spiritual subsystem reads the entire daily
+ * log — there is no "spiritual" column prefix.
  */
 const DEFAULT_RESPONSES_HEADERS = [
   'ID', 'Date',
@@ -1223,11 +1259,10 @@ const DEFAULT_PROFILE = [
   ['faith',                          '',                               'Free text, used in prompts (your faith tradition, if any).'],
   ['career',                         '',                               'Free text, used in prompts (current role / studies / goals).'],
   ['goals',                          '',                               'Free text, used in prompts (current life goals).'],
+  ['spiritual_context',              '',                               'Free text. Your spiritual goals, current situation, tradition, and rule of life. Appended to the spiritual report prompt as authoritative framing.'],
   ['col_spacer',                     '>> HABITS >>',                   'Header marking the start of habit tracker columns on Responses.'],
   ['col_end',                        'AI_Feedback_Log',                'Header where daily AI feedback is written. Marks end of habits.'],
   ['col_score',                      'Daily_Score',                    'Header where the daily score is written.'],
-  ['spiritual_col_prefix',           'Spirit_',                        'Headers starting with this prefix are read by the spiritual subsystem.'],
-  ['spiritual_columns_explicit',     'Journal',                        'Comma-separated extra column names to feed the spiritual subsystem.'],
   ['spiritual_lookback_days',        '14',                             'How many recent rows of Responses the spiritual review reads.'],
   ['spiritual_bio_max_chars',        '6000',                           'Cap on biography text fed back as memory each run.'],
   ['enable_search_daily',            'TRUE',                           'Use Google Search grounding for the daily report.'],
@@ -1339,14 +1374,12 @@ TASKS:
 'Annual report template.'],
 
     ['spiritual_column_semantics',
-`COLUMN SEMANTICS — read these carefully before interpreting the log:
-- "Spirit_Life" is a CONTEXT-RICH free-text column with notes on saints' lives, gospel/epistle readings, parish events, and notable spiritual moments. Mine it for substance.
-- "Journal" is a free-text column reflecting INTERNAL DISPOSITIONS — peace, distraction, anger, lust, gratitude, sorrow, acedia, consolation. Use it to read the heart underneath the external practices.
-- All other "Spirit_*" columns are binary practice trackers (Success / Fail / Exempt). Treat them as the external scaffold.
-- Several columns are framed as "Avoided ..." or "Ignored ..." — for these, "Success" means the user *did* avoid/ignore the temptation, and "Fail" means they fell.
-
-Weave external practices, internal dispositions, and lived context together. Do not analyze them as three disconnected lists.`,
-'Tells the model how to interpret the spiritual columns. Edit if your column conventions differ.'],
+`HOW TO READ THE LOG:
+- Free-text columns (e.g. Journal, gratitude, reflections) reveal internal dispositions — peace, distraction, anger, lust, gratitude, sorrow, acedia, consolation. Use them to read the heart underneath the external practices.
+- Habit columns are binary practice trackers (Success / Fail / Exempt). They are the external scaffold of the spiritual life — prayer, fasting, almsgiving, attendance, sleep, study, restraint of the passions, etc.
+- Habits are phrased POSITIVELY. "Success" always means the practice was kept or the temptation resisted; "Fail" always means it wasn't.
+- Do not require columns to be tagged as "spiritual" to engage with them spiritually. The whole life is one life — physical discipline, work, relationships, and rest all bear on the soul. Weigh everything in the log together rather than analysing the practices, the dispositions, and the lived context as three disconnected lists.`,
+'Tells the model how to interpret the columns it sees. Edit to match your conventions.'],
 
     ['prompt_spiritual',
 `{{persona_spiritual}}
@@ -1354,7 +1387,14 @@ Weave external practices, internal dispositions, and lived context together. Do 
 USER PROFILE:
 {{user_profile}}
 
-OBJECTIVE: Analyze ONLY the user's spiritual life over the last {{days_back}} days using the SPIRITUAL LOG below, in conversation with the recent chapters of the user's spiritual biography. Then produce TWO outputs separated by the EXACT delimiters specified.
+USER'S OWN SPIRITUAL CONTEXT (the user wrote this themselves; treat as authoritative framing for goals, situation, tradition, and current focus):
+"""
+{{spiritual_context}}
+"""
+
+OBJECTIVE: Analyze the user's spiritual life over the last {{days_back}} days using the FULL DAILY LOG below, in conversation with the recent chapters of the user's spiritual biography. Then produce TWO outputs separated by the EXACT delimiters specified.
+
+You receive the entire daily log — all habits and all free-text context columns — not a filtered subset. Weigh every column for what it reveals about the soul.
 
 PRIOR SPIRITUAL BIOGRAPHY (recent chapters; treat as memory and as the arc to remain in conversation with):
 """
@@ -1363,7 +1403,7 @@ PRIOR SPIRITUAL BIOGRAPHY (recent chapters; treat as memory and as the arc to re
 
 {{spiritual_column_semantics}}
 
-SPIRITUAL LOG (last {{days_back}} days):
+DAILY LOG (last {{days_back}} days):
 """
 {{data}}
 """
@@ -1541,9 +1581,12 @@ function processReport(type, daysBack) {
 
 /* =========================================================================
  * SECTION 6 — SPIRITUAL ANALYSIS
- * Reads only the spiritual columns (by prefix or explicit list),
- * generates a pastoral report, and appends a dated narrative chapter to
- * the Spiritual_Biography tab. Recent chapters are read back as memory.
+ * Reads the FULL Responses log (every habit + every free-text column)
+ * over the lookback window. Spiritual framing comes from two sources:
+ *   1. The user's "spiritual_context" entry in User_Profile, which is
+ *      injected verbatim into the prompt as authoritative framing.
+ *   2. The recent chapters of the Spiritual_Biography, which act as
+ *      memory and arc.
  * ========================================================================= */
 
 function processSpiritualReport(daysBack) {
@@ -1564,60 +1607,65 @@ function processSpiritualReport(daysBack) {
       return;
     }
     const headers = rows[0];
-    const dateIndex = headers.indexOf('Date');
 
-    const prefix = profile.spiritual_col_prefix || 'Spirit_';
-    const explicit = profileGetList('spiritual_columns_explicit', '');
-    const explicitSet = new Set(explicit);
-
-    const spiritualIndexes = [];
-    headers.forEach((h, i) => {
-      const name = String(h || '');
-      if (!name) return;
-      const matchesPrefix = prefix && name.indexOf(prefix) === 0;
-      const matchesExplicit = explicitSet.has(name);
-      if (matchesPrefix || matchesExplicit) spiritualIndexes.push(i);
-    });
-    if (spiritualIndexes.length === 0) {
-      throw new Error(
-        `No spiritual columns detected. Set 'spiritual_col_prefix' or 'spiritual_columns_explicit' ` +
-        `in '${TAB_USER_PROF}'.`
-      );
-    }
+    const COL_SPACER = profile.col_spacer || '>> HABITS >>';
+    const COL_END    = profile.col_end    || 'AI_Feedback_Log';
+    const COL_SCORE  = profile.col_score  || 'Daily_Score';
+    const dateIndex   = headers.indexOf('Date');
+    const spacerIndex = headers.indexOf(COL_SPACER);
+    const endIndex    = headers.indexOf(COL_END);
 
     const startRow = Math.max(1, rows.length - daysBack);
     const relevantRows = rows.slice(startRow);
     if (relevantRows.length === 0) return;
 
-    let contextString = `--- SPIRITUAL LOG (last ${relevantRows.length} entries, ${daysBack}-day window) ---\n`;
+    // Format the daily log the same way the daily/weekly/monthly
+    // processor does: free-text context columns first, then the
+    // success/fail/exempt habit columns.
+    let contextString = `--- DAILY LOG (last ${relevantRows.length} entries, ${daysBack}-day window) ---\n`;
     relevantRows.forEach((row, i) => {
       const entryDate = (dateIndex > -1 && row[dateIndex])
         ? new Date(row[dateIndex]).toLocaleDateString()
         : `Entry ${i + 1}`;
       contextString += `\n[${entryDate}]\n`;
 
-      spiritualIndexes.forEach(c => {
+      const ctxStop = spacerIndex > -1 ? spacerIndex : headers.length;
+      for (let c = 0; c < ctxStop; c++) {
         const header = headers[c];
         const val = row[c];
-        if (val === '' || val === null || val === undefined) return;
-        const status = String(val);
-        if (/^success$/i.test(status) || status === 'TRUE' || val === true) {
-          contextString += `  ✅ ${header}: Success\n`;
-        } else if (/^fail/i.test(status) || status === 'FALSE' || val === false) {
-          contextString += `  ❌ ${header}: Fail\n`;
-        } else if (/^exempt$/i.test(status)) {
-          contextString += `  ⏸️ ${header}: Exempt\n`;
-        } else {
-          contextString += `  📝 ${header}: "${status}"\n`;
+        if (val === '' || val === null || val === undefined) continue;
+        if (header === 'ID' || header === 'Date' || header === '_RowNumber' || header === COL_SCORE) continue;
+        contextString += `  📝 ${String(header).toUpperCase()}: "${val}"\n`;
+      }
+
+      if (spacerIndex > -1 && endIndex > -1) {
+        for (let c = spacerIndex + 1; c < endIndex; c++) {
+          const val = row[c];
+          const header = headers[c];
+          if (val === '' || val === null || val === undefined) continue;
+          const status = String(val);
+          if (/^success$/i.test(status) || status === 'TRUE' || val === true) {
+            contextString += `  ✅ ${header}: Success\n`;
+          } else if (/^fail/i.test(status) || status === 'FALSE' || val === false) {
+            contextString += `  ❌ ${header}: Fail\n`;
+          } else if (/^exempt$/i.test(status)) {
+            contextString += `  ⏸️ ${header}: Exempt\n`;
+          } else {
+            contextString += `  🔹 ${header}: ${val}\n`;
+          }
         }
-      });
+      }
     });
 
     const priorBio = readPriorBiography_(bioSheet);
+    const spiritualContext = profile.spiritual_context
+      ? String(profile.spiritual_context)
+      : '(The user has not written a spiritual context. Proceed using the User Profile and the daily log alone.)';
 
     const prompt = buildPrompt('prompt_spiritual', {
       data: contextString,
       prior_bio: priorBio,
+      spiritual_context: spiritualContext,
       days_back: daysBack
     });
     const useSearch = profileGetBool('enable_search_spiritual', true);
