@@ -468,11 +468,12 @@ const DASHBOARD_ACTIONS = [
 // Layout constants. The dashboard is divided into three regions, each
 // anchored by a constant so the rest of the code can address rows
 // without recomputing offsets.
-const DASH_ACTION_HEADER_ROW = 3;                                                  // "Actions"
-const DASH_ACTION_START_ROW  = 4;                                                  // first checkbox
-const DASH_SCHEMA_HEADER_ROW = DASH_ACTION_START_ROW + 999;                        // recomputed
-const DASH_SCHEMA_BLANK_ROWS = 4;                                                  // blank slots after current schema
-const DASH_STATUS_BLANK_ROWS = 2;                                                  // gap before status
+const DASH_ACTION_HEADER_ROW = 3;   // "Actions" header
+const DASH_ACTION_START_ROW  = 4;   // first action checkbox
+const DASH_SCHEMA_BLANK_ROWS = 4;   // blank slots appended after preserved schema rows
+const DASH_STATUS_BLANK_ROWS = 2;   // gap rows between schema and status panel
+// (Schema and Status header rows are computed at build time and stored
+// in DocumentProperties so the rest of the code can find them later.)
 
 // Row 1 of the schema region holds the column header for the editable
 // table; row 2..N are the data rows. Schema columns:
@@ -678,7 +679,7 @@ function dashboardOnEdit_(e) {
     if (sh.getName() !== TAB_DASHBOARD) return;
     if (e.range.getColumn() !== 1) return;
     const row = e.range.getRow();
-    const idx = row - DASHBOARD_ACTION_START_ROW;
+    const idx = row - DASH_ACTION_START_ROW;
     if (idx < 0 || idx >= DASHBOARD_ACTIONS.length) return;
     if (e.value !== 'TRUE' && e.value !== true) return;
 
