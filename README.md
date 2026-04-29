@@ -81,15 +81,18 @@ SECTION 10 — Markdown -> HTML formatting
    that menu, choose **Run setup**. Approve the OAuth prompts. This:
    - creates every required tab (`Dashboard`, `Responses`,
      `User_Profile`, `User_Memory`, `System_Docs`,
-     `Spiritual_Biography`),
-   - seeds defaults (including a starter header row on `Responses`),
+     `Spiritual_Biography`, `Habit_Library`),
+   - seeds defaults (including a starter header row on `Responses`
+     and a curated set of context columns and habits in
+     `Habit_Library`),
    - registers an installable edit-trigger so the Dashboard buttons
      work,
    - moves you to the Dashboard tab, and
    - on the *first* run, offers to launch the **initialization
-     wizard** — a sequence of prompts that fill in `User_Profile`
-     (email, timezone, location, faith, career, goals) and the API
-     key. Click **Yes** and you're done with setup.
+     wizard** — an HTML dialog with `<textarea>` fields and Back/Next
+     navigation, where you fill in `User_Profile` (email, timezone,
+     location, faith, career, goals) and the Gemini API key on a
+     single review screen before saving.
 5. **(If you skipped the wizard above)** Run it any time from
    **Dashboard → "Run initialization wizard"** or from
    **Life OS → Run initialization wizard**.
@@ -102,35 +105,46 @@ SECTION 10 — Markdown -> HTML formatting
    *Note:* the Apps Script editor's Run button cannot pass parameters,
    which is why `setApiKey` is wired to the menu/dashboard and falls
    back to a prompt dialog when called with no argument.
-7. **Build out the `Responses` sheet from the Dashboard.** Setup seeds
-   only the bare minimum so you can shape the schema yourself:
+7. **Build your schema directly on the Dashboard.** Setup seeds the
+   `Responses` tab with the bare minimum:
 
    ```
    ID, Date, Journal, >> HABITS >>, AI_Feedback_Log, Daily_Score
    ```
 
-   From the Dashboard, use:
+   The Dashboard now has an editable **Schema** region (Type | Name |
+   Description). You shape your real habit list there, *not* by
+   editing the `Responses` tab by hand.
 
-   - **Add context column** — inserts a free-text column to the LEFT
-     of the `>> HABITS >>` spacer. Used for journaling, finance notes,
-     workout logs, "Spirit_Life" reflections, etc. Prefix with
-     `Spirit_` to feed the column to the spiritual subsystem.
-   - **Add habit column** — inserts a Success/Fail/Exempt column to
-     the RIGHT of the spacer. **Phrase habits positively** so that
-     marking "Success" is a good thing — e.g. *"Read 20 minutes"*,
-     *"Cold shower"*, *"Two-drink maximum"*. The action also seeds a
-     dropdown validation on existing rows.
-   - **Remove a column** — deletes any non-protected column. ID, Date,
-     the spacer, AI_Feedback_Log, and Daily_Score are protected.
-   - **List Responses columns** — quick summary of what currently
-     exists.
+   Two ways to add rows to the schema:
 
-   You can also still rename or rearrange columns by hand on the sheet
-   if you prefer; just don't touch the four protected names unless you
-   also update them in `User_Profile`.
+   - **Type them in.** Pick a Type (Context or Habit) from the
+     dropdown, give the column a Name, and (optionally) a description.
+     Phrase habits positively — *"Read 20 minutes"*, *"Cold shower"*,
+     *"Two-drink maximum"* — so that marking "Success" is a good thing.
+   - **Tick items on the `Habit_Library` tab** and click
+     **Import selected from library** on the Dashboard. The library
+     ships with ~40 curated context columns and habits across body,
+     mind, finance, relationships, and the Christian / Orthodox
+     spiritual rule. Library checkboxes reset after import.
 
-   Then point AppSheet at this sheet so you can enter data through a
-   GUI rather than editing the spreadsheet directly.
+   When the Schema region looks the way you want, click
+   **Sync schema to Responses**. The script:
+
+   - inserts new context columns to the LEFT of the `>> HABITS >>`
+     spacer,
+   - inserts new habit columns to the RIGHT of the spacer (with a
+     Success/Fail/Exempt dropdown applied to existing rows),
+   - removes columns from `Responses` that you've removed from the
+     Schema region (with a confirmation dialog before any deletion),
+     and
+   - leaves protected columns (ID, Date, spacer, AI_Feedback_Log,
+     Daily_Score) untouched.
+
+   Re-running setup preserves your Schema rows; nothing is lost.
+
+   Once your schema is settled, point AppSheet at the `Responses`
+   sheet so you can enter data through a GUI.
 8. **Add time-based triggers** (Triggers tab in the editor) for the
    functions you want:
    - `runDailyAudit` — daily, late evening
@@ -153,8 +167,10 @@ The first tab — `Dashboard` — is the home screen. It has two parts:
 
    - **Setup & identity:** Run initialization wizard, Set Gemini API
      key, Re-run setup.
-   - **Schema management:** Add context column, Add habit column,
-     Remove a column, List Responses columns.
+   - **Schema:** edit the on-sheet Schema region directly, then click
+     **Sync schema to Responses**. Or **Import selected from library**
+     to copy ticked rows from the `Habit_Library` tab into the Schema
+     region.
    - **Manual report runs:** Run daily audit / weekly report /
      monthly review / annual review / spiritual report — useful for
      testing without waiting on a time-based trigger.

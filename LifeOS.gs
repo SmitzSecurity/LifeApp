@@ -29,6 +29,7 @@ const TAB_USER_PROF   = 'User_Profile';
 const TAB_USER_MEM    = 'User_Memory';
 const TAB_SYS_DOCS    = 'System_Docs';
 const TAB_SPIRIT_BIO  = 'Spiritual_Biography';
+const TAB_LIBRARY     = 'Habit_Library';
 
 const PROP_API_KEY    = 'GEMINI_API_KEY';
 
@@ -61,6 +62,9 @@ function onOpen() {
     .addItem('Run initialization wizard','runInitWizard')
     .addItem('Set Gemini API key…',      'setApiKey')
     .addItem('Refresh dashboard',        'refreshDashboard')
+    .addSeparator()
+    .addItem('Sync schema → Responses',  'syncSchemaToResponses')
+    .addItem('Import library selections','importLibrarySelections')
     .addSeparator()
     .addItem('Run daily audit',          'runDailyAudit')
     .addItem('Run weekly report',        'runWeeklyReport')
@@ -96,6 +100,7 @@ function setupSpreadsheet() {
   ensureTab_(ss, TAB_USER_MEM,   [['id', 'timestamp', 'type', 'content']]);
   ensureTab_(ss, TAB_SYS_DOCS,   getDefaultDocs_());
   ensureTab_(ss, TAB_SPIRIT_BIO, [['date', 'type', 'title', 'narrative', 'tags']]);
+  ensureLibraryTab_(ss);
 
   buildDashboard_(ss);
   ensureDashboardEditTrigger_();
@@ -127,84 +132,217 @@ function setupSpreadsheet() {
 
   ui.alert(
     'Life OS is set up.\n\n' +
-    '• Open the Dashboard tab to run actions with one click.\n' +
-    '• Life OS menu → "Run initialization wizard" to fill in User_Profile.\n' +
-    '• Life OS menu → "Set Gemini API key…" to set your key.\n' +
-    '• Edit/extend the Responses headers as needed (see README).'
+    '• Open the Dashboard tab.\n' +
+    '• Edit the Schema region (or tick items on Habit_Library + click "Import selected from library").\n' +
+    '• Click "Sync schema to Responses" to apply.\n' +
+    '• Run the wizard any time to update your profile.'
   );
 }
 
 
 /**
- * Conversational setup. Walks the user through a series of prompts and
- * writes each answer back to User_Profile. Idempotent: existing values
- * are shown as the prompt's default and kept if the user cancels or
- * leaves the field blank.
+ * Conversational setup, served as an HtmlService modal dialog. Uses real
+ * <textarea> fields so users can see everything they've typed, and lets
+ * them move freely back and forth between questions before saving.
+ *
+ * The wizard collects everything client-side, then makes a single
+ * google.script.run call to wizardSubmit_() which writes User_Profile
+ * and (optionally) the Gemini API key.
  */
 function runInitWizard() {
   let ui;
   try { ui = SpreadsheetApp.getUi(); }
   catch (e) {
-    throw new Error('runInitWizard must be invoked from the spreadsheet (Life OS menu or a button), not the script editor.');
+    throw new Error('runInitWizard must be invoked from the spreadsheet, not the script editor.');
   }
 
   const ss = getSpreadsheet_();
   if (!ss.getSheetByName(TAB_USER_PROF)) setupSpreadsheet();
 
-  const steps = [
-    { key: 'email',     label: 'Email address',
-      help:  'Where reports will be sent.' },
-    { key: 'timezone',  label: 'Timezone',
-      help:  'IANA name, e.g. America/New_York or Europe/Athens.' },
-    { key: 'location',  label: 'Location',
-      help:  'City / region. Used to ground prompts in local context (e.g. "Tampa, FL").' },
-    { key: 'faith',     label: 'Faith tradition (optional)',
-      help:  'Used by the spiritual subsystem. Leave blank if not applicable.' },
-    { key: 'career',    label: 'Career / studies (optional)',
-      help:  'Current role, schooling, or transition. Used in prompts.' },
-    { key: 'goals',     label: 'Current goals (optional)',
-      help:  'A short, comma-separated list (e.g. "Career entry, Dating, Spiritual deepening").' }
-  ];
+  const html = HtmlService.createHtmlOutput(buildWizardHtml_())
+    .setWidth(640)
+    .setHeight(540);
+  ui.showModalDialog(html, 'Life OS — Initialization Wizard');
+}
 
-  for (let i = 0; i < steps.length; i++) {
-    const step = steps[i];
-    const current = profileGet(step.key, '');
-    const promptText =
-      step.help +
-      (current ? `\n\nCurrent value: ${current}\n(Leave blank to keep it.)` : '\n\n(Leave blank to skip.)');
-    const resp = ui.prompt(`Setup ${i + 1}/${steps.length} — ${step.label}`, promptText, ui.ButtonSet.OK_CANCEL);
-    if (resp.getSelectedButton() !== ui.Button.OK) return;
-    const value = resp.getResponseText().trim();
-    if (value) profileSet_(step.key, value);
-  }
+/**
+ * Returns the current wizard state for prefilling the dialog. Called
+ * from the client on load.
+ */
+function wizardLoad_() {
+  return {
+    email:    profileGet('email', ''),
+    timezone: profileGet('timezone', '') || (Session.getScriptTimeZone && Session.getScriptTimeZone()) || 'America/New_York',
+    location: profileGet('location', ''),
+    faith:    profileGet('faith', ''),
+    career:   profileGet('career', ''),
+    goals:    profileGet('goals', ''),
+    apiKeySet: !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY)
+  };
+}
 
-  // Optional API key step at the end. We do this inline (rather than
-  // delegating to setApiKey()) so the prompt stays tied to the wizard's
-  // dialog flow and the value is read and persisted in one place.
+/**
+ * Persists the wizard answers and (optionally) the API key. Returns a
+ * status string the dialog displays before closing itself.
+ */
+function wizardSubmit_(answers) {
+  const fields = ['email', 'timezone', 'location', 'faith', 'career', 'goals'];
+  fields.forEach(k => {
+    const v = (answers && answers[k] != null) ? String(answers[k]).trim() : '';
+    if (v) profileSet_(k, v);
+  });
+
   const props = PropertiesService.getScriptProperties();
-  const hasKey = !!props.getProperty(PROP_API_KEY);
-  const keyResp = ui.prompt(
-    'Gemini API key',
-    (hasKey
-      ? 'An API key is already stored. Paste a new one to replace it, or leave blank to keep the existing key.'
-      : 'Paste your Gemini API key. It will be stored privately in Script Properties (not in the spreadsheet, not in source).') +
-    '\n\nGet a key at https://aistudio.google.com/app/apikey',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (keyResp.getSelectedButton() === ui.Button.OK) {
-    const k = (keyResp.getResponseText() || '').trim();
+  if (answers && answers.apiKey) {
+    const k = String(answers.apiKey).trim();
     if (k) props.setProperty(PROP_API_KEY, k);
   }
 
-  refreshDashboard();
+  try { refreshDashboard(); } catch (e) { /* dashboard may not exist yet */ }
+
   const finalKey = !!props.getProperty(PROP_API_KEY);
-  ui.alert(
-    'Setup complete',
-    'Your User_Profile has been saved.\n\nGemini API key: ' +
-    (finalKey ? '✓ stored' : '✗ not set — use Dashboard → "Set Gemini API key" any time.') +
-    '\n\nOpen the Dashboard tab to add context columns, add habits, and run reports.',
-    ui.ButtonSet.OK
-  );
+  return 'User_Profile saved. Gemini API key: ' + (finalKey ? '✓ stored' : '✗ not set');
+}
+
+function buildWizardHtml_() {
+  return `<!DOCTYPE html>
+<html><head><base target="_top"><style>
+  body { font-family: -apple-system, Helvetica, sans-serif; margin: 0; padding: 24px; color: #222; }
+  h2 { margin: 0 0 4px; }
+  .help { color: #666; margin: 0 0 16px; font-size: 13px; }
+  .step-num { color: #8e44ad; font-weight: bold; }
+  textarea, input[type=text] { width: 100%; box-sizing: border-box; padding: 10px; font-family: inherit; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; }
+  textarea { min-height: 120px; resize: vertical; }
+  .nav { margin-top: 20px; display: flex; gap: 8px; align-items: center; }
+  button { padding: 8px 14px; font-size: 14px; border: 1px solid #888; background: #fff; border-radius: 6px; cursor: pointer; }
+  button.primary { background: #8e44ad; color: #fff; border-color: #8e44ad; }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .progress { flex: 1; text-align: center; font-size: 13px; color: #666; }
+  .review-row { display: flex; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
+  .review-row .k { width: 130px; color: #666; }
+  .review-row .v { flex: 1; white-space: pre-wrap; }
+  .status { margin-top: 16px; font-size: 13px; color: #2c7a3a; }
+</style></head><body>
+  <h2>Life OS — Initialization</h2>
+  <p class="help">All fields are optional except <b>email</b>. Use Back/Next to navigate; nothing is saved until you click Save.</p>
+  <div id="step"></div>
+  <div class="nav">
+    <button id="back">← Back</button>
+    <span class="progress" id="progress"></span>
+    <button id="next" class="primary">Next →</button>
+    <button id="save" class="primary" style="display:none">Save</button>
+  </div>
+  <div class="status" id="status"></div>
+
+<script>
+const STEPS = [
+  { key: 'email',    label: 'Email address',
+    help: 'Where reports are sent. Required.' },
+  { key: 'timezone', label: 'Timezone',
+    help: 'IANA name, e.g. America/New_York or Europe/Athens.' },
+  { key: 'location', label: 'Location',
+    help: 'City / region. Used to ground prompts in local context.' },
+  { key: 'faith',    label: 'Faith tradition (optional)',
+    help: 'Used by the spiritual subsystem. Leave blank if not applicable.' },
+  { key: 'career',   label: 'Career / studies (optional)',
+    help: 'Current role, schooling, transitions. Used in prompts.' },
+  { key: 'goals',    label: 'Current goals (optional)',
+    help: 'A short list — comma-separated or one per line.' },
+  { key: 'apiKey',   label: 'Gemini API key',
+    help: 'Stored privately in Script Properties — never written to the spreadsheet or to source. Get a key at https://aistudio.google.com/app/apikey',
+    sensitive: true },
+  { key: '__review', label: 'Review & save',
+    help: 'Review the values below. Click Back to edit anything.' }
+];
+
+let answers = {};
+let idx = 0;
+
+function init(loaded) {
+  answers = {
+    email:    loaded.email    || '',
+    timezone: loaded.timezone || '',
+    location: loaded.location || '',
+    faith:    loaded.faith    || '',
+    career:   loaded.career   || '',
+    goals:    loaded.goals    || '',
+    apiKey:   ''
+  };
+  answers.__apiKeySet = !!loaded.apiKeySet;
+  render();
+}
+
+function render() {
+  const step = STEPS[idx];
+  const root = document.getElementById('step');
+  document.getElementById('progress').textContent = 'Step ' + (idx + 1) + ' of ' + STEPS.length;
+
+  if (step.key === '__review') {
+    let html = '<h3><span class="step-num">' + (idx+1) + '/' + STEPS.length + '</span> ' + step.label + '</h3>';
+    html += '<p class="help">' + step.help + '</p><div>';
+    [['Email','email'],['Timezone','timezone'],['Location','location'],['Faith','faith'],['Career','career'],['Goals','goals']].forEach(function(p) {
+      html += '<div class="review-row"><div class="k">' + p[0] + '</div><div class="v">' + escapeHtml(answers[p[1]] || '(blank)') + '</div></div>';
+    });
+    var keyState = answers.apiKey
+      ? '✓ will be stored'
+      : (answers.__apiKeySet ? '✓ already stored (unchanged)' : '✗ not set');
+    html += '<div class="review-row"><div class="k">API key</div><div class="v">' + keyState + '</div></div>';
+    html += '</div>';
+    root.innerHTML = html;
+  } else {
+    const val = answers[step.key] || '';
+    const tag = step.sensitive ? '<input type="text" autocomplete="off" id="field"' : '<textarea id="field"';
+    const closeTag = step.sensitive ? ' value="' + escapeAttr(val) + '" />' : '>' + escapeHtml(val) + '</textarea>';
+    root.innerHTML =
+      '<h3><span class="step-num">' + (idx+1) + '/' + STEPS.length + '</span> ' + step.label + '</h3>' +
+      '<p class="help">' + step.help + '</p>' +
+      tag + closeTag;
+    document.getElementById('field').focus();
+  }
+
+  document.getElementById('back').disabled = (idx === 0);
+  const last = (idx === STEPS.length - 1);
+  document.getElementById('next').style.display = last ? 'none' : '';
+  document.getElementById('save').style.display = last ? '' : 'none';
+}
+
+function captureCurrent() {
+  const step = STEPS[idx];
+  if (step.key === '__review') return;
+  const f = document.getElementById('field');
+  if (f) answers[step.key] = f.value;
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});
+}
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/"/g, '&quot;');
+}
+
+document.getElementById('back').onclick = function() { captureCurrent(); if (idx > 0) { idx--; render(); } };
+document.getElementById('next').onclick = function() { captureCurrent(); if (idx < STEPS.length - 1) { idx++; render(); } };
+document.getElementById('save').onclick = function() {
+  captureCurrent();
+  document.getElementById('save').disabled = true;
+  document.getElementById('back').disabled = true;
+  document.getElementById('status').textContent = 'Saving…';
+  google.script.run
+    .withSuccessHandler(function(msg) {
+      document.getElementById('status').textContent = msg + ' — closing…';
+      setTimeout(function(){ google.script.host.close(); }, 1100);
+    })
+    .withFailureHandler(function(err) {
+      document.getElementById('status').textContent = 'Error: ' + err.message;
+      document.getElementById('save').disabled = false;
+      document.getElementById('back').disabled = false;
+    })
+    .wizardSubmit_(answers);
+};
+
+google.script.run.withSuccessHandler(init).wizardLoad_();
+</script>
+</body></html>`;
 }
 
 
@@ -218,21 +356,17 @@ function runInitWizard() {
 const DASHBOARD_ACTIONS = [
   // Setup & identity
   { label: 'Run initialization wizard',  fn: 'runInitWizard',
-    note:  'Walks you through filling in User_Profile.' },
+    note:  'Opens a dialog. Edit any field, navigate Back/Next, save once.' },
   { label: 'Set Gemini API key',         fn: 'setApiKey',
     note:  'Opens a prompt. Stored privately in Script Properties.' },
   { label: 'Re-run setup',               fn: 'setupSpreadsheet',
     note:  'Recreates missing tabs and tops up any new defaults.' },
 
-  // Schema management — let users shape their own Responses sheet
-  { label: 'Add context column',         fn: 'addContextColumn',
-    note:  'Free-text journal/reflection column (e.g. Journal, Spirit_Life, Exercise).' },
-  { label: 'Add habit column',           fn: 'addHabitColumn',
-    note:  'Daily Success/Fail/Exempt habit, phrased positively (e.g. Read 20 minutes).' },
-  { label: 'Remove a column',            fn: 'removeColumn',
-    note:  'Pick a column from the Responses sheet and delete it.' },
-  { label: 'List Responses columns',     fn: 'listResponsesColumns',
-    note:  'Shows current context columns, habits, and markers.' },
+  // Schema management — declarative, edited in the Schema region below
+  { label: 'Sync schema to Responses',   fn: 'syncSchemaToResponses',
+    note:  'Adds any new rows in the Schema region as columns; removes columns that no longer appear.' },
+  { label: 'Import selected from library', fn: 'importLibrarySelections',
+    note:  'Copies ticked rows from the Habit_Library tab into the Schema region.' },
 
   // Manual report triggers
   { label: 'Run daily audit now',        fn: 'runDailyAudit',
@@ -250,28 +384,51 @@ const DASHBOARD_ACTIONS = [
     note:  'Re-reads User_Profile and the sheets to update the panel below.' }
 ];
 
-const DASHBOARD_ACTION_START_ROW = 4;       // row where action checkboxes start
-const DASHBOARD_STATUS_START_OFFSET = 2;    // blank rows between actions and status
+// Layout constants. The dashboard is divided into three regions, each
+// anchored by a constant so the rest of the code can address rows
+// without recomputing offsets.
+const DASH_ACTION_HEADER_ROW = 3;                                                  // "Actions"
+const DASH_ACTION_START_ROW  = 4;                                                  // first checkbox
+const DASH_SCHEMA_HEADER_ROW = DASH_ACTION_START_ROW + 999;                        // recomputed
+const DASH_SCHEMA_BLANK_ROWS = 4;                                                  // blank slots after current schema
+const DASH_STATUS_BLANK_ROWS = 2;                                                  // gap before status
+
+// Row 1 of the schema region holds the column header for the editable
+// table; row 2..N are the data rows. Schema columns:
+//   B = Type   ('Context' | 'Habit'),  validated dropdown
+//   C = Name   (e.g. Journal, Spirit_JesusPrayer, ReadDaily)
+//   D = Description (free text, used by the library and human readers)
 
 function buildDashboard_(ss) {
   let sh = ss.getSheetByName(TAB_DASHBOARD);
   if (!sh) sh = ss.insertSheet(TAB_DASHBOARD, 0);
 
+  // Snapshot any user-edited schema before clearing so we never lose
+  // the user's habit list when re-running setup.
+  const preservedSchema = readDashboardSchema_(sh);
+
   sh.clear();
+  sh.clearConditionalFormatRules();
+  // sh.clear() preserves merges; break them so re-layout doesn't compound.
+  if (sh.getMaxRows() > 0 && sh.getMaxColumns() > 0) {
+    sh.getRange(1, 1, sh.getMaxRows(), sh.getMaxColumns()).breakApart();
+  }
   sh.setHiddenGridlines(true);
-  sh.setColumnWidth(1, 30);   // checkbox
-  sh.setColumnWidth(2, 320);  // action label
-  sh.setColumnWidth(3, 480);  // note / status value
+  sh.setColumnWidth(1, 30);    // checkbox
+  sh.setColumnWidth(2, 200);   // label / Type
+  sh.setColumnWidth(3, 280);   // note / Name
+  sh.setColumnWidth(4, 360);   // Description / Status value
 
-  // Title block.
+  // ---- Title ----
   sh.getRange('B1').setValue('Life OS').setFontSize(22).setFontWeight('bold');
-  sh.getRange('B2').setValue('Tick a checkbox to run an action. Status panel below updates after each action.')
+  sh.getRange('B2').setValue('Tick a checkbox to run an action. Edit the Schema region directly, then click "Sync schema to Responses".')
                    .setFontStyle('italic').setFontColor('#555');
+  sh.getRange('A1:D2').setBackground('#f5f1fa');
 
-  // Action rows.
-  sh.getRange(DASHBOARD_ACTION_START_ROW - 1, 2).setValue('Actions').setFontWeight('bold').setFontSize(14);
+  // ---- Actions ----
+  sh.getRange(DASH_ACTION_HEADER_ROW, 2).setValue('Actions').setFontWeight('bold').setFontSize(14);
   DASHBOARD_ACTIONS.forEach((a, i) => {
-    const row = DASHBOARD_ACTION_START_ROW + i;
+    const row = DASH_ACTION_START_ROW + i;
     const cb = sh.getRange(row, 1);
     cb.insertCheckboxes();
     cb.setValue(false);
@@ -279,8 +436,40 @@ function buildDashboard_(ss) {
     sh.getRange(row, 3).setValue(a.note).setFontColor('#666');
   });
 
-  // Status panel.
-  const statusRow = DASHBOARD_ACTION_START_ROW + DASHBOARD_ACTIONS.length + DASHBOARD_STATUS_START_OFFSET;
+  // ---- Schema region ----
+  const schemaHeaderRow = DASH_ACTION_START_ROW + DASHBOARD_ACTIONS.length + 2;
+  sh.getRange(schemaHeaderRow, 2).setValue('Schema (edit me, then click "Sync schema to Responses")').setFontWeight('bold').setFontSize(14);
+  sh.getRange(schemaHeaderRow + 1, 2, 1, 3).setValues([['Type', 'Name', 'Description']])
+    .setFontWeight('bold').setBackground('#eee');
+
+  const seedRows = (preservedSchema && preservedSchema.length > 0)
+    ? preservedSchema
+    : DEFAULT_SCHEMA_SEED;
+
+  const schemaDataStart = schemaHeaderRow + 2;
+  if (seedRows.length > 0) {
+    sh.getRange(schemaDataStart, 2, seedRows.length, 3).setValues(seedRows);
+  }
+  // Always provide a few blank rows so the user can keep typing.
+  const totalSlots = seedRows.length + DASH_SCHEMA_BLANK_ROWS;
+  if (totalSlots > seedRows.length) {
+    const blanks = [];
+    for (let i = 0; i < DASH_SCHEMA_BLANK_ROWS; i++) blanks.push(['', '', '']);
+    sh.getRange(schemaDataStart + seedRows.length, 2, DASH_SCHEMA_BLANK_ROWS, 3).setValues(blanks);
+  }
+  // Type dropdown for the whole schema region.
+  const typeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Context', 'Habit'], true)
+    .setAllowInvalid(false)
+    .build();
+  sh.getRange(schemaDataStart, 2, totalSlots, 1).setDataValidation(typeRule);
+
+  // Persist the row index of the schema header so other functions can
+  // find it without recomputing.
+  PropertiesService.getDocumentProperties().setProperty('DASH_SCHEMA_HEADER_ROW', String(schemaHeaderRow));
+
+  // ---- Status ----
+  const statusRow = schemaDataStart + totalSlots + DASH_STATUS_BLANK_ROWS;
   sh.getRange(statusRow, 2).setValue('Status').setFontWeight('bold').setFontSize(14);
   const statusKeys = [
     'Email', 'Timezone', 'Location', 'Faith', 'Career', 'Goals',
@@ -290,11 +479,41 @@ function buildDashboard_(ss) {
   statusKeys.forEach((label, i) => {
     sh.getRange(statusRow + 1 + i, 2).setValue(label).setFontWeight('bold');
   });
-
-  // Header banner color.
-  sh.getRange('A1:C2').setBackground('#f5f1fa');
+  PropertiesService.getDocumentProperties().setProperty('DASH_STATUS_HEADER_ROW', String(statusRow));
 
   refreshDashboard();
+}
+
+/**
+ * Reads the editable schema region on the Dashboard, returning rows of
+ * [type, name, description] with empties skipped. Returns [] if the
+ * Dashboard isn't set up yet or the region can't be located.
+ */
+function readDashboardSchema_(sh) {
+  if (!sh) return [];
+  const props = PropertiesService.getDocumentProperties();
+  const headerRow = parseInt(props.getProperty('DASH_SCHEMA_HEADER_ROW') || '0', 10);
+  if (!headerRow) return [];
+  const dataStart = headerRow + 2;
+  const lastRow = sh.getLastRow();
+  if (lastRow < dataStart) return [];
+
+  // We read until we hit the Status header (or the end of the sheet).
+  const statusHeaderRow = parseInt(props.getProperty('DASH_STATUS_HEADER_ROW') || '0', 10);
+  const stopRow = statusHeaderRow > dataStart ? statusHeaderRow - 1 : lastRow;
+  const numRows = stopRow - dataStart + 1;
+  if (numRows <= 0) return [];
+
+  const values = sh.getRange(dataStart, 2, numRows, 3).getValues();
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    const type = String(values[i][0] || '').trim();
+    const name = String(values[i][1] || '').trim();
+    const desc = String(values[i][2] || '').trim();
+    if (!name) continue;
+    out.push([type || 'Habit', name, desc]);
+  }
+  return out;
 }
 
 /**
@@ -306,7 +525,9 @@ function refreshDashboard() {
   const sh = ss.getSheetByName(TAB_DASHBOARD);
   if (!sh) return;
 
-  const statusRow = DASHBOARD_ACTION_START_ROW + DASHBOARD_ACTIONS.length + DASHBOARD_STATUS_START_OFFSET + 1;
+  const statusHeaderRow = parseInt(
+    PropertiesService.getDocumentProperties().getProperty('DASH_STATUS_HEADER_ROW') || '0', 10);
+  if (!statusHeaderRow) return;
 
   const profile = (function () {
     try { return getProfile(); } catch (e) { return {}; }
@@ -320,7 +541,7 @@ function refreshDashboard() {
   let respRows = 0, latestScore = '—';
   if (responsesSheet) {
     respRows = Math.max(0, responsesSheet.getLastRow() - 1);
-    if (respRows > 0) {
+    if (respRows > 0 && responsesSheet.getLastColumn() > 0) {
       const headers = responsesSheet.getRange(1, 1, 1, responsesSheet.getLastColumn()).getValues()[0];
       const scoreCol = headers.indexOf(profile.col_score || 'Daily_Score');
       if (scoreCol > -1) {
@@ -352,7 +573,7 @@ function refreshDashboard() {
     [bioRows],
     [lastMemoryLabel]
   ];
-  sh.getRange(statusRow, 3, values.length, 1).setValues(values);
+  sh.getRange(statusHeaderRow + 1, 3, values.length, 1).setValues(values);
 }
 
 
@@ -476,123 +697,321 @@ function getResponsesLayout_() {
   };
 }
 
-function addContextColumn() {
+/**
+ * Reads the Schema region on the Dashboard, then makes the Responses
+ * tab match it: any new column is inserted in the correct region
+ * (context = left of spacer, habit = right of spacer); any column on
+ * Responses that the user has removed from the schema is deleted.
+ *
+ * Rules:
+ *   - Protected columns (ID, Date, spacer, end, score) are never
+ *     touched.
+ *   - The user is prompted to confirm deletions before any column is
+ *     dropped (since this destroys data).
+ */
+function syncSchemaToResponses() {
   const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet_();
+  const sh = ss.getSheetByName(TAB_DASHBOARD);
+  if (!sh) { ui.alert('Run setup first.'); return; }
+
+  const schema = readDashboardSchema_(sh);
+  // Validate that every schema entry has a sensible type.
+  const seen = new Set();
+  const wantContext = [];
+  const wantHabit = [];
+  for (const r of schema) {
+    const type = String(r[0]).toLowerCase();
+    const name = r[1];
+    if (seen.has(name)) {
+      ui.alert('Duplicate name in Schema: "' + name + '". Each column must be unique.');
+      return;
+    }
+    seen.add(name);
+    if (type === 'context') wantContext.push(name);
+    else if (type === 'habit') wantHabit.push(name);
+    else {
+      ui.alert('Row "' + name + '" has an unrecognised Type. Use the dropdown to pick Context or Habit.');
+      return;
+    }
+  }
+
   const layout = getResponsesLayout_();
+  const haveContext = layout.contextCols.map(c => c.name);
+  const haveHabit   = layout.habitCols.map(c => c.name);
 
-  const resp = ui.prompt(
-    'Add context column',
-    'Name a new free-text column (e.g. "Journal", "Exercise", "Financial", "Spirit_Life").\n\n' +
-    'Tip: prefix with "Spirit_" to feed it to the spiritual subsystem as rich context.\n\n' +
-    'It will be inserted just before the "' + layout.spacer + '" marker.',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const name = (resp.getResponseText() || '').trim();
-  if (!name) return;
+  const desiredAll = new Set(wantContext.concat(wantHabit));
+  const toDeleteContext = layout.contextCols.filter(c => !desiredAll.has(c.name));
+  const toDeleteHabit   = layout.habitCols  .filter(c => !desiredAll.has(c.name));
+  const toDelete = toDeleteContext.concat(toDeleteHabit);
 
-  if (layout.headers.indexOf(name) !== -1) {
-    ui.alert('A column named "' + name + '" already exists.');
+  const toAddContext = wantContext.filter(n => haveContext.indexOf(n) === -1);
+  const toAddHabit   = wantHabit  .filter(n => haveHabit.indexOf(n) === -1);
+
+  if (toAdd_summary(toAddContext, toAddHabit) === 0 && toDelete.length === 0) {
+    ui.alert('Schema and Responses are already in sync.');
     return;
   }
 
-  const insertAt = layout.idxSpacer + 1; // 1-indexed column to insert BEFORE
-  layout.sheet.insertColumnBefore(insertAt);
-  layout.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
-  ui.alert('Added context column "' + name + '".');
-}
-
-function addHabitColumn() {
-  const ui = SpreadsheetApp.getUi();
-  const layout = getResponsesLayout_();
-
-  const resp = ui.prompt(
-    'Add habit column',
-    'Phrase the habit positively, so that "Success" means the habit was kept.\n' +
-    '  Good: "Read 20 minutes", "Cold shower", "Two-drink maximum".\n' +
-    '  Bad:  "Skipped reading" (negative phrasing inverts the score).\n\n' +
-    'Tip: prefix with "Spirit_" if this is part of your spiritual rule of life.\n\n' +
-    'The column will be inserted just before "' + layout.endCol + '".',
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const name = (resp.getResponseText() || '').trim();
-  if (!name) return;
-
-  if (layout.headers.indexOf(name) !== -1) {
-    ui.alert('A column named "' + name + '" already exists.');
-    return;
+  // Confirm before destructive changes.
+  if (toDelete.length > 0) {
+    const confirm = ui.alert(
+      'Confirm column deletions',
+      'These columns will be DELETED from the Responses tab (data lost):\n\n' +
+      toDelete.map(c => '  • ' + c.name).join('\n') +
+      (toAddContext.length + toAddHabit.length > 0
+        ? '\n\nAnd these will be added:\n' +
+          toAddContext.map(n => '  + ' + n + ' (context)').join('\n') +
+          (toAddContext.length && toAddHabit.length ? '\n' : '') +
+          toAddHabit  .map(n => '  + ' + n + ' (habit)').join('\n')
+        : '') +
+      '\n\nContinue?',
+      ui.ButtonSet.YES_NO
+    );
+    if (confirm !== ui.Button.YES) return;
   }
 
-  const insertAt = layout.idxEnd + 1; // 1-indexed column to insert BEFORE
-  layout.sheet.insertColumnBefore(insertAt);
-  layout.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
+  // Delete first (in descending column order so indexes stay valid).
+  toDelete.sort((a, b) => b.col - a.col).forEach(c => layout.sheet.deleteColumn(c.col));
 
-  // Add Success / Fail / Exempt data validation to the new column for
-  // existing data rows, so users can pick from a dropdown rather than
-  // typing the values. Future rows added via AppSheet won't be affected.
-  const lastRow = layout.sheet.getLastRow();
-  if (lastRow > 1) {
-    const rule = SpreadsheetApp.newDataValidation()
-      .requireValueInList(['Success', 'Fail', 'Exempt'], true)
-      .setAllowInvalid(true)
-      .build();
-    layout.sheet.getRange(2, insertAt, lastRow - 1, 1).setDataValidation(rule);
-  }
+  // Re-read the layout because deletions shifted columns.
+  let live = getResponsesLayout_();
 
-  ui.alert('Added habit column "' + name + '". Mark each day as Success / Fail / Exempt.');
-}
+  const habitRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Success', 'Fail', 'Exempt'], true)
+    .setAllowInvalid(true)
+    .build();
 
-function removeColumn() {
-  const ui = SpreadsheetApp.getUi();
-  const layout = getResponsesLayout_();
+  toAddContext.forEach(name => {
+    const insertAt = live.idxSpacer + 1; // 1-indexed: insert BEFORE spacer
+    live.sheet.insertColumnBefore(insertAt);
+    live.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
+    live = getResponsesLayout_();
+  });
 
-  const all = layout.contextCols.concat(layout.habitCols);
-  if (all.length === 0) {
-    ui.alert('There are no removable columns yet. ID, Date, the spacer, AI_Feedback_Log, and Daily_Score are protected.');
-    return;
-  }
+  toAddHabit.forEach(name => {
+    const insertAt = live.idxEnd + 1; // 1-indexed: insert BEFORE end marker
+    live.sheet.insertColumnBefore(insertAt);
+    live.sheet.getRange(1, insertAt).setValue(name).setFontWeight('bold');
+    const lastRow = live.sheet.getLastRow();
+    if (lastRow > 1) {
+      live.sheet.getRange(2, insertAt, lastRow - 1, 1).setDataValidation(habitRule);
+    }
+    live = getResponsesLayout_();
+  });
 
-  let listing = 'Type the EXACT name of the column to delete:\n\n';
-  listing += 'Context columns:\n  ' + (layout.contextCols.map(c => c.name).join(', ') || '(none)') + '\n\n';
-  listing += 'Habit columns:\n  ' + (layout.habitCols.map(c => c.name).join(', ') || '(none)');
-
-  const resp = ui.prompt('Remove a column', listing, ui.ButtonSet.OK_CANCEL);
-  if (resp.getSelectedButton() !== ui.Button.OK) return;
-  const name = (resp.getResponseText() || '').trim();
-  if (!name) return;
-
-  const target = all.find(c => c.name === name);
-  if (!target) {
-    ui.alert('No column named "' + name + '" found, or the column is protected.');
-    return;
-  }
-
-  const confirm = ui.alert(
-    'Delete column?',
-    'This will permanently delete the "' + name + '" column and ALL its data on the Responses sheet. Continue?',
-    ui.ButtonSet.YES_NO
-  );
-  if (confirm !== ui.Button.YES) return;
-
-  layout.sheet.deleteColumn(target.col);
-  ui.alert('Deleted "' + name + '".');
-}
-
-function listResponsesColumns() {
-  const ui = SpreadsheetApp.getUi();
-  const layout = getResponsesLayout_();
-
-  const ctx = layout.contextCols.map(c => '  • ' + c.name).join('\n') || '  (none yet — use "Add context column")';
-  const hab = layout.habitCols.map(c => '  • ' + c.name).join('\n') || '  (none yet — use "Add habit column")';
-
+  refreshDashboard();
   ui.alert(
-    'Responses columns',
-    'Context (free text, left of the spacer):\n' + ctx + '\n\n' +
-    'Habits (Success / Fail / Exempt, right of the spacer):\n' + hab + '\n\n' +
-    'Markers: ID, Date | ' + layout.spacer + ' | ' + layout.endCol + ', ' + layout.scoreCol,
+    'Schema synced',
+    'Added: ' + (toAddContext.length + toAddHabit.length) +
+    '   |   Removed: ' + toDelete.length,
     ui.ButtonSet.OK
   );
+}
+
+function toAdd_summary(a, b) { return (a ? a.length : 0) + (b ? b.length : 0); }
+
+
+/**
+ * Reads the Habit_Library tab and copies any rows whose checkbox is
+ * ticked into the Dashboard's Schema region (skipping any that are
+ * already there). The library checkboxes are reset so they're ready
+ * for the next round.
+ *
+ * The library is just a regular sheet — users can add/remove their
+ * own rows any time.
+ */
+function importLibrarySelections() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet_();
+  const lib = ss.getSheetByName(TAB_LIBRARY);
+  const dash = ss.getSheetByName(TAB_DASHBOARD);
+  if (!lib || !dash) { ui.alert('Run setup first.'); return; }
+
+  const libRows = lib.getDataRange().getValues();
+  if (libRows.length < 2) { ui.alert('The Habit_Library is empty.'); return; }
+
+  // Header layout: A=Select, B=Type, C=Name, D=Description.
+  const ticked = [];
+  for (let i = 1; i < libRows.length; i++) {
+    const sel = libRows[i][0];
+    if (sel === true || sel === 'TRUE') {
+      const type = String(libRows[i][1] || '').trim();
+      const name = String(libRows[i][2] || '').trim();
+      const desc = String(libRows[i][3] || '').trim();
+      if (name) ticked.push({ type: type || 'Habit', name: name, desc: desc, row: i + 1 });
+    }
+  }
+  if (ticked.length === 0) { ui.alert('No items ticked in Habit_Library.'); return; }
+
+  // Read current schema, dedupe.
+  const current = readDashboardSchema_(dash);
+  const have = new Set(current.map(r => r[1]));
+  const toAdd = ticked.filter(t => !have.has(t.name));
+  if (toAdd.length === 0) {
+    ui.alert('Every ticked item is already in your Schema.');
+    return;
+  }
+
+  const props = PropertiesService.getDocumentProperties();
+  const headerRow = parseInt(props.getProperty('DASH_SCHEMA_HEADER_ROW') || '0', 10);
+  if (!headerRow) { ui.alert('Schema region not found. Re-run setup.'); return; }
+  const dataStart = headerRow + 2;
+
+  // Find the first empty schema row (search the existing table top to bottom).
+  const statusHeader = parseInt(props.getProperty('DASH_STATUS_HEADER_ROW') || '0', 10);
+  const stopRow = statusHeader > dataStart ? statusHeader - 1 : dash.getLastRow();
+  let writeRow = -1;
+  if (stopRow >= dataStart) {
+    const region = dash.getRange(dataStart, 2, stopRow - dataStart + 1, 3).getValues();
+    for (let i = 0; i < region.length; i++) {
+      if (!String(region[i][1] || '').trim()) { writeRow = dataStart + i; break; }
+    }
+  }
+  if (writeRow === -1) writeRow = dataStart + current.length;
+
+  const out = toAdd.map(t => [t.type, t.name, t.desc]);
+  dash.getRange(writeRow, 2, out.length, 3).setValues(out);
+
+  // Reset the checkboxes we just consumed.
+  ticked.forEach(t => lib.getRange(t.row, 1).setValue(false));
+
+  refreshDashboard();
+  ui.alert(
+    'Imported ' + toAdd.length + ' item' + (toAdd.length === 1 ? '' : 's') + ' into the Schema.',
+    'Click "Sync schema to Responses" when you\'re ready to apply your changes.',
+    ui.ButtonSet.OK
+  );
+}
+
+
+/* -------------------------------------------------------------------------
+ * Schema seed and Habit_Library
+ *
+ * DEFAULT_SCHEMA_SEED is what the Dashboard's editable schema region
+ * shows on a brand-new spreadsheet. We keep it minimal — just Journal —
+ * so the user composes their real list either by typing rows or by
+ * ticking entries in the Habit_Library and clicking
+ * "Import selected from library".
+ *
+ * DEFAULT_LIBRARY is the curated catalog of common context columns and
+ * habits, all phrased positively (success = the habit was kept).
+ * -----------------------------------------------------------------------*/
+
+const DEFAULT_SCHEMA_SEED = [
+  ['Context', 'Journal', 'Free-text reflection. Internal dispositions, mood, what stood out today.']
+];
+
+const DEFAULT_LIBRARY = [
+  // Context columns
+  ['Context', 'Spirit_Life',         'Spiritual life: gospel readings, lives of saints, parish events, notable moments.'],
+  ['Context', 'Exercise',            'What movement happened today (run, lift, walk, mobility).'],
+  ['Context', 'Financial',           'Notable spending, earning, budgeting, or financial decisions.'],
+  ['Context', 'Work',                'Work / study output, meetings, projects worked on.'],
+  ['Context', 'Social',              'People you spent time with, conversations of note.'],
+  ['Context', 'Reading',             'What you read today (books, articles, scripture).'],
+  ['Context', 'Gratitude',           'Three things to be grateful for today.'],
+  ['Context', 'Tomorrow',            'One sentence: the most important thing for tomorrow.'],
+
+  // Habits — wellbeing & body
+  ['Habit',   'Slept by midnight',     'Lights out before midnight.'],
+  ['Habit',   'Woke on first alarm',   'Got up the first time the alarm rang — no snooze.'],
+  ['Habit',   'Drank water',           'Hit your daily water target.'],
+  ['Habit',   'Ate clean',             'No junk food / kept within your eating plan.'],
+  ['Habit',   'Tracked calories',      'Logged food intake.'],
+  ['Habit',   'Exercised',             'Completed today\'s workout.'],
+  ['Habit',   'Stretched / mobility',  '10+ minutes of mobility or stretching.'],
+  ['Habit',   'Cold shower',           'Finished the shower cold.'],
+  ['Habit',   'Two-drink maximum',     'Stayed within your alcohol limit.'],
+  ['Habit',   'No nicotine',           'No nicotine today.'],
+
+  // Habits — mind & discipline
+  ['Habit',   'Read 20 minutes',       'Read for at least 20 minutes today.'],
+  ['Habit',   'Deep work block',       'Completed at least one focused, distraction-free deep-work session.'],
+  ['Habit',   'Inbox to zero',         'Cleared / triaged your inbox today.'],
+  ['Habit',   'No social media before noon', 'Stayed off social platforms until midday.'],
+  ['Habit',   'Phone out of bedroom',  'Slept without the phone within arm\'s reach.'],
+  ['Habit',   'Journaled',             'Wrote in your journal today.'],
+  ['Habit',   'Planned tomorrow',      'Wrote tomorrow\'s priorities before bed.'],
+
+  // Habits — finance
+  ['Habit',   'Logged spending',       'Recorded today\'s expenses.'],
+  ['Habit',   'No impulse purchases',  'Avoided unplanned discretionary purchases.'],
+
+  // Habits — relationships & service
+  ['Habit',   'Called a loved one',    'Reached out to a family member or close friend.'],
+  ['Habit',   'Acted with kindness',   'Did one deliberate act of kindness or service today.'],
+  ['Habit',   'Listened well',         'Held back from interrupting in at least one conversation.'],
+
+  // Habits — Christian / Orthodox spiritual rule (prefix Spirit_ so the
+  // spiritual subsystem reads them automatically)
+  ['Habit',   'Spirit_MorningRite',     'Completed your morning prayer rule.'],
+  ['Habit',   'Spirit_EveningRite',     'Completed your evening prayer rule.'],
+  ['Habit',   'Spirit_JesusPrayer',     'Said the Jesus / Theotokos prayer rope today.'],
+  ['Habit',   'Spirit_Prostrations',    'Completed your prostrations.'],
+  ['Habit',   'Spirit_Fasted',          'Kept the fasting rule for today.'],
+  ['Habit',   'Spirit_ScriptureRead',   'Read scripture today.'],
+  ['Habit',   'Spirit_LivesOfSaints',   'Read a saint\'s life today.'],
+  ['Habit',   'Spirit_Liturgy',         'Attended Liturgy or a service today.'],
+  ['Habit',   'Spirit_Almsgiving',      'Gave alms / acted in charity today.'],
+  ['Habit',   'Spirit_KeptSilence',     'Held silence rather than gossip / idle words.'],
+  ['Habit',   'Spirit_GuardedMind',     'Caught a passion early and resisted it before it took root.']
+];
+
+function getLibraryHeaders_() {
+  return ['Select', 'Type', 'Name', 'Description'];
+}
+
+/**
+ * Creates the Habit_Library tab if missing and seeds it with the
+ * curated list. On re-runs, missing rows from DEFAULT_LIBRARY are
+ * appended without disturbing user-added rows or current selections.
+ * Always (re)applies checkbox + dropdown validation across column A
+ * and column B respectively.
+ */
+function ensureLibraryTab_(ss) {
+  let sh = ss.getSheetByName(TAB_LIBRARY);
+  const headers = getLibraryHeaders_();
+  const isNew = !sh;
+  if (isNew) sh = ss.insertSheet(TAB_LIBRARY);
+
+  if (isNew || sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, headers.length).setValues([headers])
+      .setFontWeight('bold').setBackground('#eee');
+    sh.setFrozenRows(1);
+    sh.setColumnWidth(1, 70);
+    sh.setColumnWidth(2, 90);
+    sh.setColumnWidth(3, 240);
+    sh.setColumnWidth(4, 540);
+  }
+
+  const existingNames = new Set();
+  if (sh.getLastRow() > 1) {
+    sh.getRange(2, 3, sh.getLastRow() - 1, 1).getValues().forEach(r => {
+      const n = String(r[0] || '').trim();
+      if (n) existingNames.add(n);
+    });
+  }
+
+  const toAppend = DEFAULT_LIBRARY
+    .filter(r => !existingNames.has(r[1]))
+    .map(r => [false, r[0], r[1], r[2]]);
+  if (toAppend.length) {
+    sh.getRange(sh.getLastRow() + 1, 1, toAppend.length, headers.length).setValues(toAppend);
+  }
+
+  // (Re)apply formatting so it survives anything the user did.
+  const lastRow = Math.max(sh.getLastRow(), 2);
+  const dataRows = lastRow - 1;
+  if (dataRows > 0) {
+    sh.getRange(2, 1, dataRows, 1).insertCheckboxes();
+    const typeRule = SpreadsheetApp.newDataValidation()
+      .requireValueInList(['Context', 'Habit'], true)
+      .setAllowInvalid(false)
+      .build();
+    sh.getRange(2, 2, dataRows, 1).setDataValidation(typeRule);
+  }
+  return sh;
 }
 
 
