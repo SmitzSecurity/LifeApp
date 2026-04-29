@@ -160,16 +160,21 @@ function runInitWizard() {
   if (!ss.getSheetByName(TAB_USER_PROF)) setupSpreadsheet();
 
   const html = HtmlService.createHtmlOutput(buildWizardHtml_())
-    .setWidth(640)
-    .setHeight(540);
+    .setWidth(680)
+    .setHeight(640);
   ui.showModalDialog(html, 'Life OS — Initialization Wizard');
 }
 
+
 /**
- * Returns the current wizard state for prefilling the dialog. Called
- * from the client on load.
+ * NOTE: the next two functions are intentionally PUBLIC (no trailing
+ * underscore). Apps Script blocks google.script.run from calling
+ * server functions whose names end in '_'. The wizard dialog calls
+ * both via google.script.run, so they must be public.
  */
-function wizardLoad_() {
+
+/** Returns the current wizard state for prefilling the dialog. */
+function wizardLoad() {
   return {
     email:    profileGet('email', ''),
     timezone: profileGet('timezone', '') || (Session.getScriptTimeZone && Session.getScriptTimeZone()) || 'America/New_York',
@@ -177,15 +182,13 @@ function wizardLoad_() {
     faith:    profileGet('faith', ''),
     career:   profileGet('career', ''),
     goals:    profileGet('goals', ''),
-    apiKeySet: !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY)
+    apiKeySet: !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY),
+    timezoneOptions: TIMEZONE_OPTIONS
   };
 }
 
-/**
- * Persists the wizard answers and (optionally) the API key. Returns a
- * status string the dialog displays before closing itself.
- */
-function wizardSubmit_(answers) {
+/** Persists wizard answers and (optionally) the API key. */
+function wizardSubmit(answers) {
   const fields = ['email', 'timezone', 'location', 'faith', 'career', 'goals'];
   fields.forEach(k => {
     const v = (answers && answers[k] != null) ? String(answers[k]).trim() : '';
@@ -204,143 +207,221 @@ function wizardSubmit_(answers) {
   return 'User_Profile saved. Gemini API key: ' + (finalKey ? '✓ stored' : '✗ not set');
 }
 
-function buildWizardHtml_() {
-  return `<!DOCTYPE html>
-<html><head><base target="_top"><style>
-  body { font-family: -apple-system, Helvetica, sans-serif; margin: 0; padding: 24px; color: #222; }
-  h2 { margin: 0 0 4px; }
-  .help { color: #666; margin: 0 0 16px; font-size: 13px; }
-  .step-num { color: #8e44ad; font-weight: bold; }
-  textarea, input[type=text] { width: 100%; box-sizing: border-box; padding: 10px; font-family: inherit; font-size: 14px; border: 1px solid #ccc; border-radius: 6px; }
-  textarea { min-height: 120px; resize: vertical; }
-  .nav { margin-top: 20px; display: flex; gap: 8px; align-items: center; }
-  button { padding: 8px 14px; font-size: 14px; border: 1px solid #888; background: #fff; border-radius: 6px; cursor: pointer; }
-  button.primary { background: #8e44ad; color: #fff; border-color: #8e44ad; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-  .progress { flex: 1; text-align: center; font-size: 13px; color: #666; }
-  .review-row { display: flex; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 14px; }
-  .review-row .k { width: 130px; color: #666; }
-  .review-row .v { flex: 1; white-space: pre-wrap; }
-  .status { margin-top: 16px; font-size: 13px; color: #2c7a3a; }
-</style></head><body>
-  <h2>Life OS — Initialization</h2>
-  <p class="help">All fields are optional except <b>email</b>. Use Back/Next to navigate; nothing is saved until you click Save.</p>
-  <div id="step"></div>
-  <div class="nav">
-    <button id="back">← Back</button>
-    <span class="progress" id="progress"></span>
-    <button id="next" class="primary">Next →</button>
-    <button id="save" class="primary" style="display:none">Save</button>
-  </div>
-  <div class="status" id="status"></div>
 
-<script>
-const STEPS = [
-  { key: 'email',    label: 'Email address',
-    help: 'Where reports are sent. Required.' },
-  { key: 'timezone', label: 'Timezone',
-    help: 'IANA name, e.g. America/New_York or Europe/Athens.' },
-  { key: 'location', label: 'Location',
-    help: 'City / region. Used to ground prompts in local context.' },
-  { key: 'faith',    label: 'Faith tradition (optional)',
-    help: 'Used by the spiritual subsystem. Leave blank if not applicable.' },
-  { key: 'career',   label: 'Career / studies (optional)',
-    help: 'Current role, schooling, transitions. Used in prompts.' },
-  { key: 'goals',    label: 'Current goals (optional)',
-    help: 'A short list — comma-separated or one per line.' },
-  { key: 'apiKey',   label: 'Gemini API key',
-    help: 'Stored privately in Script Properties — never written to the spreadsheet or to source. Get a key at https://aistudio.google.com/app/apikey',
-    sensitive: true },
-  { key: '__review', label: 'Review & save',
-    help: 'Review the values below. Click Back to edit anything.' }
+/**
+ * Curated list of IANA timezones offered by the wizard's dropdown.
+ * Grouped to keep the menu navigable; users who need a zone we didn't
+ * include can still type it directly into User_Profile.
+ */
+const TIMEZONE_OPTIONS = [
+  { group: 'UTC',           zones: ['UTC'] },
+  { group: 'Americas',      zones: [
+    'America/Anchorage', 'America/Los_Angeles', 'America/Vancouver',
+    'America/Denver', 'America/Phoenix', 'America/Edmonton',
+    'America/Chicago', 'America/Mexico_City', 'America/Winnipeg',
+    'America/New_York', 'America/Toronto', 'America/Indiana/Indianapolis',
+    'America/Halifax', 'America/St_Johns',
+    'America/Bogota', 'America/Lima', 'America/Caracas',
+    'America/Sao_Paulo', 'America/Argentina/Buenos_Aires',
+    'America/Santiago', 'America/Honolulu'
+  ] },
+  { group: 'Europe',        zones: [
+    'Europe/London', 'Europe/Dublin', 'Europe/Lisbon',
+    'Europe/Paris', 'Europe/Madrid', 'Europe/Brussels',
+    'Europe/Amsterdam', 'Europe/Berlin', 'Europe/Zurich',
+    'Europe/Rome', 'Europe/Vienna', 'Europe/Warsaw',
+    'Europe/Stockholm', 'Europe/Helsinki', 'Europe/Athens',
+    'Europe/Bucharest', 'Europe/Istanbul', 'Europe/Moscow'
+  ] },
+  { group: 'Africa',        zones: [
+    'Africa/Casablanca', 'Africa/Lagos', 'Africa/Cairo',
+    'Africa/Nairobi', 'Africa/Johannesburg'
+  ] },
+  { group: 'Middle East',   zones: [
+    'Asia/Jerusalem', 'Asia/Beirut', 'Asia/Riyadh',
+    'Asia/Dubai', 'Asia/Tehran'
+  ] },
+  { group: 'Asia',          zones: [
+    'Asia/Karachi', 'Asia/Kolkata', 'Asia/Kathmandu',
+    'Asia/Dhaka', 'Asia/Bangkok', 'Asia/Jakarta',
+    'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Manila',
+    'Asia/Shanghai', 'Asia/Taipei', 'Asia/Seoul', 'Asia/Tokyo'
+  ] },
+  { group: 'Oceania',       zones: [
+    'Australia/Perth', 'Australia/Adelaide', 'Australia/Brisbane',
+    'Australia/Sydney', 'Australia/Melbourne', 'Pacific/Auckland'
+  ] }
 ];
 
-let answers = {};
-let idx = 0;
 
-function init(loaded) {
-  answers = {
-    email:    loaded.email    || '',
-    timezone: loaded.timezone || '',
-    location: loaded.location || '',
-    faith:    loaded.faith    || '',
-    career:   loaded.career   || '',
-    goals:    loaded.goals    || '',
-    apiKey:   ''
-  };
-  answers.__apiKeySet = !!loaded.apiKeySet;
-  render();
-}
+function buildWizardHtml_() {
+  // Build the timezone <optgroup> markup server-side — keeps the
+  // client script small and avoids escaping headaches.
+  const tzGroups = TIMEZONE_OPTIONS.map(g => {
+    const opts = g.zones.map(z => '<option value="' + z + '">' + z + '</option>').join('');
+    return '<optgroup label="' + g.group + '">' + opts + '</optgroup>';
+  }).join('');
 
-function render() {
-  const step = STEPS[idx];
-  const root = document.getElementById('step');
-  document.getElementById('progress').textContent = 'Step ' + (idx + 1) + ' of ' + STEPS.length;
-
-  if (step.key === '__review') {
-    let html = '<h3><span class="step-num">' + (idx+1) + '/' + STEPS.length + '</span> ' + step.label + '</h3>';
-    html += '<p class="help">' + step.help + '</p><div>';
-    [['Email','email'],['Timezone','timezone'],['Location','location'],['Faith','faith'],['Career','career'],['Goals','goals']].forEach(function(p) {
-      html += '<div class="review-row"><div class="k">' + p[0] + '</div><div class="v">' + escapeHtml(answers[p[1]] || '(blank)') + '</div></div>';
-    });
-    var keyState = answers.apiKey
-      ? '✓ will be stored'
-      : (answers.__apiKeySet ? '✓ already stored (unchanged)' : '✗ not set');
-    html += '<div class="review-row"><div class="k">API key</div><div class="v">' + keyState + '</div></div>';
-    html += '</div>';
-    root.innerHTML = html;
-  } else {
-    const val = answers[step.key] || '';
-    const tag = step.sensitive ? '<input type="text" autocomplete="off" id="field"' : '<textarea id="field"';
-    const closeTag = step.sensitive ? ' value="' + escapeAttr(val) + '" />' : '>' + escapeHtml(val) + '</textarea>';
-    root.innerHTML =
-      '<h3><span class="step-num">' + (idx+1) + '/' + STEPS.length + '</span> ' + step.label + '</h3>' +
-      '<p class="help">' + step.help + '</p>' +
-      tag + closeTag;
-    document.getElementById('field').focus();
+  return `<!DOCTYPE html>
+<html><head><base target="_top"><style>
+  html, body { margin: 0; padding: 0; }
+  body { font-family: -apple-system, Helvetica, sans-serif; color: #222; background: #fafafa; }
+  .wrap { padding: 22px 26px 110px; max-width: 620px; margin: 0 auto; }
+  h2 { margin: 0 0 4px; }
+  p.lead { color: #555; margin: 0 0 18px; font-size: 13px; }
+  fieldset { border: 1px solid #e3e3e3; background: #fff; border-radius: 8px; padding: 14px 16px; margin: 0 0 14px; }
+  legend { font-weight: 600; padding: 0 6px; font-size: 14px; color: #8e44ad; }
+  label { display: block; font-size: 13px; color: #555; margin: 0 0 4px; }
+  textarea, input[type=text], select {
+    width: 100%; box-sizing: border-box; padding: 9px 10px;
+    font-family: inherit; font-size: 14px;
+    border: 1px solid #ccc; border-radius: 6px; background: #fff;
   }
+  textarea { min-height: 80px; resize: vertical; }
+  .req { color: #c0392b; }
+  .help { font-size: 12px; color: #777; margin: 4px 0 0; }
+  .footer {
+    position: fixed; left: 0; right: 0; bottom: 0;
+    background: #fff; border-top: 1px solid #e3e3e3;
+    padding: 12px 26px; display: flex; align-items: center; gap: 10px;
+  }
+  button {
+    padding: 9px 16px; font-size: 14px; border: 1px solid #888;
+    background: #fff; border-radius: 6px; cursor: pointer;
+  }
+  button.primary { background: #8e44ad; color: #fff; border-color: #8e44ad; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .status { flex: 1; font-size: 13px; color: #444; }
+  .ok { color: #2c7a3a; }
+  .err { color: #c0392b; }
+</style></head><body>
+<div class="wrap">
+  <h2>Life OS — Initialization</h2>
+  <p class="lead">Fill in what you know; everything except <b>email</b> is optional. You can re-run this wizard any time from the Dashboard or the Life OS menu.</p>
 
-  document.getElementById('back').disabled = (idx === 0);
-  const last = (idx === STEPS.length - 1);
-  document.getElementById('next').style.display = last ? 'none' : '';
-  document.getElementById('save').style.display = last ? '' : 'none';
+  <fieldset>
+    <legend>Identity</legend>
+    <label for="email">Email address <span class="req">*</span></label>
+    <input type="text" id="email" autocomplete="off" />
+    <p class="help">Where reports will be sent.</p>
+
+    <label for="timezone" style="margin-top:12px">Timezone</label>
+    <select id="timezone">${tzGroups}</select>
+    <p class="help">Pick the closest IANA zone. If your zone isn't listed, you can still type it directly into User_Profile after saving.</p>
+
+    <label for="location" style="margin-top:12px">Location</label>
+    <input type="text" id="location" autocomplete="off" />
+    <p class="help">City / region. Used to ground prompts in local context.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Life context</legend>
+    <label for="faith">Faith tradition (optional)</label>
+    <textarea id="faith"></textarea>
+    <p class="help">Used by the spiritual subsystem. Leave blank if not applicable.</p>
+
+    <label for="career" style="margin-top:12px">Career / studies (optional)</label>
+    <textarea id="career"></textarea>
+    <p class="help">Current role, schooling, transitions. Used in prompts.</p>
+
+    <label for="goals" style="margin-top:12px">Current goals (optional)</label>
+    <textarea id="goals"></textarea>
+    <p class="help">A short list — comma-separated or one per line.</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>Gemini API key</legend>
+    <label for="apiKey">API key</label>
+    <input type="text" id="apiKey" autocomplete="off" placeholder="" />
+    <p class="help" id="keyHelp">Stored privately in Script Properties. Get a key at https://aistudio.google.com/app/apikey</p>
+  </fieldset>
+</div>
+
+<div class="footer">
+  <span class="status" id="status">Loading…</span>
+  <button id="cancel">Close</button>
+  <button id="save" class="primary" disabled>Save</button>
+</div>
+
+<script>
+function val(id) { return document.getElementById(id).value; }
+function set(id, v) { document.getElementById(id).value = v == null ? '' : v; }
+function setStatus(msg, cls) {
+  var s = document.getElementById('status');
+  s.textContent = msg || '';
+  s.className = 'status' + (cls ? ' ' + cls : '');
 }
 
-function captureCurrent() {
-  const step = STEPS[idx];
-  if (step.key === '__review') return;
-  const f = document.getElementById('field');
-  if (f) answers[step.key] = f.value;
-}
+google.script.run
+  .withSuccessHandler(function(loaded) {
+    set('email',    loaded.email);
+    set('location', loaded.location);
+    set('faith',    loaded.faith);
+    set('career',   loaded.career);
+    set('goals',    loaded.goals);
 
-function escapeHtml(s) {
-  return String(s == null ? '' : s).replace(/[&<>]/g, function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});
-}
-function escapeAttr(s) {
-  return escapeHtml(s).replace(/"/g, '&quot;');
-}
+    // Timezone: pick the loaded value if present in the dropdown,
+    // otherwise default to the first option.
+    var tz = document.getElementById('timezone');
+    var want = loaded.timezone || '';
+    var found = false;
+    for (var i = 0; i < tz.options.length; i++) {
+      if (tz.options[i].value === want) { tz.selectedIndex = i; found = true; break; }
+    }
+    if (!found && want) {
+      var opt = document.createElement('option');
+      opt.value = want; opt.textContent = want + ' (current)';
+      tz.insertBefore(opt, tz.firstChild);
+      tz.selectedIndex = 0;
+    }
 
-document.getElementById('back').onclick = function() { captureCurrent(); if (idx > 0) { idx--; render(); } };
-document.getElementById('next').onclick = function() { captureCurrent(); if (idx < STEPS.length - 1) { idx++; render(); } };
+    if (loaded.apiKeySet) {
+      document.getElementById('apiKey').placeholder = 'A key is already stored — leave blank to keep it';
+      document.getElementById('keyHelp').innerHTML =
+        '<span class="ok">A key is already stored.</span> Paste a new one to replace it, or leave blank to keep the existing key.';
+    }
+
+    document.getElementById('save').disabled = false;
+    setStatus('');
+  })
+  .withFailureHandler(function(err) {
+    setStatus('Could not load profile: ' + err.message, 'err');
+  })
+  .wizardLoad();
+
+document.getElementById('cancel').onclick = function() { google.script.host.close(); };
+
 document.getElementById('save').onclick = function() {
-  captureCurrent();
+  var email = val('email').trim();
+  if (!email) {
+    setStatus('Email is required.', 'err');
+    document.getElementById('email').focus();
+    return;
+  }
   document.getElementById('save').disabled = true;
-  document.getElementById('back').disabled = true;
-  document.getElementById('status').textContent = 'Saving…';
+  setStatus('Saving…');
+
+  var answers = {
+    email:    email,
+    timezone: val('timezone'),
+    location: val('location'),
+    faith:    val('faith'),
+    career:   val('career'),
+    goals:    val('goals'),
+    apiKey:   val('apiKey')
+  };
+
   google.script.run
     .withSuccessHandler(function(msg) {
-      document.getElementById('status').textContent = msg + ' — closing…';
+      setStatus(msg + ' — closing…', 'ok');
       setTimeout(function(){ google.script.host.close(); }, 1100);
     })
     .withFailureHandler(function(err) {
-      document.getElementById('status').textContent = 'Error: ' + err.message;
+      setStatus('Error: ' + err.message, 'err');
       document.getElementById('save').disabled = false;
-      document.getElementById('back').disabled = false;
     })
-    .wizardSubmit_(answers);
+    .wizardSubmit(answers);
 };
-
-google.script.run.withSuccessHandler(init).wizardLoad_();
 </script>
 </body></html>`;
 }

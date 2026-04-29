@@ -89,10 +89,10 @@ SECTION 10 — Markdown -> HTML formatting
      work,
    - moves you to the Dashboard tab, and
    - on the *first* run, offers to launch the **initialization
-     wizard** — an HTML dialog with `<textarea>` fields and Back/Next
-     navigation, where you fill in `User_Profile` (email, timezone,
-     location, faith, career, goals) and the Gemini API key on a
-     single review screen before saving.
+     wizard** — a single-page HTML dialog with `<textarea>` fields,
+     a timezone dropdown, and a stored-or-replace API-key field. You
+     scroll through Identity / Life context / Gemini API key and
+     click Save once. Re-run any time to update individual fields.
 5. **(If you skipped the wizard above)** Run it any time from
    **Dashboard → "Run initialization wizard"** or from
    **Life OS → Run initialization wizard**.
