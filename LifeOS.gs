@@ -49,6 +49,26 @@ function runAnnualReview()     { processReport('ANNUAL', 365); }
 function runSpiritualReport()  { processSpiritualReport(profileGetInt('spiritual_lookback_days', 14)); }
 
 
+/**
+ * Adds a "Life OS" menu to the spreadsheet so users can run setup, set
+ * the API key, and trigger reports without opening the script editor.
+ * Runs automatically every time the spreadsheet is opened.
+ */
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Life OS')
+    .addItem('Run setup',           'setupSpreadsheet')
+    .addItem('Set Gemini API key…', 'setApiKey')
+    .addSeparator()
+    .addItem('Run daily audit',     'runDailyAudit')
+    .addItem('Run weekly report',   'runWeeklyReport')
+    .addItem('Run monthly review',  'runMonthlyReview')
+    .addItem('Run annual review',   'runAnnualReview')
+    .addItem('Run spiritual report','runSpiritualReport')
+    .addToUi();
+}
+
+
 /* =========================================================================
  * SECTION 3 — SETUP
  * One-time bootstrappers. Idempotent: safe to re-run; never clobbers user
@@ -62,49 +82,80 @@ function runSpiritualReport()  { processSpiritualReport(profileGetInt('spiritual
 function setupSpreadsheet() {
   const ss = getSpreadsheet_();
 
-  ensureTab_(ss, TAB_RESPONSES,  null);
+  ensureTab_(ss, TAB_RESPONSES,  [DEFAULT_RESPONSES_HEADERS]);
   ensureTab_(ss, TAB_USER_PROF,  DEFAULT_PROFILE);
   ensureTab_(ss, TAB_USER_MEM,   [['id', 'timestamp', 'type', 'content']]);
   ensureTab_(ss, TAB_SYS_DOCS,   getDefaultDocs_());
   ensureTab_(ss, TAB_SPIRIT_BIO, [['date', 'type', 'title', 'narrative', 'tags']]);
 
-  if (SpreadsheetApp.getUi) {
-    try {
-      SpreadsheetApp.getUi().alert(
-        'Life OS is set up.\n\n' +
-        '1. Fill in User_Profile (email, location, faith, etc.).\n' +
-        '2. Run setApiKey("your-gemini-key") once.\n' +
-        '3. Configure your Responses sheet (see README).\n' +
-        '4. Add time-based triggers for runDailyAudit, runWeeklyReport, etc.'
-      );
-    } catch (e) { /* running outside the UI is fine */ }
-  }
+  try {
+    SpreadsheetApp.getUi().alert(
+      'Life OS is set up.\n\n' +
+      '1. Fill in User_Profile (email is required).\n' +
+      '2. Life OS menu → "Set Gemini API key…"\n' +
+      '3. Edit/extend the Responses headers as needed (see README).\n' +
+      '4. Add time-based triggers for runDailyAudit, runWeeklyReport, etc.'
+    );
+  } catch (e) { /* running outside the UI is fine */ }
 }
 
 /**
  * Stores the Gemini API key in Script Properties.
- * USAGE: in the editor, run setApiKey('AIza...') once.
+ *
+ * Two ways to call this:
+ *   - From the spreadsheet menu (Life OS → Set Gemini API key…), which
+ *     opens a prompt for the key.
+ *   - Programmatically: setApiKey('AIza...').
+ *
+ * The Apps Script editor's Run button cannot pass parameters, so when
+ * called with no argument the function falls back to the prompt dialog.
  */
 function setApiKey(key) {
-  if (!key || typeof key !== 'string') {
-    throw new Error('Pass the API key as a string, e.g. setApiKey("AIza...").');
+  if (!key) {
+    let ui;
+    try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
+    if (!ui) {
+      throw new Error(
+        "setApiKey needs the key. Either run it from the spreadsheet menu " +
+        "(Life OS → Set Gemini API key…) or call setApiKey('AIza...') from code."
+      );
+    }
+    const resp = ui.prompt(
+      'Set Gemini API key',
+      'Paste your Gemini API key. It will be stored in Script Properties (private to the script owner) and never written to the spreadsheet or to source code.',
+      ui.ButtonSet.OK_CANCEL
+    );
+    if (resp.getSelectedButton() !== ui.Button.OK) return;
+    key = resp.getResponseText();
+  }
+  if (typeof key !== 'string' || !key.trim()) {
+    throw new Error('No API key provided.');
   }
   PropertiesService.getScriptProperties().setProperty(PROP_API_KEY, key.trim());
-  Logger.log('API key stored in Script Properties.');
+  try {
+    SpreadsheetApp.getUi().alert('API key saved to Script Properties.');
+  } catch (e) {
+    Logger.log('API key stored in Script Properties.');
+  }
 }
 
 function ensureTab_(ss, name, seedRows) {
   let sh = ss.getSheetByName(name);
-  if (!sh) {
-    sh = ss.insertSheet(name);
-    if (seedRows && seedRows.length) {
-      sh.getRange(1, 1, seedRows.length, seedRows[0].length).setValues(seedRows);
-      sh.setFrozenRows(1);
-      sh.autoResizeColumns(1, seedRows[0].length);
-    }
+  const isNew = !sh;
+  if (!sh) sh = ss.insertSheet(name);
+
+  if (!seedRows || !seedRows.length) return sh;
+
+  // Fresh tab, or existing tab with no header row at all.
+  if (isNew || sh.getLastRow() === 0) {
+    sh.getRange(1, 1, seedRows.length, seedRows[0].length).setValues(seedRows);
+    sh.setFrozenRows(1);
+    sh.autoResizeColumns(1, seedRows[0].length);
     return sh;
   }
-  if (seedRows && seedRows.length && (name === TAB_USER_PROF || name === TAB_SYS_DOCS)) {
+
+  // Existing key/value tabs: top up missing keys without clobbering edits.
+  if (name === TAB_USER_PROF || name === TAB_SYS_DOCS) {
     const existing = sh.getDataRange().getValues();
     const haveKey = new Set(existing.slice(1).map(r => String(r[0] || '').trim()));
     const toAppend = seedRows.slice(1).filter(r => !haveKey.has(String(r[0]).trim()));
@@ -112,6 +163,9 @@ function ensureTab_(ss, name, seedRows) {
       sh.getRange(sh.getLastRow() + 1, 1, toAppend.length, seedRows[0].length).setValues(toAppend);
     }
   }
+  // For Responses we never overwrite existing headers — the user may
+  // have customised them. They only get seeded when the tab is new or
+  // empty (handled above).
   return sh;
 }
 
@@ -121,6 +175,37 @@ function ensureTab_(ss, name, seedRows) {
  * Defaults for User_Profile and System_Docs. Used only on first run.
  * After setup, edit the spreadsheet, not this file.
  * ========================================================================= */
+
+/**
+ * Default header row for the Responses tab. The script keys off three
+ * markers from User_Profile (col_spacer, col_end, col_score), so the
+ * convention is: free-text context columns to the left of the spacer,
+ * binary habit columns to its right, then the AI feedback and score
+ * columns at the end.
+ *
+ * This is a starter set — rename, reorder, add, or delete columns to
+ * fit the user's life. Anything starting with `Spirit_` is read by the
+ * spiritual subsystem; the un-prefixed `Journal` is included in
+ * `spiritual_columns_explicit` so it's read too.
+ */
+const DEFAULT_RESPONSES_HEADERS = [
+  // Identity & timing (left of spacer, mostly metadata)
+  'ID', 'Date', 'Waketime', 'Bedtime',
+  // Rich free-text context columns (left of spacer)
+  'Journal', 'Spirit_Life', 'Exercise', 'Financial',
+  // Spacer marker — must match User_Profile.col_spacer
+  '>> HABITS >>',
+  // Binary habit trackers (right of spacer): Success / Fail / Exempt
+  'Tracked Calories', 'Spirit_Fasted', 'Alarm Dismissed', 'Cold Shower',
+  'Spirit_Prostrations', 'Spirit_JesusPrayer', 'Spirit_MorningRite', 'Spirit_EveningRite',
+  'Exercised', 'Clean Eating', 'Arrived Early', 'Read',
+  'Spirit_ServiceCharity', 'Spirit_AvoidedDigitalBypass', 'Spirit_AvoidedJudgement',
+  'Spirit_IgnoredLustfulThoughts', 'Spirit_AvoidedLust', 'Spirit_AvoidedLustfulGazing',
+  'Spirit_AvoidedMediaBinge', 'Spirit_AvoidedCriticism', 'Spirit_AvoidedGluttony',
+  'Spirit_TwoDrinkMax', 'Spirit_AvoidedCrudeJokes',
+  // End markers — must match User_Profile.col_end and col_score
+  'AI_Feedback_Log', 'Daily_Score'
+];
 
 const DEFAULT_PROFILE = [
   ['key',                            'value',                          'description'],

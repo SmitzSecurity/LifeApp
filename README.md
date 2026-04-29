@@ -72,35 +72,53 @@ SECTION 10 — Markdown -> HTML formatting
 2. **Open the script editor** (Extensions → Apps Script).
 3. **Paste in the code.**
    - Replace the contents of the default `Code.gs` with the entire
-     contents of `LifeOS.gs` (or rename it to `LifeOS.gs` for
-     clarity).
+     contents of `LifeOS.gs` (you may rename the file to `LifeOS.gs`
+     for clarity).
    - In Project Settings, enable "Show appsscript.json manifest file
      in editor", then replace the manifest with the contents of
      `appsscript.json` from this repo.
-4. **Run `setupSpreadsheet`** once from the editor. Approve the OAuth
-   prompts. This creates every required tab and seeds defaults.
+4. **Reload the spreadsheet** so the new `Life OS` menu appears. From
+   that menu, choose **Run setup**. Approve the OAuth prompts. This
+   creates every required tab, seeds defaults for `User_Profile` and
+   `System_Docs`, and seeds a starter set of headers on `Responses`.
 5. **Fill in `User_Profile`** — at minimum, `email`. Optional fields
    shape the prompts: `location`, `faith`, `career`, `goals`, etc.
-6. **Set the API key once** — in the editor, run:
+6. **Set the API key.** From the spreadsheet: **Life OS → Set Gemini
+   API key…** A prompt opens; paste your key. The key is stored in
+   Script Properties (private to the script's owner) and is never
+   written to source or to the spreadsheet.
+
+   *Note:* the Apps Script editor's Run button cannot pass parameters,
+   which is why `setApiKey` is wired to the menu and falls back to a
+   prompt dialog when called with no argument.
+7. **Tune the `Responses` sheet** if needed. Setup seeds these headers:
 
    ```
-   setApiKey('YOUR_GEMINI_KEY')
+   ID, Date, Waketime, Bedtime,
+   Journal, Spirit_Life, Exercise, Financial,
+   >> HABITS >>,
+   Tracked Calories, Spirit_Fasted, Alarm Dismissed, Cold Shower,
+   Spirit_Prostrations, Spirit_JesusPrayer, Spirit_MorningRite, Spirit_EveningRite,
+   Exercised, Clean Eating, Arrived Early, Read,
+   Spirit_ServiceCharity, Spirit_AvoidedDigitalBypass, Spirit_AvoidedJudgement,
+   Spirit_IgnoredLustfulThoughts, Spirit_AvoidedLust, Spirit_AvoidedLustfulGazing,
+   Spirit_AvoidedMediaBinge, Spirit_AvoidedCriticism, Spirit_AvoidedGluttony,
+   Spirit_TwoDrinkMax, Spirit_AvoidedCrudeJokes,
+   AI_Feedback_Log, Daily_Score
    ```
 
-   The key is stored in Script Properties. Don't paste it in any cell
-   or any file.
-7. **Configure the `Responses` sheet** so the daily audit can find
-   what it needs. Headers must include:
-   - A column named whatever you set as `col_spacer` in `User_Profile`
-     (default `>> HABITS >>`). Free-text columns go to its left;
-     binary habit columns go to its right.
-   - A column named whatever you set as `col_end` (default
-     `AI_Feedback_Log`). The daily report writes here.
-   - A column named whatever you set as `col_score` (default
-     `Daily_Score`). The numeric daily score is written here.
-   - A `Date` column.
-   - Use AppSheet to enter data — habits should be Success / Fail /
-     Exempt (or TRUE / FALSE).
+   Convention:
+   - Free-text context columns go to the **left** of the
+     `>> HABITS >>` spacer.
+   - Binary habit columns (Success / Fail / Exempt or TRUE / FALSE) go
+     to the **right** of the spacer.
+   - The last two columns are `AI_Feedback_Log` (daily report writes
+     here) and `Daily_Score`.
+   - The Spirit_* columns drive the spiritual subsystem; rename, add,
+     or remove them to fit your tradition.
+
+   Then point AppSheet at this sheet so you can enter data through a
+   GUI rather than editing the spreadsheet directly.
 8. **Add time-based triggers** (Triggers tab in the editor) for the
    functions you want:
    - `runDailyAudit` — daily, late evening
@@ -112,6 +130,17 @@ SECTION 10 — Markdown -> HTML formatting
 Editing your goals later means changing one cell in `User_Profile`.
 Editing the *wording* of a report means changing one cell in
 `System_Docs`.
+
+### The "Life OS" menu
+
+Once the script is installed and the spreadsheet is reloaded, a
+top-level **Life OS** menu appears with one-click access to:
+
+- **Run setup** — `setupSpreadsheet`
+- **Set Gemini API key…** — opens a prompt
+- **Run daily audit** / **weekly report** / **monthly review** /
+  **annual review** / **spiritual report** — manual triggers, useful
+  for testing without waiting on a time-based trigger.
 
 ---
 
