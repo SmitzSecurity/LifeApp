@@ -64,6 +64,7 @@ function onOpen() {
     .addItem('Refresh dashboard',        'refreshDashboard')
     .addSeparator()
     .addItem('Sync schema → Responses',  'syncSchemaToResponses')
+    .addItem('Pull Responses → Schema',  'pullResponsesIntoSchema')
     .addItem('Import library selections','importLibrarySelections')
     .addItem('Reformat Responses table', 'formatResponsesNow')
     .addSeparator()
@@ -497,10 +498,12 @@ const DASHBOARD_ACTIONS = [
   // Schema management — declarative, edited in the Schema region below
   { label: 'Sync schema to Responses',   fn: 'syncSchemaToResponses',
     note:  'Adds any new rows in the Schema region as columns; removes columns that no longer appear.' },
+  { label: 'Pull Responses into Schema', fn: 'pullResponsesIntoSchema',
+    note:  'Rewrites the Schema region from whatever columns currently exist on Responses.' },
   { label: 'Import selected from library', fn: 'importLibrarySelections',
     note:  'Copies ticked rows from the Habit_Library tab into the Schema region.' },
   { label: 'Reformat Responses table',   fn: 'formatResponsesNow',
-    note:  'Re-applies banding, frozen header, and Success/Fail/Exempt validation across all habit columns.' },
+    note:  'Re-applies banding, frozen header, Success/Fail/Exempt validation, and LongText sample seeding for AppSheet.' },
 
   // Manual report triggers
   { label: 'Run daily audit now',        fn: 'runDailyAudit',
@@ -594,9 +597,16 @@ function buildDashboard_(ss) {
   sh.getRange(schemaHeaderRow + 1, 2, 1, 3).setValues([['Type', 'Name', 'Description']])
     .setFontWeight('bold').setBackground('#eee');
 
-  const seedRows = (preservedSchema && preservedSchema.length > 0)
-    ? preservedSchema
-    : DEFAULT_SCHEMA_SEED;
+  // Fallback chain for what to put in the Schema region:
+  //   1. The user-edited schema we just snapshotted.
+  //   2. Whatever columns currently exist on Responses (so the
+  //      Schema is always a true mirror of the live schema).
+  //   3. The bare-bones DEFAULT_SCHEMA_SEED (first run only).
+  let seedRows = (preservedSchema && preservedSchema.length > 0) ? preservedSchema : null;
+  if (!seedRows) {
+    const fromResponses = readSchemaFromResponses_(ss);
+    seedRows = fromResponses.length > 0 ? fromResponses : DEFAULT_SCHEMA_SEED;
+  }
 
   const schemaDataStart = schemaHeaderRow + 2;
   if (seedRows.length > 0) {
@@ -870,6 +880,29 @@ function syncSchemaToResponses() {
   if (!sh) { ui.alert('Run setup first.'); return; }
 
   const schema = readDashboardSchema_(sh);
+
+  // Guardrail: if the Schema region is empty but Responses already has
+  // columns, an empty-schema sync would propose deleting everything.
+  // That is almost certainly a mistake (the user cleared the region by
+  // accident, or never populated it). Offer to mirror Responses into
+  // the Schema instead.
+  if (schema.length === 0) {
+    const layout = (function () {
+      try { return getResponsesLayout_(); } catch (e) { return null; }
+    })();
+    const haveAny = layout && (layout.contextCols.length + layout.habitCols.length) > 0;
+    if (haveAny) {
+      const choice = ui.alert(
+        'Schema is empty',
+        'The Schema region on the Dashboard is empty, but the Responses tab already has columns. ' +
+        'Syncing now would propose deleting all of them.\n\n' +
+        'Click YES to refresh the Schema from Responses instead. Click NO to cancel.',
+        ui.ButtonSet.YES_NO
+      );
+      if (choice === ui.Button.YES) pullResponsesIntoSchema();
+      return;
+    }
+  }
   // Validate that every schema entry has a sensible type.
   const seen = new Set();
   const wantContext = [];
@@ -1043,6 +1076,125 @@ function formatResponsesTable_(sh) {
   for (let c = firstHabit; c <= lastHabit; c++) {
     sh.getRange(2, c, dataRows, 1).setDataValidation(habitRule);
   }
+
+  // Seed each context column with multi-line "Sample\nText" so AppSheet's
+  // type detection picks LongText (it samples cells; columns whose values
+  // contain newlines are typed as LongText, others default to Text and
+  // render as single-line inputs). We only write into row 2 of a column
+  // that is otherwise completely empty, so user data is never touched.
+  // ID and Date are excluded.
+  const reservedHeaders = new Set(['ID', 'Date', '_RowNumber']);
+  for (let c = 1; c <= idxSpacer; c++) { // 1-indexed; idxSpacer is 0-based, so this iterates left-of-spacer columns
+    const header = String(headers[c - 1] || '').trim();
+    if (!header || reservedHeaders.has(header) || header === spacer) continue;
+    const colVals = sh.getRange(2, c, dataRows, 1).getValues();
+    const allEmpty = colVals.every(r => r[0] === '' || r[0] === null);
+    if (allEmpty) {
+      sh.getRange(2, c).setValue('Sample\nText').setFontColor('#999');
+    }
+  }
+}
+
+
+/**
+ * Reads the live columns on the Responses tab and returns them as
+ * schema rows [[type, name, description], ...]. Used as a fallback
+ * when the Dashboard's Schema region is empty, and exposed via the
+ * "Pull Responses → Schema" action.
+ *
+ * Descriptions: when the column already exists in the Habit_Library,
+ * we copy its description so the Schema row stays informative.
+ */
+function readSchemaFromResponses_(ss) {
+  const dataSheet = ss.getSheetByName(TAB_RESPONSES);
+  if (!dataSheet || dataSheet.getLastColumn() < 1) return [];
+
+  const profile = (function () {
+    try { return getProfile(); } catch (e) { return {}; }
+  })();
+  const spacer = profile.col_spacer || '>> HABITS >>';
+  const endCol = profile.col_end    || 'AI_Feedback_Log';
+  const scoreCol = profile.col_score || 'Daily_Score';
+
+  const headers = dataSheet.getRange(1, 1, 1, dataSheet.getLastColumn()).getValues()[0];
+  const idxSpacer = headers.indexOf(spacer);
+  const idxEnd    = headers.indexOf(endCol);
+  if (idxSpacer === -1 || idxEnd === -1) return [];
+
+  // Build a name -> description map from the library.
+  const lib = ss.getSheetByName(TAB_LIBRARY);
+  const descByName = {};
+  if (lib && lib.getLastRow() > 1) {
+    const libRows = lib.getRange(2, 2, lib.getLastRow() - 1, 3).getValues();
+    libRows.forEach(r => {
+      const name = String(r[1] || '').trim();
+      const desc = String(r[2] || '').trim();
+      if (name) descByName[name] = desc;
+    });
+  }
+
+  const reserved = new Set(['ID', 'Date', spacer, endCol, scoreCol, '_RowNumber']);
+  const out = [];
+  for (let c = 0; c < idxSpacer; c++) {
+    const h = String(headers[c] || '').trim();
+    if (!h || reserved.has(h)) continue;
+    out.push(['Context', h, descByName[h] || '']);
+  }
+  for (let c = idxSpacer + 1; c < idxEnd; c++) {
+    const h = String(headers[c] || '').trim();
+    if (!h || reserved.has(h)) continue;
+    out.push(['Habit', h, descByName[h] || '']);
+  }
+  return out;
+}
+
+/**
+ * Public action: rewrites the Dashboard's Schema region from whatever
+ * is currently on the Responses tab. Useful if the Schema region was
+ * cleared, edited destructively, or got out of sync.
+ */
+function pullResponsesIntoSchema() {
+  const ui = SpreadsheetApp.getUi();
+  const ss = getSpreadsheet_();
+  const dash = ss.getSheetByName(TAB_DASHBOARD);
+  if (!dash) { ui.alert('Run setup first.'); return; }
+
+  const live = readSchemaFromResponses_(ss);
+  if (live.length === 0) {
+    ui.alert('No context or habit columns found on Responses. Add some columns first, or run setup to seed defaults.');
+    return;
+  }
+
+  // Locate the Schema region and rewrite it. Preserve dropdowns by
+  // re-applying the type rule to the rewritten rows.
+  const props = PropertiesService.getDocumentProperties();
+  const headerRow = parseInt(props.getProperty('DASH_SCHEMA_HEADER_ROW') || '0', 10);
+  if (!headerRow) { ui.alert('Schema region not found. Re-run setup.'); return; }
+  const dataStart = headerRow + 2;
+
+  // Clear anything currently in the schema region first.
+  const lastRow = dash.getLastRow();
+  if (lastRow >= dataStart) {
+    dash.getRange(dataStart, 2, lastRow - dataStart + 1, 3).clearContent();
+  }
+
+  dash.getRange(dataStart, 2, live.length, 3).setValues(live);
+
+  // Reapply the Type dropdown across the rewritten rows + spare blanks.
+  const ruleRows = Math.max(live.length + DASH_SCHEMA_BLANK_ROWS, 50);
+  const typeRule = SpreadsheetApp.newDataValidation()
+    .requireValueInList(['Context', 'Habit'], true)
+    .setAllowInvalid(false)
+    .build();
+  dash.getRange(dataStart, 2, ruleRows, 1).setDataValidation(typeRule);
+
+  refreshDashboard();
+  ui.alert(
+    'Schema refreshed',
+    'Loaded ' + live.length + ' column' + (live.length === 1 ? '' : 's') +
+    ' from the Responses tab into the Schema region.',
+    ui.ButtonSet.OK
+  );
 }
 
 
@@ -1146,7 +1298,7 @@ const DEFAULT_SCHEMA_SEED = [
 
 const DEFAULT_LIBRARY = [
   // Context columns
-  ['Context', 'Spiritual_Life',      'Spiritual life: gospel readings, lives of saints, parish events, notable moments.'],
+  ['Context', 'Spiritual Life',      'Spiritual life: gospel readings, lives of saints, parish events, notable moments.'],
   ['Context', 'Exercise',            'What movement happened today (run, lift, walk, mobility).'],
   ['Context', 'Financial',           'Notable spending, earning, budgeting, or financial decisions.'],
   ['Context', 'Work',                'Work / study output, meetings, projects worked on.'],
@@ -1181,24 +1333,38 @@ const DEFAULT_LIBRARY = [
   ['Habit',   'No impulse purchases',  'Avoided unplanned discretionary purchases.'],
 
   // Habits — relationships & service
-  ['Habit',   'Called a loved one',    'Reached out to a family member or close friend.'],
-  ['Habit',   'Acted with kindness',   'Did one deliberate act of kindness or service today.'],
-  ['Habit',   'Listened well',         'Held back from interrupting in at least one conversation.'],
+  ['Habit',   'Called a loved one',     'Reached out to a family member or close friend.'],
+  ['Habit',   'Acted with kindness',    'Did one deliberate act of kindness or service today.'],
+  ['Habit',   'Listened well',          'Held back from interrupting in at least one conversation.'],
+  ['Habit',   'Service / Charity',      'Performed an act of service or charity today.'],
 
   // Habits — spiritual rule of life (any tradition). The spiritual
   // report reads the entire log and weighs every habit, so no special
   // prefix is needed.
-  ['Habit',   'Morning prayer rule',  'Completed your morning prayer rule.'],
-  ['Habit',   'Evening prayer rule',  'Completed your evening prayer rule.'],
-  ['Habit',   'Jesus Prayer',         'Said the Jesus / Theotokos prayer rope today.'],
-  ['Habit',   'Prostrations',         'Completed your prostrations.'],
-  ['Habit',   'Kept the fast',        'Kept the fasting rule for today.'],
-  ['Habit',   'Scripture reading',    'Read scripture today.'],
-  ['Habit',   'Read a saint\'s life', 'Read a saint\'s life or a spiritual classic today.'],
-  ['Habit',   'Attended liturgy',     'Attended Liturgy or a service today.'],
-  ['Habit',   'Almsgiving',           'Gave alms / acted in charity today.'],
-  ['Habit',   'Kept silence',         'Held silence rather than gossip / idle words.'],
-  ['Habit',   'Guarded the mind',     'Caught a passion early and resisted it before it took root.']
+  ['Habit',   'Morning prayer rule',    'Completed your morning prayer rule.'],
+  ['Habit',   'Evening prayer rule',    'Completed your evening prayer rule.'],
+  ['Habit',   'Jesus Prayer',           'Said the Jesus / Theotokos prayer rope today.'],
+  ['Habit',   'Prostrations',           'Completed your prostrations.'],
+  ['Habit',   'Kept the fast',          'Kept the fasting rule for today.'],
+  ['Habit',   'Scripture reading',      'Read scripture today.'],
+  ['Habit',   'Read a saint\'s life',   'Read a saint\'s life or a spiritual classic today.'],
+  ['Habit',   'Attended liturgy',       'Attended Liturgy or a service today.'],
+  ['Habit',   'Almsgiving',             'Gave alms / acted in charity today.'],
+  ['Habit',   'Kept silence',           'Held silence rather than gossip / idle words.'],
+  ['Habit',   'Guarded the mind',       'Caught a passion early and resisted it before it took root.'],
+
+  // Habits — guarding the passions (positive phrasing — Success means
+  // the temptation was resisted, not given in to).
+  ['Habit',   'Avoided digital bypass', 'Did not use phone / internet to numb out or escape.'],
+  ['Habit',   'Avoided judgement',      'Caught judgemental thoughts early and let them go without speaking them.'],
+  ['Habit',   'Avoided snapping',       'Stayed measured rather than snapping at someone in frustration.'],
+  ['Habit',   'Ignored lustful thoughts','Refused to dwell on lustful thoughts when they arose.'],
+  ['Habit',   'Avoided lust',           'Did not act on lustful impulses today.'],
+  ['Habit',   'Avoided lustful gazing', 'Guarded the eyes; did not linger on lustful images or people.'],
+  ['Habit',   'Avoided media binge',    'Did not lose the evening to mindless streaming / scrolling.'],
+  ['Habit',   'Avoided criticism',      'Did not criticise others behind their back today.'],
+  ['Habit',   'Avoided gluttony',       'Ate to nourishment, not to excess.'],
+  ['Habit',   'Avoided crude jokes',    'Refrained from crude or vulgar humour today.']
 ];
 
 function getLibraryHeaders_() {

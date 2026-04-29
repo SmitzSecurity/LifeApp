@@ -143,22 +143,47 @@ SECTION 10 — Markdown -> HTML formatting
    - inserts new habit columns to the RIGHT of the spacer,
    - removes columns from `Responses` that you've removed from the
      Schema region (with a confirmation dialog before any deletion),
-   - re-applies table formatting: frozen header, banded rows, and a
+   - re-applies table formatting: frozen header, banded rows, a
      **Success / Fail / Exempt** dropdown on every habit column for
-     the *entire sheet* (not just existing rows), so AppSheet picks
-     the right Enum type and future rows keep the dropdown, and
+     the *entire sheet*, and a placeholder `Sample\nText` value in
+     row 2 of any empty context column (the multi-line content makes
+     AppSheet auto-detect the column as `LongText` rather than
+     single-line `Text`), and
    - leaves protected columns (ID, Date, spacer, AI_Feedback_Log,
      Daily_Score) untouched.
 
+   The placeholder is only written into rows that are otherwise
+   completely empty, and it's coloured grey so it's easy to see and
+   delete once you have real data flowing.
+
    Re-running setup preserves your Schema rows; nothing is lost.
 
-   You can re-apply the table formatting and validation any time
-   from **Dashboard → "Reformat Responses table"**.
+   The Schema region is also kept in sync with `Responses` in two
+   safety-belt ways:
+
+   - On every setup run, if the Schema region is empty, it's
+     auto-populated from whatever columns currently exist on
+     `Responses` (with descriptions copied from the
+     `Habit_Library` where names match).
+   - **Dashboard → "Pull Responses into Schema"** rewrites the
+     Schema region from `Responses` on demand. Use it any time the
+     two get out of sync.
+   - If you click **Sync schema to Responses** while the Schema
+     region is empty *and* `Responses` already has columns, a
+     guardrail catches it: you'll be asked whether to pull
+     `Responses` into the Schema instead, so you can never
+     accidentally delete all your columns by syncing an empty
+     schema.
+
+   You can re-apply table formatting and validation any time from
+   **Dashboard → "Reformat Responses table"**.
 
    Once your schema is settled, point AppSheet at the `Responses`
    sheet. Because the habit columns already carry value-in-list
-   validation, AppSheet auto-detects them as Enum columns with the
-   correct allowed values — no per-column re-typing in AppSheet's UI.
+   validation and the context columns carry multi-line sample text,
+   AppSheet auto-detects them as `Enum (Success/Fail/Exempt)` and
+   `LongText` respectively — no per-column re-typing in AppSheet's
+   UI.
 8. **Add time-based triggers** (Triggers tab in the editor) for the
    functions you want:
    - `runDailyAudit` — daily, late evening
@@ -182,10 +207,13 @@ The first tab — `Dashboard` — is the home screen. It has two parts:
    - **Setup & identity:** Edit profile, Set Gemini API key, Re-run
      setup.
    - **Schema:** edit the on-sheet Schema region directly, then click
-     **Sync schema to Responses**. Or **Import selected from library**
-     to copy ticked rows from the `Habit_Library` tab into the Schema
-     region. **Reformat Responses table** re-applies banding, frozen
-     header, and habit-column validation on demand.
+     **Sync schema to Responses**. **Pull Responses into Schema**
+     refreshes the Schema region from whatever columns currently live
+     on `Responses` (use this if the Schema gets cleared or out of
+     sync). **Import selected from library** copies ticked rows from
+     `Habit_Library` into the Schema. **Reformat Responses table**
+     re-applies banding, frozen header, habit-column validation, and
+     LongText sample seeding on demand.
    - **Manual report runs:** Run daily audit / weekly report /
      monthly review / annual review / spiritual report — useful for
      testing without waiting on a time-based trigger.
