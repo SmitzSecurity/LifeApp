@@ -66,7 +66,7 @@ SECTION 10 — Markdown -> HTML formatting
 
 ---
 
-## Setup (new user, ~10 minutes)
+## Setup (new user, ~5 minutes)
 
 1. **Create the spreadsheet.** Make a fresh Google Sheet.
 2. **Open the script editor** (Extensions → Apps Script).
@@ -78,19 +78,30 @@ SECTION 10 — Markdown -> HTML formatting
      in editor", then replace the manifest with the contents of
      `appsscript.json` from this repo.
 4. **Reload the spreadsheet** so the new `Life OS` menu appears. From
-   that menu, choose **Run setup**. Approve the OAuth prompts. This
-   creates every required tab, seeds defaults for `User_Profile` and
-   `System_Docs`, and seeds a starter set of headers on `Responses`.
-5. **Fill in `User_Profile`** — at minimum, `email`. Optional fields
-   shape the prompts: `location`, `faith`, `career`, `goals`, etc.
-6. **Set the API key.** From the spreadsheet: **Life OS → Set Gemini
-   API key…** A prompt opens; paste your key. The key is stored in
-   Script Properties (private to the script's owner) and is never
-   written to source or to the spreadsheet.
+   that menu, choose **Run setup**. Approve the OAuth prompts. This:
+   - creates every required tab (`Dashboard`, `Responses`,
+     `User_Profile`, `User_Memory`, `System_Docs`,
+     `Spiritual_Biography`),
+   - seeds defaults (including a starter header row on `Responses`),
+   - registers an installable edit-trigger so the Dashboard buttons
+     work,
+   - moves you to the Dashboard tab, and
+   - on the *first* run, offers to launch the **initialization
+     wizard** — a sequence of prompts that fill in `User_Profile`
+     (email, timezone, location, faith, career, goals) and the API
+     key. Click **Yes** and you're done with setup.
+5. **(If you skipped the wizard above)** Run it any time from
+   **Dashboard → "Run initialization wizard"** or from
+   **Life OS → Run initialization wizard**.
+6. **(If you skipped the API key step)** Use **Dashboard → "Set
+   Gemini API key"** or **Life OS → Set Gemini API key…** A prompt
+   opens; paste your key. The key is stored in Script Properties
+   (private to the script's owner) and is never written to source or
+   to the spreadsheet.
 
    *Note:* the Apps Script editor's Run button cannot pass parameters,
-   which is why `setApiKey` is wired to the menu and falls back to a
-   prompt dialog when called with no argument.
+   which is why `setApiKey` is wired to the menu/dashboard and falls
+   back to a prompt dialog when called with no argument.
 7. **Tune the `Responses` sheet** if needed. Setup seeds these headers:
 
    ```
@@ -131,16 +142,44 @@ Editing your goals later means changing one cell in `User_Profile`.
 Editing the *wording* of a report means changing one cell in
 `System_Docs`.
 
+### The Dashboard tab
+
+The first tab — `Dashboard` — is the home screen. It has two parts:
+
+1. **Actions** — a list of one-line buttons backed by checkboxes.
+   Tick the checkbox in column A and the matching action runs (the
+   checkbox automatically resets afterwards). Available actions:
+
+   - Run initialization wizard
+   - Set Gemini API key
+   - Re-run setup
+   - Run daily audit / weekly report / monthly review / annual review
+     / spiritual report — useful for testing without waiting on a
+     time-based trigger.
+   - Refresh dashboard status
+
+2. **Status** — a live snapshot of email, timezone, location, faith,
+   career, goals, whether an API key is stored, model name,
+   `Responses` row count, latest daily score, biography chapter
+   count, and the last `User_Memory` entry. Refreshes automatically
+   every time the spreadsheet is opened or an action runs.
+
+The Dashboard is wired to script actions via an installable
+`onEdit` trigger that `setupSpreadsheet` registers for you. (Apps
+Script's *simple* `onEdit` cannot send mail or call external APIs;
+the installable trigger runs as you, the script's owner, with full
+permissions.)
+
 ### The "Life OS" menu
 
-Once the script is installed and the spreadsheet is reloaded, a
-top-level **Life OS** menu appears with one-click access to:
+Equivalent menu access for everything on the Dashboard:
 
 - **Run setup** — `setupSpreadsheet`
+- **Run initialization wizard** — `runInitWizard`
 - **Set Gemini API key…** — opens a prompt
+- **Refresh dashboard** — `refreshDashboard`
 - **Run daily audit** / **weekly report** / **monthly review** /
-  **annual review** / **spiritual report** — manual triggers, useful
-  for testing without waiting on a time-based trigger.
+  **annual review** / **spiritual report**
 
 ---
 

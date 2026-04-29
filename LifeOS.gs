@@ -4,13 +4,12 @@
  * =========================================================================
  * A single-file Apps Script. Drop this into the script editor of a fresh
  * Google Sheet, replace the manifest with the provided appsscript.json,
- * then:
+ * reload the spreadsheet, then:
  *
- *   1. Run setupSpreadsheet()           // creates and seeds every tab
- *   2. Run setApiKey('YOUR_GEMINI_KEY') // stored in Script Properties
- *   3. Fill in the User_Profile tab     // email is required
- *   4. Configure the Responses tab      // see README
- *   5. Add time-based triggers          // runDailyAudit, runSpiritualReport, ...
+ *   1. Life OS menu -> Run setup           // builds every tab + the dashboard
+ *   2. Accept the wizard offer             // fills User_Profile + API key
+ *   3. Use the Dashboard tab               // checkbox "buttons" run actions
+ *   4. (Optional) add time-based triggers  // runDailyAudit, runSpiritualReport, ...
  *
  * Everything user-specific lives in spreadsheet tabs (User_Profile and
  * System_Docs). Code is generic; secrets live in Script Properties.
@@ -24,6 +23,7 @@
  * system enforces; the bootstrapper creates these tabs on first run.
  * ========================================================================= */
 
+const TAB_DASHBOARD   = 'Dashboard';
 const TAB_RESPONSES   = 'Responses';
 const TAB_USER_PROF   = 'User_Profile';
 const TAB_USER_MEM    = 'User_Memory';
@@ -57,15 +57,23 @@ function runSpiritualReport()  { processSpiritualReport(profileGetInt('spiritual
 function onOpen() {
   const ui = SpreadsheetApp.getUi();
   ui.createMenu('Life OS')
-    .addItem('Run setup',           'setupSpreadsheet')
-    .addItem('Set Gemini API key…', 'setApiKey')
+    .addItem('Run setup',                'setupSpreadsheet')
+    .addItem('Run initialization wizard','runInitWizard')
+    .addItem('Set Gemini API key…',      'setApiKey')
+    .addItem('Refresh dashboard',        'refreshDashboard')
     .addSeparator()
-    .addItem('Run daily audit',     'runDailyAudit')
-    .addItem('Run weekly report',   'runWeeklyReport')
-    .addItem('Run monthly review',  'runMonthlyReview')
-    .addItem('Run annual review',   'runAnnualReview')
-    .addItem('Run spiritual report','runSpiritualReport')
+    .addItem('Run daily audit',          'runDailyAudit')
+    .addItem('Run weekly report',        'runWeeklyReport')
+    .addItem('Run monthly review',       'runMonthlyReview')
+    .addItem('Run annual review',        'runAnnualReview')
+    .addItem('Run spiritual report',     'runSpiritualReport')
     .addToUi();
+
+  // Refresh dashboard status panel on every open so it stays accurate.
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss && ss.getSheetByName(TAB_DASHBOARD)) refreshDashboard();
+  } catch (e) { /* dashboard not built yet — no-op */ }
 }
 
 
@@ -81,6 +89,7 @@ function onOpen() {
  */
 function setupSpreadsheet() {
   const ss = getSpreadsheet_();
+  const profileExisted = !!ss.getSheetByName(TAB_USER_PROF);
 
   ensureTab_(ss, TAB_RESPONSES,  [DEFAULT_RESPONSES_HEADERS]);
   ensureTab_(ss, TAB_USER_PROF,  DEFAULT_PROFILE);
@@ -88,15 +97,309 @@ function setupSpreadsheet() {
   ensureTab_(ss, TAB_SYS_DOCS,   getDefaultDocs_());
   ensureTab_(ss, TAB_SPIRIT_BIO, [['date', 'type', 'title', 'narrative', 'tags']]);
 
-  try {
-    SpreadsheetApp.getUi().alert(
-      'Life OS is set up.\n\n' +
-      '1. Fill in User_Profile (email is required).\n' +
-      '2. Life OS menu → "Set Gemini API key…"\n' +
-      '3. Edit/extend the Responses headers as needed (see README).\n' +
-      '4. Add time-based triggers for runDailyAudit, runWeeklyReport, etc.'
+  buildDashboard_(ss);
+  ensureDashboardEditTrigger_();
+
+  // Make the Dashboard the first sheet so users land on it.
+  const dash = ss.getSheetByName(TAB_DASHBOARD);
+  if (dash) {
+    ss.setActiveSheet(dash);
+    ss.moveActiveSheet(1);
+  }
+
+  let ui;
+  try { ui = SpreadsheetApp.getUi(); } catch (e) { ui = null; }
+
+  if (!ui) return;
+
+  // Offer to walk first-time users through the init wizard.
+  if (!profileExisted || !profileGet('email', '')) {
+    const resp = ui.alert(
+      'Life OS is set up',
+      'Would you like to run the initialization wizard now? It will fill in your User_Profile (email, timezone, location, faith, career, goals) and prompt for your Gemini API key.',
+      ui.ButtonSet.YES_NO
     );
-  } catch (e) { /* running outside the UI is fine */ }
+    if (resp === ui.Button.YES) {
+      runInitWizard();
+      return;
+    }
+  }
+
+  ui.alert(
+    'Life OS is set up.\n\n' +
+    '• Open the Dashboard tab to run actions with one click.\n' +
+    '• Life OS menu → "Run initialization wizard" to fill in User_Profile.\n' +
+    '• Life OS menu → "Set Gemini API key…" to set your key.\n' +
+    '• Edit/extend the Responses headers as needed (see README).'
+  );
+}
+
+
+/**
+ * Conversational setup. Walks the user through a series of prompts and
+ * writes each answer back to User_Profile. Idempotent: existing values
+ * are shown as the prompt's default and kept if the user cancels or
+ * leaves the field blank.
+ */
+function runInitWizard() {
+  let ui;
+  try { ui = SpreadsheetApp.getUi(); }
+  catch (e) {
+    throw new Error('runInitWizard must be invoked from the spreadsheet (Life OS menu or a button), not the script editor.');
+  }
+
+  const ss = getSpreadsheet_();
+  if (!ss.getSheetByName(TAB_USER_PROF)) setupSpreadsheet();
+
+  const steps = [
+    { key: 'email',     label: 'Email address',
+      help:  'Where reports will be sent.' },
+    { key: 'timezone',  label: 'Timezone',
+      help:  'IANA name, e.g. America/New_York or Europe/Athens.' },
+    { key: 'location',  label: 'Location',
+      help:  'City / region. Used to ground prompts in local context (e.g. "Tampa, FL").' },
+    { key: 'faith',     label: 'Faith tradition (optional)',
+      help:  'Used by the spiritual subsystem. Leave blank if not applicable.' },
+    { key: 'career',    label: 'Career / studies (optional)',
+      help:  'Current role, schooling, or transition. Used in prompts.' },
+    { key: 'goals',     label: 'Current goals (optional)',
+      help:  'A short, comma-separated list (e.g. "Career entry, Dating, Spiritual deepening").' }
+  ];
+
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const current = profileGet(step.key, '');
+    const promptText =
+      step.help +
+      (current ? `\n\nCurrent value: ${current}\n(Leave blank to keep it.)` : '\n\n(Leave blank to skip.)');
+    const resp = ui.prompt(`Setup ${i + 1}/${steps.length} — ${step.label}`, promptText, ui.ButtonSet.OK_CANCEL);
+    if (resp.getSelectedButton() !== ui.Button.OK) return;
+    const value = resp.getResponseText().trim();
+    if (value) profileSet_(step.key, value);
+  }
+
+  // Optional API key step at the end.
+  const hasKey = !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY);
+  const keyResp = ui.alert(
+    'Gemini API key',
+    hasKey
+      ? 'An API key is already stored. Would you like to replace it?'
+      : 'Would you like to set your Gemini API key now? It will be stored privately in Script Properties.',
+    ui.ButtonSet.YES_NO
+  );
+  if (keyResp === ui.Button.YES) setApiKey();
+
+  refreshDashboard();
+  ui.alert('Setup complete', 'Your User_Profile has been saved. Open the Dashboard tab to run reports with one click.', ui.ButtonSet.OK);
+}
+
+
+/* =========================================================================
+ * SECTION 3b — DASHBOARD
+ * Builds a clickable home page with checkbox "buttons" and a live status
+ * panel. An installable onEdit trigger watches the checkbox cells; when
+ * one is checked, the matching action runs and the box resets to FALSE.
+ * ========================================================================= */
+
+const DASHBOARD_ACTIONS = [
+  { label: 'Run initialization wizard',  fn: 'runInitWizard',
+    note:  'Walks you through filling in User_Profile.' },
+  { label: 'Set Gemini API key',         fn: 'setApiKey',
+    note:  'Opens a prompt. Stored privately in Script Properties.' },
+  { label: 'Re-run setup',               fn: 'setupSpreadsheet',
+    note:  'Recreates missing tabs and tops up any new defaults.' },
+  { label: 'Run daily audit now',        fn: 'runDailyAudit',
+    note:  'Generates today\'s briefing and emails it.' },
+  { label: 'Run weekly report now',      fn: 'runWeeklyReport',
+    note:  'Strategy review of the last 7 days.' },
+  { label: 'Run monthly review now',     fn: 'runMonthlyReview',
+    note:  'Performance grade for the last 30 days.' },
+  { label: 'Run annual review now',      fn: 'runAnnualReview',
+    note:  'Year-in-review narrative.' },
+  { label: 'Run spiritual report now',   fn: 'runSpiritualReport',
+    note:  'Pastoral review and biography chapter.' },
+  { label: 'Refresh dashboard status',   fn: 'refreshDashboard',
+    note:  'Re-reads User_Profile and the sheets to update the panel below.' }
+];
+
+const DASHBOARD_ACTION_START_ROW = 4;       // row where action checkboxes start
+const DASHBOARD_STATUS_START_OFFSET = 2;    // blank rows between actions and status
+
+function buildDashboard_(ss) {
+  let sh = ss.getSheetByName(TAB_DASHBOARD);
+  if (!sh) sh = ss.insertSheet(TAB_DASHBOARD, 0);
+
+  sh.clear();
+  sh.setHiddenGridlines(true);
+  sh.setColumnWidth(1, 30);   // checkbox
+  sh.setColumnWidth(2, 320);  // action label
+  sh.setColumnWidth(3, 480);  // note / status value
+
+  // Title block.
+  sh.getRange('B1').setValue('Life OS').setFontSize(22).setFontWeight('bold');
+  sh.getRange('B2').setValue('Tick a checkbox to run an action. Status panel below updates after each action.')
+                   .setFontStyle('italic').setFontColor('#555');
+
+  // Action rows.
+  sh.getRange(DASHBOARD_ACTION_START_ROW - 1, 2).setValue('Actions').setFontWeight('bold').setFontSize(14);
+  DASHBOARD_ACTIONS.forEach((a, i) => {
+    const row = DASHBOARD_ACTION_START_ROW + i;
+    const cb = sh.getRange(row, 1);
+    cb.insertCheckboxes();
+    cb.setValue(false);
+    sh.getRange(row, 2).setValue(a.label).setFontWeight('bold');
+    sh.getRange(row, 3).setValue(a.note).setFontColor('#666');
+  });
+
+  // Status panel.
+  const statusRow = DASHBOARD_ACTION_START_ROW + DASHBOARD_ACTIONS.length + DASHBOARD_STATUS_START_OFFSET;
+  sh.getRange(statusRow, 2).setValue('Status').setFontWeight('bold').setFontSize(14);
+  const statusKeys = [
+    'Email', 'Timezone', 'Location', 'Faith', 'Career', 'Goals',
+    'Gemini API key', 'Model', 'Responses rows', 'Latest daily score',
+    'Biography chapters', 'Last memory entry'
+  ];
+  statusKeys.forEach((label, i) => {
+    sh.getRange(statusRow + 1 + i, 2).setValue(label).setFontWeight('bold');
+  });
+
+  // Header banner color.
+  sh.getRange('A1:C2').setBackground('#f5f1fa');
+
+  refreshDashboard();
+}
+
+/**
+ * Re-reads User_Profile and the relevant sheets, and writes a status
+ * snapshot into the Dashboard's status panel. Safe to call any time.
+ */
+function refreshDashboard() {
+  const ss = getSpreadsheet_();
+  const sh = ss.getSheetByName(TAB_DASHBOARD);
+  if (!sh) return;
+
+  const statusRow = DASHBOARD_ACTION_START_ROW + DASHBOARD_ACTIONS.length + DASHBOARD_STATUS_START_OFFSET + 1;
+
+  const profile = (function () {
+    try { return getProfile(); } catch (e) { return {}; }
+  })();
+  const apiKeySet = !!PropertiesService.getScriptProperties().getProperty(PROP_API_KEY);
+
+  const responsesSheet = ss.getSheetByName(TAB_RESPONSES);
+  const memSheet = ss.getSheetByName(TAB_USER_MEM);
+  const bioSheet = ss.getSheetByName(TAB_SPIRIT_BIO);
+
+  let respRows = 0, latestScore = '—';
+  if (responsesSheet) {
+    respRows = Math.max(0, responsesSheet.getLastRow() - 1);
+    if (respRows > 0) {
+      const headers = responsesSheet.getRange(1, 1, 1, responsesSheet.getLastColumn()).getValues()[0];
+      const scoreCol = headers.indexOf(profile.col_score || 'Daily_Score');
+      if (scoreCol > -1) {
+        const v = responsesSheet.getRange(responsesSheet.getLastRow(), scoreCol + 1).getValue();
+        if (v !== '' && v !== null && v !== undefined) latestScore = v;
+      }
+    }
+  }
+  const bioRows = bioSheet ? Math.max(0, bioSheet.getLastRow() - 1) : 0;
+
+  let lastMemoryLabel = '—';
+  if (memSheet && memSheet.getLastRow() > 1) {
+    const last = memSheet.getRange(memSheet.getLastRow(), 1, 1, 3).getValues()[0];
+    const ts = last[1] instanceof Date ? Utilities.formatDate(last[1], profile.timezone || 'UTC', 'yyyy-MM-dd HH:mm') : last[1];
+    lastMemoryLabel = `${last[2] || ''} @ ${ts}`;
+  }
+
+  const values = [
+    [profile.email     || '(not set)'],
+    [profile.timezone  || '(not set)'],
+    [profile.location  || '(not set)'],
+    [profile.faith     || '(not set)'],
+    [profile.career    || '(not set)'],
+    [profile.goals     || '(not set)'],
+    [apiKeySet ? '✓ stored in Script Properties' : '✗ not set — use the action above'],
+    [profile.model_name || '(default)'],
+    [respRows],
+    [latestScore],
+    [bioRows],
+    [lastMemoryLabel]
+  ];
+  sh.getRange(statusRow, 3, values.length, 1).setValues(values);
+}
+
+
+/**
+ * Installable onEdit trigger handler.
+ *
+ * Apps Script gives every spreadsheet a simple `onEdit(e)` trigger that
+ * fires on edits — but simple triggers cannot send mail, call external
+ * services, or use most permissions-requiring APIs. So we instead
+ * register a real installable trigger that runs this handler with the
+ * full authorization of the script owner.
+ *
+ * When the user ticks a checkbox in column A of the Dashboard's action
+ * range, we look up the corresponding function name and invoke it,
+ * then reset the checkbox to FALSE.
+ */
+function dashboardOnEdit_(e) {
+  try {
+    if (!e || !e.range) return;
+    const sh = e.range.getSheet();
+    if (sh.getName() !== TAB_DASHBOARD) return;
+    if (e.range.getColumn() !== 1) return;
+    const row = e.range.getRow();
+    const idx = row - DASHBOARD_ACTION_START_ROW;
+    if (idx < 0 || idx >= DASHBOARD_ACTIONS.length) return;
+    if (e.value !== 'TRUE' && e.value !== true) return;
+
+    const action = DASHBOARD_ACTIONS[idx];
+    e.range.setValue(false);
+    invokeAction_(action.fn);
+    refreshDashboard();
+  } catch (err) {
+    Logger.log('dashboardOnEdit_ failure: ' + err);
+    try {
+      SpreadsheetApp.getUi().alert('Action failed: ' + err);
+    } catch (e2) { /* no UI in this context */ }
+  }
+}
+
+function invokeAction_(name) {
+  const fn = (typeof globalThis !== 'undefined' ? globalThis : this)[name];
+  if (typeof fn !== 'function') throw new Error(`Unknown action: ${name}`);
+  fn();
+}
+
+/**
+ * Ensures the dashboardOnEdit_ installable trigger exists. Idempotent.
+ */
+function ensureDashboardEditTrigger_() {
+  const ss = getSpreadsheet_();
+  const triggers = ScriptApp.getProjectTriggers();
+  const already = triggers.some(t =>
+    t.getHandlerFunction() === 'dashboardOnEdit_' &&
+    t.getEventType() === ScriptApp.EventType.ON_EDIT
+  );
+  if (already) return;
+  ScriptApp.newTrigger('dashboardOnEdit_').forSpreadsheet(ss).onEdit().create();
+}
+
+/**
+ * Internal: write a single key/value into User_Profile, updating the
+ * row if it exists or appending a new one if not.
+ */
+function profileSet_(key, value) {
+  const ss = getSpreadsheet_();
+  const sh = ss.getSheetByName(TAB_USER_PROF);
+  if (!sh) throw new Error(`Missing tab '${TAB_USER_PROF}'.`);
+  const rows = sh.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][0] || '').trim() === key) {
+      sh.getRange(i + 1, 2).setValue(value);
+      return;
+    }
+  }
+  sh.appendRow([key, value, '']);
 }
 
 /**
