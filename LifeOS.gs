@@ -809,6 +809,28 @@ function ensureDashboardEditTrigger_() {
  * without ever touching the header row by hand.
  * -----------------------------------------------------------------------*/
 
+/**
+ * Returns the set of column names that schema operations must NEVER
+ * delete: the structural markers (ID, Date, spacer, end, score, plus
+ * the AppSheet-injected _RowNumber) AND anything the user has listed
+ * in User_Profile.protected_columns (default 'Journal').
+ */
+function getProtectedColumnNames_() {
+  const profile = (function () {
+    try { return getProfile(); } catch (e) { return {}; }
+  })();
+  const set = new Set(['ID', 'Date', '_RowNumber']);
+  set.add(profile.col_spacer || '>> HABITS >>');
+  set.add(profile.col_end    || 'AI_Feedback_Log');
+  set.add(profile.col_score  || 'Daily_Score');
+  String(profile.protected_columns || 'Journal')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .forEach(name => set.add(name));
+  return set;
+}
+
 function getResponsesLayout_() {
   const ss = getSpreadsheet_();
   const sh = ss.getSheetByName(TAB_RESPONSES);
@@ -835,16 +857,27 @@ function getResponsesLayout_() {
     throw new Error(`Could not find the '${endCol}' marker on the Responses sheet. Re-run setup from the Dashboard.`);
   }
 
-  const reserved = new Set(['ID', 'Date', spacer, endCol, scoreCol, '_RowNumber']);
+  // structural reservations: never surfaced as context/habit columns
+  const structural = new Set(['ID', 'Date', spacer, endCol, scoreCol, '_RowNumber']);
+  // user-defined protected names: surfaced (so the Schema can include
+  // them and the Dashboard renders them) but flagged so deletes skip
+  // them.
+  const userProtected = new Set();
+  String(profile.protected_columns || 'Journal')
+    .split(',').map(s => s.trim()).filter(Boolean)
+    .forEach(name => userProtected.add(name));
+
   const contextCols = [];
   const habitCols = [];
   for (let c = 0; c < idxSpacer; c++) {
     const h = String(headers[c] || '').trim();
-    if (h && !reserved.has(h)) contextCols.push({ name: h, col: c + 1 });
+    if (!h || structural.has(h)) continue;
+    contextCols.push({ name: h, col: c + 1, protected: userProtected.has(h) });
   }
   for (let c = idxSpacer + 1; c < idxEnd; c++) {
     const h = String(headers[c] || '').trim();
-    if (h && !reserved.has(h)) habitCols.push({ name: h, col: c + 1 });
+    if (!h || structural.has(h)) continue;
+    habitCols.push({ name: h, col: c + 1, protected: userProtected.has(h) });
   }
 
   return {
@@ -857,7 +890,8 @@ function getResponsesLayout_() {
     idxEnd: idxEnd,
     idxScore: idxScore,
     contextCols: contextCols,
-    habitCols: habitCols
+    habitCols: habitCols,
+    protectedNames: getProtectedColumnNames_()
   };
 }
 
@@ -883,9 +917,11 @@ function syncSchemaToResponses() {
 
   // Guardrail: if the Schema region is empty but Responses already has
   // columns, an empty-schema sync would propose deleting everything.
-  // That is almost certainly a mistake (the user cleared the region by
-  // accident, or never populated it). Offer to mirror Responses into
-  // the Schema instead.
+  // Offer three explicit choices via YES_NO_CANCEL so the user is
+  // never trapped without an "actually delete" path:
+  //   YES    -> mirror Responses into the Schema (recommended)
+  //   NO     -> cancel
+  //   CANCEL -> proceed with the deletion as-typed
   if (schema.length === 0) {
     const layout = (function () {
       try { return getResponsesLayout_(); } catch (e) { return null; }
@@ -895,12 +931,15 @@ function syncSchemaToResponses() {
       const choice = ui.alert(
         'Schema is empty',
         'The Schema region on the Dashboard is empty, but the Responses tab already has columns. ' +
-        'Syncing now would propose deleting all of them.\n\n' +
-        'Click YES to refresh the Schema from Responses instead. Click NO to cancel.',
-        ui.ButtonSet.YES_NO
+        'Syncing as-is would propose deleting all of them.\n\n' +
+        '• YES — refresh the Schema from Responses (recommended).\n' +
+        '• NO — cancel and do nothing.\n' +
+        '• CANCEL — proceed with the deletion anyway. Protected columns are still preserved.',
+        ui.ButtonSet.YES_NO_CANCEL
       );
-      if (choice === ui.Button.YES) pullResponsesIntoSchema();
-      return;
+      if (choice === ui.Button.YES) { pullResponsesIntoSchema(); return; }
+      if (choice === ui.Button.NO || choice === ui.Button.CLOSE) return;
+      // CANCEL falls through and runs the (now-empty) sync below.
     }
   }
   // Validate that every schema entry has a sensible type.
@@ -928,15 +967,26 @@ function syncSchemaToResponses() {
   const haveHabit   = layout.habitCols.map(c => c.name);
 
   const desiredAll = new Set(wantContext.concat(wantHabit));
-  const toDeleteContext = layout.contextCols.filter(c => !desiredAll.has(c.name));
-  const toDeleteHabit   = layout.habitCols  .filter(c => !desiredAll.has(c.name));
+  // Protected columns (Journal, ID, Date, markers, plus anything the
+  // user has listed in User_Profile.protected_columns) are NEVER
+  // deleted, regardless of whether they appear in the Schema region.
+  const protectedNames = layout.protectedNames || getProtectedColumnNames_();
+  const toDeleteContext = layout.contextCols.filter(c => !desiredAll.has(c.name) && !protectedNames.has(c.name));
+  const toDeleteHabit   = layout.habitCols  .filter(c => !desiredAll.has(c.name) && !protectedNames.has(c.name));
+  const skippedDeletion = layout.contextCols.concat(layout.habitCols)
+    .filter(c => !desiredAll.has(c.name) && protectedNames.has(c.name));
   const toDelete = toDeleteContext.concat(toDeleteHabit);
 
   const toAddContext = wantContext.filter(n => haveContext.indexOf(n) === -1);
   const toAddHabit   = wantHabit  .filter(n => haveHabit.indexOf(n) === -1);
 
   if (toAdd_summary(toAddContext, toAddHabit) === 0 && toDelete.length === 0) {
-    ui.alert('Schema and Responses are already in sync.');
+    ui.alert(
+      skippedDeletion.length > 0
+        ? 'Schema and Responses are already in sync.\n\nProtected columns kept (not in Schema): ' +
+          skippedDeletion.map(c => c.name).join(', ')
+        : 'Schema and Responses are already in sync.'
+    );
     return;
   }
 
@@ -951,6 +1001,10 @@ function syncSchemaToResponses() {
           toAddContext.map(n => '  + ' + n + ' (context)').join('\n') +
           (toAddContext.length && toAddHabit.length ? '\n' : '') +
           toAddHabit  .map(n => '  + ' + n + ' (habit)').join('\n')
+        : '') +
+      (skippedDeletion.length > 0
+        ? '\n\nProtected columns kept (not in Schema, but never deleted):\n' +
+          skippedDeletion.map(c => '  • ' + c.name).join('\n')
         : '') +
       '\n\nContinue?',
       ui.ButtonSet.YES_NO
@@ -1552,6 +1606,7 @@ const DEFAULT_PROFILE = [
   ['col_spacer',                     '>> HABITS >>',                   'Header marking the start of habit tracker columns on Responses.'],
   ['col_end',                        'AI_Feedback_Log',                'Header where daily AI feedback is written. Marks end of habits.'],
   ['col_score',                      'Daily_Score',                    'Header where the daily score is written.'],
+  ['protected_columns',              'Journal',                        'Comma-separated column names that schema syncs must never delete (in addition to the structural markers above).'],
   ['spiritual_lookback_days',        '14',                             'How many recent rows of Responses the spiritual review reads.'],
   ['spiritual_bio_max_chars',        '6000',                           'Cap on biography text fed back as memory each run.'],
   ['enable_search_daily',            'TRUE',                           'Use Google Search grounding for the daily report.'],

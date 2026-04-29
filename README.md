@@ -170,10 +170,16 @@ SECTION 10 — Markdown -> HTML formatting
      two get out of sync.
    - If you click **Sync schema to Responses** while the Schema
      region is empty *and* `Responses` already has columns, a
-     guardrail catches it: you'll be asked whether to pull
-     `Responses` into the Schema instead, so you can never
-     accidentally delete all your columns by syncing an empty
-     schema.
+     three-option dialog catches it:
+     - **YES** — refresh the Schema from Responses (recommended).
+     - **NO** — cancel.
+     - **CANCEL** — proceed with the deletion as typed. Protected
+       columns (see below) are still preserved.
+   - **Protected columns are never deleted by Sync**, regardless of
+     whether they appear in the Schema region. The default protected
+     list is `Journal` plus the structural markers (`ID`, `Date`, the
+     spacer, `AI_Feedback_Log`, `Daily_Score`). To add your own,
+     edit `protected_columns` in `User_Profile` (comma-separated).
 
    You can re-apply table formatting and validation any time from
    **Dashboard → "Reformat Responses table"**.
