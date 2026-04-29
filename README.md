@@ -11,9 +11,9 @@ A modular, reproducible journaling + habit-tracking system built on:
   Spiritual reports via Gemini, writes them back to the sheet, and
   emails a formatted version to you.
 
-The script's only home for *you-specific* configuration is the spreadsheet
-itself. Code is generic. Move, change careers, refocus your goals — you
-edit cells in `User_Profile`, not source files.
+The script's only home for *you-specific* configuration is the
+spreadsheet itself. Code is generic. Move, change careers, refocus your
+goals — you edit cells in `User_Profile`, not source code.
 
 ---
 
@@ -21,43 +21,62 @@ edit cells in `User_Profile`, not source files.
 
 The Gemini API key is **never** stored in source or in the spreadsheet.
 It lives in Apps Script's Script Properties, which is private to the
-script's owner. See the setup steps below for how to set it once with
+script's owner. See setup step 4 below for how to set it once with
 `setApiKey()`.
 
 ---
 
-## Architecture
+## What's in this repo
 
 ```
-Spreadsheet (the configurable surface)
-├── Responses              — daily entries (driven by AppSheet)
-├── User_Profile           — key/value: email, location, faith, goals,
-│                            column markers, lookback windows, toggles
-├── User_Memory            — append-only log of weekly/monthly/etc reports
-├── System_Docs            — key/value: prompt templates and personas
-└── Spiritual_Biography    — append-only narrative chapters
+LifeOS.gs          The entire engine. One file, paste it in as-is.
+appsscript.json    The Apps Script manifest (OAuth scopes).
+```
 
-Apps Script (the engine)
-├── appsscript.json        — OAuth scopes
-├── Config.gs              — readers for User_Profile / System_Docs
-├── Setup.gs               — setupSpreadsheet(), setApiKey()
-├── Gemini.gs              — single Gemini call site
-├── Prompts.gs             — template substitution
-├── Format.gs              — Markdown -> HTML and plain-text helpers
-├── Reports.gs             — daily/weekly/monthly/annual processors
-└── Spiritual.gs           — spiritual analysis + biography append
+`LifeOS.gs` is internally organized into clearly labelled sections so
+it stays readable as a single file:
+
+```
+SECTION 1  — Constants
+SECTION 2  — Trigger entry points (runDailyAudit, runSpiritualReport, ...)
+SECTION 3  — Setup (setupSpreadsheet, setApiKey)
+SECTION 4  — Default seed data for User_Profile and System_Docs
+SECTION 5  — Report processors (daily/weekly/monthly/annual)
+SECTION 6  — Spiritual analysis + biography append
+SECTION 7  — Config readers (User_Profile, System_Docs)
+SECTION 8  — Prompt templating
+SECTION 9  — Gemini client
+SECTION 10 — Markdown -> HTML formatting
 ```
 
 ---
 
-## Setup (new user, 10 minutes)
+## Spreadsheet tabs (created automatically by `setupSpreadsheet()`)
 
-1. **Copy the spreadsheet.** Make a fresh Google Sheet.
+- **`Responses`** — your AppSheet-driven daily entries.
+- **`User_Profile`** — key/value config: email, location, faith, goals,
+  column markers, lookback windows, search toggles.
+- **`User_Memory`** — append-only log of weekly/monthly/etc. reports.
+- **`System_Docs`** — key/value where each value is a prompt template
+  or persona. Edit report wording without touching code.
+- **`Spiritual_Biography`** — append-only narrative chapters
+  `(date, type, title, narrative, tags)`. Recent chapters are read back
+  as memory each run, so future reports stay in conversation with the
+  user's ongoing arc.
+
+---
+
+## Setup (new user, ~10 minutes)
+
+1. **Create the spreadsheet.** Make a fresh Google Sheet.
 2. **Open the script editor** (Extensions → Apps Script).
-3. **Copy each `.gs` file** from `src/` into the editor as a separate
-   script file with the same name. Replace the contents of
-   `appsscript.json` (you may need to enable showing the manifest in
-   Project Settings).
+3. **Paste in the code.**
+   - Replace the contents of the default `Code.gs` with the entire
+     contents of `LifeOS.gs` (or rename it to `LifeOS.gs` for
+     clarity).
+   - In Project Settings, enable "Show appsscript.json manifest file
+     in editor", then replace the manifest with the contents of
+     `appsscript.json` from this repo.
 4. **Run `setupSpreadsheet`** once from the editor. Approve the OAuth
    prompts. This creates every required tab and seeds defaults.
 5. **Fill in `User_Profile`** — at minimum, `email`. Optional fields
@@ -65,13 +84,13 @@ Apps Script (the engine)
 6. **Set the API key once** — in the editor, run:
 
    ```
-   setApiKey('YOUR_NEW_GEMINI_KEY')
+   setApiKey('YOUR_GEMINI_KEY')
    ```
 
    The key is stored in Script Properties. Don't paste it in any cell
    or any file.
-7. **Configure the `Responses` sheet.** This is the one place that
-   needs a column convention. Headers must include:
+7. **Configure the `Responses` sheet** so the daily audit can find
+   what it needs. Headers must include:
    - A column named whatever you set as `col_spacer` in `User_Profile`
      (default `>> HABITS >>`). Free-text columns go to its left;
      binary habit columns go to its right.
@@ -90,9 +109,9 @@ Apps Script (the engine)
    - `runAnnualReview` — yearly
    - `runSpiritualReport` — weekly is reasonable
 
-That's it. Editing your goals later means changing one cell in
-`User_Profile`. Editing the *wording* of a report means changing one
-cell in `System_Docs`.
+Editing your goals later means changing one cell in `User_Profile`.
+Editing the *wording* of a report means changing one cell in
+`System_Docs`.
 
 ---
 
@@ -112,8 +131,8 @@ cell in `System_Docs`.
 | `enable_search_daily` / `enable_search_weekly` / `enable_search_spiritual` | Toggle Google Search grounding per report. |
 
 You can also add your own keys and reference them inside any prompt
-template with `{{your_key}}` — `Prompts.gs` will resolve placeholders
-against `User_Profile` automatically.
+template with `{{your_key}}` — the template engine resolves
+placeholders against `User_Profile` automatically.
 
 ---
 
@@ -133,8 +152,7 @@ Default keys:
   `===BIOGRAPHY_ENTRY===`) so one model call produces both the email
   and the biography chapter.
 - `spiritual_column_semantics` — tells the model how to interpret your
-  spiritual columns. Edit if your column conventions differ from the
-  defaults.
+  spiritual columns. Edit if your column conventions differ.
 
 Placeholders supported in any template:
 
