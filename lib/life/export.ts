@@ -1,0 +1,19 @@
+import type {Database} from './service.ts';
+// A private, account-scoped backup. Auth sessions, OAuth credentials and another
+// account's rows are intentionally never part of this portable data format.
+export async function exportAccount(db:Database,userId:string,now:Date){
+ const profile=await db.prepare('SELECT payload,version,updated_at FROM life_profiles WHERE user_id=?1').bind(userId).first();
+ const tables=[['entries','life_entries'],['resources','life_resources'],['reviews','life_ai_reviews']] as const;
+ const data:Record<string,unknown>={profile};
+ let estimatedBytes=65536;
+ for(const [name,table] of tables){
+  const content=table==='life_ai_reviews'?"COALESCE(input_snapshot,'')||COALESCE(report_text,'')":"payload";
+  const size=await db.prepare(`SELECT COUNT(*) AS n,COALESCE(SUM(LENGTH(CAST(${content} AS BLOB))),0) AS bytes FROM ${table} WHERE user_id=?1`).bind(userId).first<{n:number;bytes:number}>();
+  estimatedBytes+=(size?.bytes||0)*2+(size?.n||0)*1024;
+  if(estimatedBytes>8*1024*1024)return Response.json({error:'Your history needs a paginated export. No partial backup was produced.'},{status:413});
+  const rows=await db.prepare(`SELECT * FROM ${table} WHERE user_id=?1 LIMIT 10001`).bind(userId).all<Record<string,unknown>>();
+  if(rows.results.length>10000)return Response.json({error:'Your history needs a paginated export. No partial backup was produced.'},{status:413});
+  data[name]=rows.results.map(({user_id,...row})=>row);
+ }
+ return new Response(JSON.stringify({format:'lifeapp-portable-v1',exportedAt:now.toISOString(),...data},null,2),{headers:{'Content-Type':'application/json','Content-Disposition':'attachment; filename="LifeApp-private-backup.json"','Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
+}

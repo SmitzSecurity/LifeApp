@@ -1,0 +1,9 @@
+# Local development only. Copy to .dev.vars; never commit that file.
+BETTER_AUTH_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+LIFEAPP_BETA_EMAILS=
+GEMINI_API_KEY=
+# Change these only after owner-paid Gemini project setup.
+LIFEAPP_AI_ENABLED=false
+LIFEAPP_AI_PAID_PROJECT=false
