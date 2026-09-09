@@ -56,7 +56,16 @@ npx tsc --noEmit
 
 `npm test` builds and tests the standalone target without Sites helpers. Retired Sites-specific checks are preserved in `legacy/sites/`; they are not part of the standalone gate.
 
-The first suite uses the actual migration and SQLite statements with synthetic users; the second executes the compiled Worker with local D1 under Miniflare. Its compatibility date matches the installed workerd binary (2026-05-22). It does not contact the published app. The deletion checks also exercise signed session cookies, atomic rollback and in-flight AI settlement. No browser automation has been performed.
+The first suite uses the actual migration and SQLite statements with synthetic users; the second executes the compiled Worker with local D1 under Miniflare. Its compatibility date matches the installed workerd binary (2026-05-22). It does not contact the published app. The deletion checks also exercise signed session cookies, atomic rollback and in-flight AI settlement.
+
+Browser checks can run against a disposable synthetic fixture after building:
+`node scripts/browser-smoke.mjs`. Open the loopback URL printed by the command.
+It serves the compiled app with a synthetic signed session and two saved check-ins,
+blocks all non-GET requests and external provider calls, and uses temporary local
+D1 only. Check Account, download the synthetic backup, choose Keep my account,
+and reopen a check-in from History. Stop the process when finished. This verifies
+local UI behavior; production Google sign-in and the owner's data need their own
+authenticated smoke check.
 
 See `docs/structured-modules.md` and `docs/feedback-engine.md` for earlier implementation boundaries. Current additions and activation dependencies: `docs/cloud-drafts.md`, `docs/ai-activation.md` and `docs/google-sign-in.md`.
 

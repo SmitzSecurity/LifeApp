@@ -34,7 +34,17 @@ The generated config uses `keep_vars=true`: runtime settings added in the
 dashboard survive later Git builds. The original local-development settings and
 the manual `standalone configure`/deployment guard remain available independently.
 No API origin is guessed; inspect the resulting Worker URL before registering
-Google's callback. No Cron is configured.
+Google's callback. Production builds now explicitly include the already activated
+`*/5 * * * *` Cron. The deploy guard rejects missing, empty, changed or duplicate
+schedules. Local development configuration remains without a Cron. Runtime
+planner/automatic flags and each user's separate consent still gate execution.
+
+September 9 desktop verification found the live schedule empty while the runtime
+flags and saved consent were intact. The original build reproduced `triggers: {}`,
+which current Wrangler documents as preserving existing schedules; this does not
+prove that deployment removed it. The explicit setting makes the desired production
+schedule reproducible. After deployment, read back Worker schedules and compare
+against the expected single trigger; `keep_vars` protects variables, not Cron.
 
 ## After the first deployment
 
@@ -69,3 +79,10 @@ supplied DB binding. Missing-ID and local-build deployment guards rejected their
 inputs. Wrangler's deployment dry run resolved the built Worker modules and 15
 static assets successfully without a real deployment. No credentials, journals,
 database migrations, live sign-in or provider calls were involved.
+
+For current post-deployment checks, use the read-only
+[runtime SQL](setup/d1-runtime-verify.sql) and the latest private continuation checkpoint.
+Migrations 0000–0006 are complete in production; do not rerun the initial setup
+sequence. Runtime SQL uses active plus archived AI accounting and returns only
+schema metadata and activity aggregates. A zero job count alone does not establish
+a scheduler fault, and a configured Cron alone does not prove that it has fired.

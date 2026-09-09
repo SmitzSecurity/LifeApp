@@ -50,3 +50,4 @@ next-env.d.ts
 /wrangler.cloudflare.generated.json
 /dist-standalone/
 /private-backups/
+/docs/continuation-handoff.md

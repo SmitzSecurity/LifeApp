@@ -41,6 +41,46 @@ test('initial hosting without Google secrets stays closed before database/auth a
  }finally{await unconfigured.dispose();}
 });
 
+test('signed compiled history and export reads preserve records and isolate another account',async t=>{
+ const isolated=new Miniflare({...config,bindings:env});t.after(()=>isolated.dispose());
+ const db=await isolated.getD1Database('DB');
+ for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+ const stamp=Date.now(),id='synthetic-export-owner',userId='google:'+id;
+ await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic Export Owner','owner@example.test',stamp).run();
+ await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('synthetic-export-session',stamp+86400000,'synthetic-export-token',stamp,id).run();
+ await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('synthetic-export-account','synthetic-export-google-sub','google',id,stamp).run();
+ const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-export-token',env.BETTER_AUTH_SECRET,{path:'/',secure:true,httpOnly:true})).split(';')[0];
+ const call=(path,body)=>isolated.dispatchFetch('https://life.test'+path,{method:body?'POST':'GET',headers:{Cookie:cookie,Origin:'https://life.test','Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+ const date=new Date(stamp-86400000).toISOString().slice(0,10);
+ assert.equal((await call('/api/life',{action:'profile',profile:{goal:'Synthetic export goal',timezone:'UTC',modules:['reflection'],habits:[],version:0}})).status,200);
+ assert.equal((await call('/api/life',{action:'entry',entry:{date,journal:'Synthetic preserved journal',context:{},statuses:[],complete:true,version:0}})).status,200);
+ await db.prepare('INSERT INTO life_entries VALUES(?1,?2,?3,1,?4)').bind('google:another-synthetic-owner',date,JSON.stringify({date,journal:'OTHER ACCOUNT PRIVATE MARKER',habits:[],context:{}}),new Date(stamp).toISOString()).run();
+ await db.prepare("INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,critique,status,input_snapshot,report_text,model,price_version,reserved_micros,cost_micros,created_at) VALUES(?1,'synthetic-export-review',?2,1,1,'','complete','{}','Synthetic preserved review','synthetic','synthetic-price',200000,225,?3)").bind(userId,date,new Date(stamp).toISOString()).run();
+ const snapshot=async()=>{
+  const result={};
+  for(const table of ['life_profiles','life_entries','life_ai_reviews'])result[table]=(await db.prepare('SELECT * FROM '+table+' WHERE user_id=?1').bind(userId).all()).results;
+  return result;
+ };
+ const before=await snapshot();
+ const home=await call('/');assert.equal(home.status,200);assert.match(await home.text(),/Sign out/);
+ const history=await call('/api/life');assert.equal(history.status,200);
+ assert.equal((await history.json()).entries[0].journal,'Synthetic preserved journal');
+ const entry=await (await call('/api/life?date='+date+'&userId=google:another-synthetic-owner')).json();
+ assert.equal(entry.entry.journal,'Synthetic preserved journal');
+ const response=await call('/api/life?export=1&userId=google:another-synthetic-owner');
+ assert.equal(response.status,200);assert.match(response.headers.get('content-disposition'),/attachment/);
+ assert.equal(response.headers.get('cache-control'),'private, no-store');
+ const backup=await response.json();assert.equal(backup.format,'lifeapp-portable-v1');
+ assert.equal(backup.entries.length,1);assert.equal(JSON.parse(backup.entries[0].payload).journal,'Synthetic preserved journal');
+ assert.match(JSON.stringify(backup),/Synthetic preserved review/);
+ assert.doesNotMatch(JSON.stringify(backup),/OTHER ACCOUNT PRIVATE MARKER|synthetic-export-token|synthetic-export-google-sub|user_id|life_auth/);
+ assert.deepEqual(await snapshot(),before);
+ // The reusable runtime verification SQL must also execute on real local D1.
+ await db.prepare('CREATE TABLE IF NOT EXISTS d1_migrations(id INTEGER PRIMARY KEY,name TEXT)').run();
+ for(const sql of readFileSync('docs/setup/d1-runtime-verify.sql','utf8').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).all();
+ assert.deepEqual(await snapshot(),before);
+});
+
 test('compiled scheduled handler persists D1 jobs and observes late completion atomically',async()=>{
  const enabled=new Miniflare({...config,bindings:{...env,LIFEAPP_REVIEW_PLANNER_ENABLED:'true'}});
  try{

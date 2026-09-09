@@ -23,6 +23,9 @@ try{
   config.vars={LIFEAPP_AUTH_MODE:'google'};
   config.keep_vars=true;
   config.workers_dev=true;
+  // Production's existing five-minute schedule must survive every Git build.
+  // User consent and runtime flags still control actual AI admission.
+  config.triggers={crons:['*/5 * * * *']};
   writeFileSync(generated,JSON.stringify(config,null,2)+'\n',{mode:0o600});
   run('scripts/standalone.mjs',['build'],{...process.env,LIFEAPP_CLOUDFLARE_BUILD:'true'});
   writeFileSync('dist-standalone/LIFEAPP_CLOUDFLARE_BUILD',config.d1_databases[0].database_id+'\n');
@@ -30,6 +33,7 @@ try{
   const id=databaseId(readFileSync('dist-standalone/LIFEAPP_CLOUDFLARE_BUILD','utf8').trim());
   const build=JSON.parse(readFileSync(output,'utf8'));
   if(build.name!=='lifeapp'||build.d1_databases?.[0]?.database_id!==id||build.keep_vars!==true||JSON.stringify(build.vars)!==JSON.stringify({LIFEAPP_AUTH_MODE:'google'}))throw Error('Run build:cloudflare again before deploying.');
+  if(JSON.stringify(build.triggers?.crons)!==JSON.stringify(['*/5 * * * *']))throw Error('Production daily-review Cron is missing or changed. Run build:cloudflare again before deploying.');
   run('node_modules/wrangler/bin/wrangler.js',['deploy','--config',output,...extra]);
  }else throw Error('Use build or deploy [--dry-run].');
 }catch(error){console.error(error.message);process.exitCode=1;}
