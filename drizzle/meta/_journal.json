@@ -29,6 +29,13 @@
       "when": 1788894672091,
       "tag": "0003_fancy_dreadnoughts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788912407650,
+      "tag": "0004_mature_makkari",
+      "breakpoints": true
     }
   ]
 }

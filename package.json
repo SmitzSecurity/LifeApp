@@ -14,7 +14,7 @@
     "standalone": "node scripts/standalone.mjs",
     "build:standalone": "node scripts/standalone.mjs build",
     "dev:standalone": "node scripts/standalone.mjs dev",
-    "test:source": "node --test tests/ai-sync.test.mjs tests/lifeapp.test.mjs tests/modules.test.mjs tests/reviews.test.mjs tests/google-auth.test.mjs tests/migration-preview.test.mjs",
+    "test:source": "node --test tests/ai-sync.test.mjs tests/lifeapp.test.mjs tests/modules.test.mjs tests/reviews.test.mjs tests/google-auth.test.mjs tests/migration-preview.test.mjs tests/scheduler.test.mjs",
     "migration:preview": "node scripts/migration-preview.mjs"
   },
   "dependencies": {

@@ -4,6 +4,12 @@ September 8, 2026. The owner requested a normal code project, Google Account log
 
 ## Current GitHub handoff
 
+September 9 follow-up: durable daily schedule/reminder intents and live
+late-completion eligibility are now implemented; see `daily-scheduling.md`.
+The standalone gate passes 56 tests. No Cron, automatic AI consumer, email sender,
+owner credentials or external deployment was activated. The older checkpoint
+counts and unavailable-GitHub notes below are historical, not current blockers.
+
 GitHub account SmitzSecurity and existing repository SmitzSecurity/LifeApp are verified. Its prior main commit is 5a2a1b7fd888443cf6b6d517a5f122f52dbcd011 (April 29, 2026, 13 legacy commits). The owner explicitly authorized overwriting that abandoned attempt with the current app. Use the existing repository; do not create a competing LifeApp repository. Its current visibility is public. This transfer changes source code, not the deployed app or its access controls.
 
 Verification for this handoff: the normal `npm test` command passed all 46 standalone tests (43 source/service tests and 3 compiled Worker tests); TypeScript passed. The five retired Sites-only tests remain in `legacy/sites/` for historical reference. No real Google sign-in, AI request, hosting deployment or data import was performed.
@@ -39,7 +45,7 @@ The owner's subsequent request with GitHub selected was checked: the plugin rema
 
 The agent handles commands, configuration and verification; Abraham handles account sign-in, consent and billing approval. Show one account screen at a time, explain the fields on that screen and wait only when the owner must act. Do not give him the entire command sequence as his first task.
 
-1. **GitHub:** establish the private canonical repository and open it in the chosen coding environment. Keep a verified history-preserving copy before changing the source-of-truth pointer. GitHub is connected; repository operations still need to be exposed in the coding workspace.
+1. **GitHub — complete:** use the existing public `SmitzSecurity/LifeApp` repository, whose abandoned files the owner explicitly authorized replacing. Repository tools are connected and working; no new repository or login flow is needed.
 2. **Cloudflare:** use an owner-controlled account. Cloudflare management is not connected here; do not claim an account, Worker or database was provisioned. After authenticated access is available, use `wrangler login`/authorized connector and create the `lifeapp` D1 database once, retaining its returned ID. Determine the actual workers.dev or custom HTTPS origin before registering Google production redirects. Do not guess a workers.dev address. Billing upgrades are owner decisions.
 3. **Google project:** open [Google Cloud Console](https://console.cloud.google.com/), create/reuse an owner-controlled LifeApp project, configure its consent screen for testing, and add the owner's Google account as a test user. Create a **Web application** OAuth client. Use only the exact callback values shown below. Keep the client secret private. [Google web-server OAuth guide](https://developers.google.com/identity/protocols/oauth2/web-server).
 4. **Gemini:** open [Google AI Studio's key page](https://aistudio.google.com/api-keys), select/import the same project and create a fresh authorization key. Google currently defaults new AI Studio keys to auth keys and documents the September 2026 standard-key transition. Do not use the exposed legacy key. Confirm paid-project data handling before sending private journals; the owner enables billing, if needed. [Current Gemini key instructions](https://ai.google.dev/gemini-api/docs/api-key).

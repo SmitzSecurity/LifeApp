@@ -1,6 +1,7 @@
 import { z } from 'zod/v3';
 import { profileSchema,dateSchema,todayIn,type Entry } from './domain.ts';
 import { completionIssues } from './reviews.ts';
+import { dailyJobStatus } from './scheduler.ts';
 import { buildReviewContext } from './review-context.ts';
 import { readResource } from './resource-service.ts';
 import type { Database } from './service.ts';
@@ -16,7 +17,7 @@ export async function listAI(db:Database,userId:string,date:string|null,settings
  if(date&&!dateSchema.safeParse(date).success)return json({error:'Choose a valid review date.'},400);
  const result=await db.prepare(`SELECT * FROM life_ai_reviews WHERE user_id=?1${date?' AND entry_date=?2':''} ORDER BY created_at DESC LIMIT 100`).bind(...(date?[userId,date]:[userId])).all<ReportRow>();
  const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_reviews WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
- return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
+ return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:false,emailDeliveryEnabled:false,usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
 }
 export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date){
  const parsed=requestSchema.safeParse(body);if(!parsed.success)return json({error:'Choose a saved day and confirm using its data for AI analysis.'},400);

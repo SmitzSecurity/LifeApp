@@ -3,14 +3,24 @@ import { useEffect,useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Entry } from '@/lib/life/domain';
+import type { DailyJobStatus } from '@/lib/life/scheduler';
 import { request } from './shared';
 type Report={id:string;date:string;revision:number;sourceVersion:number;status:string;text:string|null;critique:string;costMicros:number|null;reservedMicros:number;model:string;createdAt:string;errorCode:string|null};
-type State={available:boolean;reports:Report[];usage:{allocatedMicros:number;measuredMicros:number;capMicros:number}};
+type State={available:boolean;reports:Report[];schedule:DailyJobStatus|null;usage:{allocatedMicros:number;measuredMicros:number;capMicros:number}};
+const scheduleMessage:Record<DailyJobStatus['state'],string>={
+ missing:'This scheduled day is waiting for a check-in. No analysis has run.',
+ incomplete:'This scheduled day is on hold until you finish and sync the check-in.',
+ ready:'This scheduled day is complete and eligible. Automatic execution is not active yet; you can request its review below.',
+ disabled:'Scheduled daily reviews are turned off in your saved preferences.',
+ 'already-generated':'This day already has an original review. The schedule will not replace it.',
+ attention:'A review attempt already exists. Its result or usage needs confirmation; the schedule will not retry it.'
+};
 const dollars=(micros:number)=>'$'+(micros/1000000).toFixed(4);
 export default function AIReview({entry,synced,onBusy}:{entry:Entry;synced:boolean;onBusy:(v:boolean)=>void}){
  const [data,setData]=useState<State|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[consent,setConsent]=useState(false),[critique,setCritique]=useState(''),[requestId,setRequestId]=useState('');
  async function refresh(){try{setData(await request('?ai=1&date='+entry.date));}catch(e){setError((e as Error).message);}}
- useEffect(()=>{setData(null);setConsent(false);setCritique('');setError('');setRequestId(crypto.randomUUID());void refresh();},[entry.date]);
+ useEffect(()=>{setData(null);setConsent(false);setCritique('');setError('');setRequestId(crypto.randomUUID());},[entry.date]);
+ useEffect(()=>{if(synced)void refresh();},[entry.version,synced]);
  useEffect(()=>{onBusy(busy);return()=>onBusy(false);},[busy,onBusy]);
  const reports=[...(data?.reports||[])].sort((a,b)=>b.revision-a.revision),latest=reports[0];
  async function generate(){if(!consent)return;setBusy(true);setError('');try{await request('',{action:'ai',review:{date:entry.date,requestId,sourceVersion:entry.version,predecessorId:latest?.id||null,critique:latest?critique:'',consent:true}});setRequestId(crypto.randomUUID());setCritique('');}catch(e){setError((e as Error).message);}finally{await refresh();setBusy(false);}}
@@ -18,6 +28,7 @@ export default function AIReview({entry,synced,onBusy}:{entry:Entry;synced:boole
  return <section className="module-card ai-review-card"><div className="section-heading"><div><div className="eyebrow">DAILY AI REVIEW</div><h3>{entry.date}</h3></div><Button variant="ghost" disabled={busy} onClick={refresh}>Refresh status</Button></div>
  {error&&<p className="error" role="alert">{error}</p>}{!data?<p className="muted">Checking the AI connection…</p>:<>
  {!data.available&&<p className="notice">The AI connection is awaiting activation by the LifeApp owner. Your journal continues to work.</p>}
+ {data.schedule&&<p className="completion-help" role="status">{scheduleMessage[data.schedule.state]}</p>}
  <p className="muted">AI uses this completed check-in, your saved goals and feedback preferences, and relevant enabled budget/workout records. Google Gemini processes that context when you request a review.</p>
  {!entry.complete||!synced?<p className="completion-help">Finish and sync this check-in to make it eligible for analysis.</p>:null}
  {latest&&latest.sourceVersion!==entry.version&&<p className="completion-help">This entry changed after the latest review. The saved review is preserved; request a revision to include your changes.</p>}
