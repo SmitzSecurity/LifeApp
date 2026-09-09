@@ -1,12 +1,13 @@
 import { z } from 'zod/v3';
 import { profileSchema,dateSchema,todayIn,type Entry } from './domain.ts';
 import { completionIssues } from './reviews.ts';
-import { dailyJobStatus } from './scheduler.ts';
+import { dailyJobStatus, dueDailyDate } from './scheduler.ts';
+import { AUTOMATIC_POLICY, automaticAvailable, readAutomaticConsent } from './automatic-consent.ts';
 import { buildReviewContext } from './review-context.ts';
 import { readResource } from './resource-service.ts';
 import type { Database } from './service.ts';
 import { AI_MODEL,PRICE_VERSION,PRICE_EXPIRES,RESERVATION_MICROS,MAX_INPUT_BYTES,systemInstruction,type AIProvider } from './ai-provider.ts';
-export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number};
+export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number;automaticEnabled?:boolean};
 export type ReportRow={user_id:string;request_id:string;entry_date:string;revision:number;source_version:number;predecessor_id:string|null;critique:string;status:string;input_snapshot:string;report_text:string|null;model:string;price_version:string;provider_id:string|null;input_tokens:number|null;output_tokens:number|null;thought_tokens:number|null;reserved_micros:number;cost_micros:number|null;created_at:string;finished_at:string|null;error_code:string|null};
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
 const publicReport=(r:ReportRow)=>({id:r.request_id,date:r.entry_date,revision:r.revision,sourceVersion:r.source_version,predecessorId:r.predecessor_id,critique:r.critique,status:r.status,text:r.report_text,inputTokens:r.input_tokens,outputTokens:r.output_tokens,thoughtTokens:r.thought_tokens,costMicros:r.cost_micros,reservedMicros:r.reserved_micros,model:r.model,createdAt:r.created_at,errorCode:r.error_code});
@@ -17,9 +18,10 @@ export async function listAI(db:Database,userId:string,date:string|null,settings
  if(date&&!dateSchema.safeParse(date).success)return json({error:'Choose a valid review date.'},400);
  const result=await db.prepare(`SELECT * FROM life_ai_reviews WHERE user_id=?1${date?' AND entry_date=?2':''} ORDER BY created_at DESC LIMIT 100`).bind(...(date?[userId,date]:[userId])).all<ReportRow>();
  const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_reviews WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
- return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:false,emailDeliveryEnabled:false,usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
+ return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),emailDeliveryEnabled:false,usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
 }
-export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date){
+// The final argument is server-only. HTTP callers can never supply automatic consent.
+export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date,automatic?:{consentVersion:number}){
  const parsed=requestSchema.safeParse(body);if(!parsed.success)return json({error:'Choose a saved day and confirm using its data for AI analysis.'},400);
  const input=parsed.data;
  const requestId=input.predecessorId?input.requestId:`daily:${input.date}`;
@@ -27,9 +29,13 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  if(existing)return json({report:publicReport(existing)},existing.status==='generating'?202:200);
  if(!settings.enabled||!settings.provider)return json({error:'LifeApp’s AI connection needs to be activated by the app owner.'},503);
  if(now.valueOf()>=Date.parse(PRICE_EXPIRES))return json({error:'AI pricing needs a server-side update before more reviews can run.'},503);
+ const consent=automatic?await readAutomaticConsent(db,userId):null;
+ if(automatic&&(!automaticAvailable(settings,now)||!consent?.enabled||consent.version!==automatic.consentVersion||!consent.startDate||input.date<consent.startDate||input.predecessorId))return json({error:'Automatic analysis is not authorized for this day.'},409);
  const pr=await db.prepare('SELECT payload,version FROM life_profiles WHERE user_id=?1').bind(userId).first<{payload:string;version:number}>();
  if(!pr)return json({error:'Complete your setup first.'},400);
  const profile=profileSchema.parse({...JSON.parse(pr.payload),version:pr.version});
+ const due=automatic?dueDailyDate(profile,now):null;
+ if(automatic&&(!due||input.date>due))return json({error:'This day is not due under your saved schedule.'},409);
  const er=await db.prepare('SELECT payload,version FROM life_entries WHERE user_id=?1 AND entry_date=?2').bind(userId,input.date).first<{payload:string;version:number}>();
  if(!er)return json({error:'This day has no check-in. Finish it before requesting analysis.'},409);
  const entry={...JSON.parse(er.payload),version:er.version} as Entry;
@@ -43,7 +49,7 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  const workouts=profile.modules.includes('fitness')?await db.prepare("SELECT resource_id,payload,version FROM life_resources WHERE user_id=?1 AND kind='workout' AND period=?2 LIMIT 101").bind(userId,month).all<{resource_id:string;payload:string;version:number}>():{results:[]};
  if(workouts.results.length>100)return json({error:'This workout history exceeds the initial review context limit.'},413);
  const context=buildReviewContext({profile,from:input.date,through:input.date,entries:[entry],budget:budget||undefined,transactions:tx.results.map(r=>({id:r.resource_id,data:JSON.parse(r.payload),version:r.version})),workouts:workouts.results.map(r=>({id:r.resource_id,data:JSON.parse(r.payload),version:r.version}))});
- const snapshot=JSON.stringify({context,previousReview:previous?.report_text||null,revisionRequest:input.critique||null});
+ const snapshot=JSON.stringify({context,previousReview:previous?.report_text||null,revisionRequest:input.critique||null,...(consent?{automaticConsent:{version:consent.version,policyVersion:AUTOMATIC_POLICY,startDate:consent.startDate,acceptedAt:consent.acceptedAt}}:{})});
  if(new TextEncoder().encode(snapshot+systemInstruction).length>MAX_INPUT_BYTES)return json({error:'This day’s context exceeds the initial AI limit. It needs a larger-context review path.'},413);
  const revision=previous?previous.revision+1:1;
  // Atomic admission: duplicate keys, monthly reservations, unresolved attempts and
@@ -54,7 +60,13 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_reviews WHERE created_at>=?13)+?11<=?15
  AND (SELECT COUNT(*) FROM life_ai_reviews WHERE user_id=?1 AND created_at>=?16)<5
  AND NOT EXISTS(SELECT 1 FROM life_ai_reviews WHERE error_code='cost_bound_exceeded')
- ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,entry.version,previous?.request_id||null,input.critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),settings.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z').first<{request_id:string}>();
+ AND EXISTS(SELECT 1 FROM life_profiles WHERE user_id=?1 AND version=?17)
+ AND EXISTS(SELECT 1 FROM life_entries WHERE user_id=?1 AND entry_date=?3 AND version=?5)
+ ${automatic?`AND (
+  EXISTS(SELECT 1 FROM life_automatic_consent WHERE user_id=?1 AND enabled=1 AND version=?18 AND policy_version=?19 AND start_date<=?3)
+  AND EXISTS(SELECT 1 FROM life_daily_job_status WHERE user_id=?1 AND entry_date=?3 AND state='ready' AND source_version=?5)
+ )`:''}
+ ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,entry.version,previous?.request_id||null,input.critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),settings.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,...(automatic?[automatic.consentVersion,AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
  if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return json({report:publicReport(duplicate)},202);return json({error:'AI usage is at its current limit, or a newer review already exists. Refresh the review history.'},429);}
  try{
   const result=await settings.provider.generate(snapshot);

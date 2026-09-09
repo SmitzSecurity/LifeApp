@@ -1,10 +1,11 @@
 import worker from './index';
 import {withoutSitesIdentity,googleConfig} from '../lib/auth/config';
-import {scheduledReviewPlanning} from '../lib/life/scheduler';
-type Env=Parameters<typeof worker.fetch>[1]&{LIFEAPP_AUTH_MODE?:string;LIFEAPP_REVIEW_PLANNER_ENABLED?:string};
+import {scheduledDailyReviews} from '../lib/life/automatic-reviews';
+import type {AIEnvironment} from '../lib/life/ai-configuration';
+type Env=Parameters<typeof worker.fetch>[1]&AIEnvironment;
 export default {
  async scheduled(controller:{scheduledTime:number},env:Env){
-  await scheduledReviewPlanning(env,controller.scheduledTime);
+  await scheduledDailyReviews(env,controller.scheduledTime);
  },
  async fetch(request:Request,env:Env,ctx:Parameters<typeof worker.fetch>[2]){
   if(env.LIFEAPP_AUTH_MODE!=='google')return new Response('LifeApp standalone authentication is not configured.',{status:503});

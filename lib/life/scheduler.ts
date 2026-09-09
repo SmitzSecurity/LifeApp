@@ -18,12 +18,21 @@ export async function planDailyReviews(db:Database,now=new Date()) {
  // Explicit beta capacity bound: fail instead of silently starving later accounts.
  const {results}=await db.prepare('SELECT user_id,payload,version FROM life_profiles ORDER BY user_id LIMIT 501').bind().all<{user_id:string;payload:string;version:number}>();
  if(results.length>500)throw new Error('Daily planner capacity requires partitioning');
- let discovered=0,invalidProfiles=0;
+ // All possible preceding local days fall within this three-date UTC window.
+ // Skip existing jobs before the bounded insert loop so early accounts cannot
+ // monopolize every tick. Leave query headroom for the automatic consumer.
+ const earliest=new Date(now.valueOf()-2*86400000).toISOString().slice(0,10);
+ const known=await db.prepare('SELECT user_id,entry_date FROM life_review_jobs WHERE entry_date>=?1 AND entry_date<=?2 LIMIT 1501').bind(earliest,now.toISOString().slice(0,10)).all<{user_id:string;entry_date:string}>();
+ if(known.results.length>1500)throw new Error('Daily planner history requires partitioning');
+ const existing=new Set(known.results.map(r=>JSON.stringify([r.user_id,r.entry_date])));
+ let discovered=0,invalidProfiles=0,considered=0;
  for(const row of results){
   let profile:Profile;
   try{profile=profileSchema.parse({...JSON.parse(row.payload),version:row.version});}
   catch{invalidProfiles++;continue;}
   const date=dueDailyDate(profile,now);if(!date)continue;
+  if(existing.has(JSON.stringify([row.user_id,date]))||considered>=20)continue;
+  considered++;
   // The profile version guard prevents an in-flight scan from scheduling against
   // preferences that changed after the read. The next tick sees the new version.
   const inserted=await db.prepare(`INSERT INTO life_review_jobs(user_id,entry_date,detected_at,timezone,local_time,profile_version)

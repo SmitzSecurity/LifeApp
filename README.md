@@ -37,7 +37,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 - Workout routines/splits, saved set-by-set gym logging, rest deadline/countdown, optional supported-browser vibration, corrections and session history.
 - AI feedback preferences, explicit completion, missing-prior-day UI and tested hierarchical/late-completion rules. Manual daily AI review and critique-based preserved revisions, server Gemini adapter and usage reservations/caps are implemented; activation needs a fresh owner server secret.
 - Automatic cloud check-in drafts, serialized/idempotent saves, visible sync errors and leave-page protection.
-- Durable daily schedule/reminder intents and live missing/incomplete/ready status are implemented and tested. Automatic execution and email delivery remain off; see `docs/daily-scheduling.md`.
+- Durable daily scheduling, explicit automatic-analysis opt-in and a bounded consumer share the manual AI reservation/duplicate gate. New admissions recheck consent, preferences, completion and caps atomically. Production activation requires migration 0005, operator flags and Cron; email remains off. See `docs/daily-scheduling.md`.
 - Evolving AI memory and biography generation remain disconnected.
 - No real personal source records, credentials, AI calls, sample records, or billing are seeded into the app.
 

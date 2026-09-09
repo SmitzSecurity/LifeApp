@@ -1,4 +1,5 @@
 import { listAI, generateAI, type AISettings } from './ai-service.ts';
+import { automaticConsentStatus, saveAutomaticConsent } from './automatic-consent.ts';
 import {exportAccount} from './export.ts';
 import { completionIssues } from './reviews.ts';
 import { listResources, saveResource } from './resource-service.ts';
@@ -16,6 +17,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
  if(!userId)return json({error:'Sign in to open your journal.'},401);
  try{
   if(request.method==='GET'){
+   if(new URL(request.url).searchParams.has('automatic'))return await automaticConsentStatus(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('export'))return await exportAccount(db,userId,now);
    if(new URL(request.url).searchParams.has('ai'))return await listAI(db,userId,new URL(request.url).searchParams.get('date'),ai,now);
    if(new URL(request.url).searchParams.has('kind'))return await listResources(request,db,userId);
@@ -36,6 +38,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);
   const b=body as Record<string,unknown>;
   const updated=now.toISOString();
+  if(b.action==='automatic-consent')return await saveAutomaticConsent(db,userId,b.consent,ai,now);
   if(b.action==='ai')return await generateAI(db,userId,b.review,ai,now);
   if(b.action==='resource')return await saveResource(b.record,db,userId,await getProfile(db,userId),now);
   if(b.action==='profile'){
