@@ -17,7 +17,7 @@ const inMonth=(now:Date)=>now.toISOString().slice(0,7)+'-01T00:00:00.000Z';
 export async function listAI(db:Database,userId:string,date:string|null,settings:AISettings,now:Date){
  if(date&&!dateSchema.safeParse(date).success)return json({error:'Choose a valid review date.'},400);
  const result=await db.prepare(`SELECT * FROM life_ai_reviews WHERE user_id=?1${date?' AND entry_date=?2':''} ORDER BY created_at DESC LIMIT 100`).bind(...(date?[userId,date]:[userId])).all<ReportRow>();
- const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_reviews WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
+ const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_usage WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
  return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),emailDeliveryEnabled:false,usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
 }
 // The final argument is server-only. HTTP callers can never supply automatic consent.
@@ -56,10 +56,10 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  // daily rate limits are checked in the same serialized SQLite insert.
  const admitted=await db.prepare(`INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,predecessor_id,critique,status,input_snapshot,model,price_version,reserved_micros,created_at)
  SELECT ?1,?2,?3,?4,?5,?6,?7,'generating',?8,?9,?10,?11,?12
- WHERE (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_reviews WHERE user_id=?1 AND created_at>=?13)+?11<=?14
- AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_reviews WHERE created_at>=?13)+?11<=?15
- AND (SELECT COUNT(*) FROM life_ai_reviews WHERE user_id=?1 AND created_at>=?16)<5
- AND NOT EXISTS(SELECT 1 FROM life_ai_reviews WHERE error_code='cost_bound_exceeded')
+ WHERE (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?13)+?11<=?14
+ AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE created_at>=?13)+?11<=?15
+ AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?16)<5
+ AND NOT EXISTS(SELECT 1 FROM life_ai_usage WHERE error_code='cost_bound_exceeded')
  AND EXISTS(SELECT 1 FROM life_profiles WHERE user_id=?1 AND version=?17)
  AND EXISTS(SELECT 1 FROM life_entries WHERE user_id=?1 AND entry_date=?3 AND version=?5)
  ${automatic?`AND (
@@ -72,11 +72,22 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
   const result=await settings.provider.generate(snapshot);
   const exceeded=result.costMicros>RESERVATION_MICROS,valid=result.text.trim().length>0&&result.finishReason==='STOP'&&!exceeded;
   const row=await db.prepare(`UPDATE life_ai_reviews SET status=?3,report_text=?4,provider_id=?5,input_tokens=?6,output_tokens=?7,thought_tokens=?8,cost_micros=?9,finished_at=?10,error_code=?11,model=?12 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING *`).bind(userId,requestId,valid?'complete':'failed',result.text||null,result.providerId,result.inputTokens,result.outputTokens,result.thoughtTokens,result.costMicros,new Date().toISOString(),exceeded?'cost_bound_exceeded':valid?null:'incomplete_output',result.modelVersion).first<ReportRow>();
-  if(!row)throw new Error('AI result could not be committed.');return json({report:publicReport(row)});
+  if(!row){
+   // Deletion can win while Gemini is running. Settle only accounting; never
+   // restore the input, report, critique or provider response identifier.
+   const archived=await db.prepare(`UPDATE life_deleted_ai_usage SET status=?3,input_tokens=?4,output_tokens=?5,thought_tokens=?6,cost_micros=?7,finished_at=?8,error_code=?9,model=?10 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id`).bind(userId,requestId,valid?'complete':'failed',result.inputTokens,result.outputTokens,result.thoughtTokens,result.costMicros,new Date().toISOString(),exceeded?'cost_bound_exceeded':valid?null:'incomplete_output',result.modelVersion).first();
+   if(archived)return json({error:'This account was deleted. Its AI report has been discarded.'},410);
+   throw new Error('AI result could not be committed.');
+  }
+  return json({report:publicReport(row)});
  }catch{
   // A timeout may have consumed provider tokens. Keep the reservation and NEVER
   // silently reissue an ambiguous request. No raw provider error or journal is logged.
-  await db.prepare("UPDATE life_ai_reviews SET status='uncertain',error_code='provider_or_storage_unconfirmed',finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,requestId,new Date().toISOString()).first();
+  const uncertain=await db.prepare("UPDATE life_ai_reviews SET status='uncertain',error_code='provider_or_storage_unconfirmed',finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,requestId,new Date().toISOString()).first();
+  if(!uncertain){
+   const archived=await db.prepare("UPDATE life_deleted_ai_usage SET status='uncertain',error_code='provider_or_storage_unconfirmed',finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,requestId,new Date().toISOString()).first();
+   if(archived)return json({error:'This account was deleted. An unconfirmed AI cost remains reserved.'},410);
+  }
   return json({error:'AI completion could not be confirmed. This request will not be repeated automatically. Your entry is safe; its usage reservation is held for review.'},502);
  }
 }

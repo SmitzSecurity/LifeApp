@@ -1,4 +1,11 @@
-# Upgrade the existing LifeApp database to migration 0005
+# Database upgrades
+
+For the pending account-deletion feature, use [migration 0006](account-deletion-0006.md).
+The owner has already applied 0005 and opted in to automatic reviews. The following
+0005 instructions are retained for historical deployments; do not repeat them on
+the current database.
+
+# Historical upgrade: migration 0005
 
 This is the pending upgrade for the populated `lifeapp` D1 database already
 bound as `DB`. It combines with the usage receipt and automatic-review code in

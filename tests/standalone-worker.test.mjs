@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {Miniflare,createFetchMock} from 'miniflare';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomBytes} from 'node:crypto';
+import {serializeSignedCookie} from 'better-call';
 import {AI_MODEL} from '../lib/life/ai-provider.ts';
 import {defaultReviewPreferences} from '../lib/life/reviews.ts';
 const env={LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:randomBytes(48).toString('base64url'),GOOGLE_CLIENT_ID:'synthetic-worker-client',GOOGLE_CLIENT_SECRET:'synthetic-worker-secret',LIFEAPP_BETA_EMAILS:'owner@example.test'};
@@ -105,5 +106,48 @@ test('prepared upgrade and verification queries run on local D1 without granting
   assert.equal((await worker.scheduled({scheduledTime:Date.now(),cron:'*/5 * * * *'})).outcome,'ok');
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_review_jobs').first()).n,0);
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_automatic_consent').first()).n,0);
+ }finally{await upgrade.dispose();}
+});
+
+
+test('compiled account deletion revokes signed cookies, removes content and preserves usage on D1',async()=>{
+ const db=await mf.getD1Database('DB'),stamp=Date.now(),id='synthetic-deletion-owner',userId='google:'+id;
+ await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic Owner','owner@example.test',stamp).run();
+ await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('synthetic-delete-session',stamp+86400000,'synthetic-delete-token',stamp,id).run();
+ await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('synthetic-delete-account','synthetic-delete-google-sub','google',id,stamp).run();
+ const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-delete-token',env.BETTER_AUTH_SECRET,{path:'/',secure:true,httpOnly:true})).split(';')[0];
+ const headers={Cookie:cookie,Origin:'https://life.test','Content-Type':'application/json'};
+ const call=(path,body)=>mf.dispatchFetch('https://life.test'+path,{method:body?'POST':'GET',headers,body:body?JSON.stringify(body):undefined,redirect:'manual'});
+ assert.equal((await call('/api/life',{action:'profile',profile:{goal:'Synthetic private goal',timezone:'UTC',modules:['reflection'],habits:[],version:0}})).status,200);
+ const home=await call('/');assert.equal(home.status,200);assert.match(await home.text(),/LifeApp/);
+ await db.prepare("INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,critique,status,input_snapshot,report_text,model,price_version,reserved_micros,cost_micros,created_at) VALUES(?1,'synthetic-attempt','2026-09-09',1,1,'private critique','complete','private snapshot','private report','synthetic','synthetic-price',200000,225,?2)").bind(userId,new Date(stamp).toISOString()).run();
+ const before=await db.prepare('SELECT SUM(COALESCE(cost_micros,reserved_micros)) n FROM life_ai_usage').first();
+ assert.equal((await call('/api/auth/delete-account',{confirmation:'DELETE',userId:'someone-else'})).status,400);
+ const response=await call('/api/auth/delete-account',{confirmation:'DELETE'});assert.equal(response.status,200,await response.clone().text());assert.deepEqual(await response.json(),{deleted:true});
+ for(const path of ['/api/life','/api/life?export=1','/api/life?ai=1'])assert.equal((await call(path)).status,401,path);
+ assert.equal(await (await call('/api/auth/get-session')).json(),null);
+ for(const table of ['life_profiles','life_ai_reviews','life_automatic_consent','life_review_jobs'])assert.equal((await db.prepare('SELECT COUNT(*) n FROM '+table+' WHERE user_id=?1').bind(userId).first()).n,0);
+ assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_auth_user WHERE id=?1').bind(id).first()).n,0);
+ assert.deepEqual(await db.prepare('SELECT SUM(COALESCE(cost_micros,reserved_micros)) n FROM life_ai_usage').first(),before);
+ const ledger=await db.prepare('SELECT * FROM life_deleted_ai_usage WHERE user_id=?1').bind(userId).first();assert.equal(ledger.cost_micros,225);assert.doesNotMatch(JSON.stringify(ledger),/private/);
+ assert.equal((await call('/api/auth/delete-account',{confirmation:'DELETE'})).status,401);
+});
+
+test('0006 console bundle and verification execute on local D1 while preserving existing consent',async()=>{
+ const upgrade=new Miniflare({...config,bindings:env});
+ try{
+  const db=await upgrade.getD1Database('DB');
+  await db.prepare('CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)').run();
+  for(const f of readdirSync('drizzle').filter(f=>/^000[0-5]_.*\.sql$/.test(f)).sort()){
+   for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+   await db.prepare('INSERT INTO d1_migrations(name) VALUES(?1)').bind(f).run();
+  }
+  await db.prepare("INSERT INTO life_automatic_consent VALUES('synthetic-owner',1,1,'daily-v1','2026-09-09','2026-09-09','2026-09-09')").run();
+  const load=name=>readFileSync('docs/setup/d1-upgrade-0006'+name+'.sql','utf8');
+  assert.deepEqual(await db.prepare(load('-preflight')).first(),{migrations:6,required_prior_migrations:6,app_tables:12,deletion_objects:0,reminder_trigger:1,status_view:1});
+  const before=await db.prepare(load('-counts')).first();
+  await db.exec(load(''));
+  assert.deepEqual(await db.prepare(load('-verify')).first(),{migrations:7,migration_0006:1,app_tables:14,deletion_objects:4,stale_write_guards:20,deleted_accounts:0,archived_attempts:0,scheduler_objects:2});
+  assert.deepEqual(await db.prepare(load('-counts')).first(),before);
  }finally{await upgrade.dispose();}
 });
