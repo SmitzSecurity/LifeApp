@@ -5,7 +5,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import type { Entry } from '@/lib/life/domain';
 import type { DailyJobStatus } from '@/lib/life/scheduler';
 import { request } from './shared';
-type Report={id:string;date:string;revision:number;sourceVersion:number;status:string;text:string|null;critique:string;costMicros:number|null;reservedMicros:number;model:string;createdAt:string;errorCode:string|null};
+import AIUsageReceipt, { type AIUsageReceiptData } from './ai-usage-receipt';
+type Report=AIUsageReceiptData&{id:string;date:string;revision:number;sourceVersion:number;status:string;text:string|null;critique:string;model:string;createdAt:string;errorCode:string|null};
 type State={available:boolean;reports:Report[];schedule:DailyJobStatus|null;usage:{allocatedMicros:number;measuredMicros:number;capMicros:number}};
 const scheduleMessage:Record<DailyJobStatus['state'],string>={
  missing:'This scheduled day is waiting for a check-in. No analysis has run.',
@@ -36,6 +37,6 @@ export default function AIReview({entry,synced,onBusy}:{entry:Entry;synced:boole
  {unfinished&&latest.status!=='generating'&&<p className="completion-help">The last attempt did not produce a confirmed complete report. Its usage reservation is retained where cost is unknown. Automatic retries are disabled.</p>}
  {(!latest||latest.status==='complete')&&<>{latest&&<label className="compact-field">What should the revision change?<textarea rows={2} maxLength={1000} value={critique} onChange={e=>setCritique(e.target.value)} placeholder="What was missed, unhelpful or worth exploring?"/><small>The original review stays in your history.</small></label>}<label className="inline-check"><Checkbox checked={consent} onCheckedChange={v=>setConsent(!!v)}/>Use this saved context for AI analysis</label><Button disabled={busy||!data.available||!entry.complete||!synced||!consent||!!latest&&!critique.trim()} onClick={generate}>{busy?'Generating…':latest?'Generate revised review':'Generate this day’s review'}</Button></>}
  <div className="ai-usage"><small>Provider usage this month: {dollars(data.usage.measuredMicros)} measured · {dollars(Math.max(0,data.usage.allocatedMicros-data.usage.measuredMicros))} reserved · ${data.usage.capMicros/1000000} beta limit</small><small>Up to $0.20 is reserved per attempt. No customer payment is collected. Scheduled reviews, email and local-event search are not active.</small></div>
- {reports.map(report=><article className="saved-ai-review" key={report.id}><div><strong>Review {report.revision} · {report.status}</strong><small>{new Date(report.createdAt).toLocaleString()} · {report.model}{report.costMicros!==null?' · '+dollars(report.costMicros):''}</small></div>{report.critique&&<p className="goal-reminder">Revision request: {report.critique}</p>}{report.text&&<div className="ai-report-text">{report.text}</div>}</article>)}
+ {reports.map(report=><article className="saved-ai-review" key={report.id}><div><strong>Review {report.revision} · {report.status}</strong><small>{new Date(report.createdAt).toLocaleString()} · {report.model}{report.costMicros!==null?' · '+dollars(report.costMicros):''}</small></div><AIUsageReceipt usage={report}/>{report.critique&&<p className="goal-reminder">Revision request: {report.critique}</p>}{report.text&&<div className="ai-report-text">{report.text}</div>}</article>)}
  </>}</section>;
 }
