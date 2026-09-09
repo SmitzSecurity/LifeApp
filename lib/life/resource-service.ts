@@ -1,6 +1,6 @@
 import { z } from 'zod/v3';
 import { todayIn, type Profile } from './domain.ts';
-import { resourceKind, resourceSchemas, monthSchema, occurrenceId, type ResourceKind, type Budget, type Transaction, type Routine, type Workout } from './modules.ts';
+import { resourceKind, resourceSchemas, monthSchema, occurrenceId, type ResourceKind, type Budget, type Transaction, type Routine, type Workout, type Cardio } from './modules.ts';
 import type { Database } from './service.ts';
 type Row={resource_id:string;payload:string;version:number;updated_at:string};
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
@@ -23,7 +23,7 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  if(!profile)return json({error:'Complete your setup first.'},400);
  const parsed=envelope.safeParse(body);if(!parsed.success)return json({error:'Invalid section record.'},400);
  const {kind,id,version}=parsed.data;
- if(!profile.modules.includes(kind==='budget'||kind==='transaction'?'money':'fitness'))return json({error:'Enable this section in My setup first.'},400);
+ if(!profile.modules.includes(kind==='budget'||kind==='transaction'?'money':'fitness'))return json({error:'Enable this section in Settings first.'},400);
  const validation=resourceSchemas[kind].safeParse(parsed.data.data);
  if(!validation.success)return json({error:validation.error.issues[0]?.message||'Check this form.'},400);
  let data=validation.data;
@@ -32,6 +32,10 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  const previous=await readResource(db,userId,kind,id);
  const conflict=()=>json({error:'This record changed in another session. Your changes are still here. Reload the section before trying again.'},409);
  let period=kind==='budget'?id:'';
+ if(kind==='cardio'){
+  const c=data as Cardio;period=c.date.slice(0,7);
+  if(c.date>todayIn(profile.timezone,now))return json({error:'Choose today or an earlier cardio date.'},400);
+ }
  if(kind==='transaction'){
   const t=data as Transaction;period=t.date.slice(0,7);
   if(t.date>todayIn(profile.timezone,now))return json({error:'Record money on today or an earlier date. Use the monthly plan for future payments.'},400);

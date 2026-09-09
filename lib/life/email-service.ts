@@ -1,5 +1,7 @@
 import {z} from 'zod/v3';
 import type {Database} from './service.ts';
+import {savedDayQuery} from './saved-day-link.ts';
+import type {Cadence} from './reviews.ts';
 
 export const EMAIL_POLICY='full-report-v1';
 export const EMAIL_BATCH_SIZE=2;
@@ -50,11 +52,11 @@ export async function handleEmailSettings(request:Request,userId:string|null,db:
  return saveEmailConsent(db,userId,body,settings,now);
 }
 
-export function reportEmail(input:{date:string;revision:number;text:string;recipient:string;unsubscribeToken:string},settings:Pick<EmailSettings,'from'|'origin'>):EmailMessage{
+export function reportEmail(input:{date:string;cadence?:Cadence;revision:number;text:string;recipient:string;unsubscribeToken:string},settings:Pick<EmailSettings,'from'|'origin'>):EmailMessage{
  const escape=(s:string)=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));
- const url=settings.origin+'/?date='+encodeURIComponent(input.date);
+ const url=settings.origin+'/'+savedDayQuery(input.date,input.cadence);
  const unsubscribe=settings.origin+'/email/unsubscribe?token='+input.unsubscribeToken;
- const title=`Your LifeApp review · ${input.date}${input.revision>1?' · revision '+input.revision:''}`;
+ const title=`Your LifeApp analysis · ${input.date}${input.cadence&&input.cadence!=='daily'?' · '+input.cadence:''}`;
  const footer='This is the saved AI report. It can be mistaken; your own judgment matters. You chose full-report emails in LifeApp.';
  return {from:settings.from,to:input.recipient,subject:title,
   text:`${title}\n\n${input.text}\n\nOpen your saved day: ${url}\n\n${footer}\nStop report emails: ${unsubscribe}`,
@@ -82,8 +84,9 @@ export async function consumeReportEmails(db:Database,settings:EmailSettings,clo
    (SELECT recipient FROM life_email_consent WHERE user_id=?1) AS recipient,
    (SELECT unsubscribe_token FROM life_email_consent WHERE user_id=?1) AS unsubscribeToken,
    (SELECT entry_date FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2) AS date,
+   (SELECT cadence FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2) AS cadence,
    (SELECT revision FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2) AS revision,
-   (SELECT report_text FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2) AS text`).bind(item.user_id,item.request_id,stamp.toISOString()).first<{attempts:number;recipient:string;unsubscribeToken:string;date:string;revision:number;text:string}>();
+   (SELECT report_text FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2) AS text`).bind(item.user_id,item.request_id,stamp.toISOString()).first<{attempts:number;recipient:string;unsubscribeToken:string;date:string;cadence:Cadence;revision:number;text:string}>();
   if(!claim){
    await db.prepare("UPDATE life_email_outbox SET state='cancelled',finished_at=?3,error_code='no_longer_eligible' WHERE user_id=?1 AND request_id=?2 AND state IN ('pending','retry') RETURNING request_id").bind(item.user_id,item.request_id,stamp.toISOString()).first();continue;
   }

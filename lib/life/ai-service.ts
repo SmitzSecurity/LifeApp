@@ -1,6 +1,10 @@
 import { z } from 'zod/v3';
 import { profileSchema,dateSchema,todayIn,type Entry } from './domain.ts';
-import { completionIssues } from './reviews.ts';
+import { completionIssues,cadenceSchema,type Cadence,type ReviewRecord } from './reviews.ts';
+import {analysisWindow,duePeriod} from './analysis-periods.ts';
+import {readPeriodConsent,PERIOD_POLICY} from './period-consent.ts';
+import {readActivity} from './activity.ts';
+import {buildPeriodContext} from './period-context.ts';
 import { dailyJobStatus, dueDailyDate } from './scheduler.ts';
 import { AUTOMATIC_POLICY, automaticAvailable, readAutomaticConsent } from './automatic-consent.ts';
 import { buildReviewContext } from './review-context.ts';
@@ -8,66 +12,76 @@ import { readResource } from './resource-service.ts';
 import type { Database } from './service.ts';
 import { AI_MODEL,PRICE_VERSION,PRICE_EXPIRES,RESERVATION_MICROS,MAX_INPUT_BYTES,systemInstruction,type AIProvider } from './ai-provider.ts';
 export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number;automaticEnabled?:boolean};
-export type ReportRow={user_id:string;request_id:string;entry_date:string;revision:number;source_version:number;predecessor_id:string|null;critique:string;status:string;input_snapshot:string;report_text:string|null;model:string;price_version:string;provider_id:string|null;input_tokens:number|null;output_tokens:number|null;thought_tokens:number|null;reserved_micros:number;cost_micros:number|null;created_at:string;finished_at:string|null;error_code:string|null};
+export type ReportRow={user_id:string;request_id:string;entry_date:string;cadence:Cadence;window_start:string|null;revision:number;source_version:number;predecessor_id:string|null;critique:string;status:string;input_snapshot:string;report_text:string|null;model:string;price_version:string;provider_id:string|null;input_tokens:number|null;output_tokens:number|null;thought_tokens:number|null;reserved_micros:number;cost_micros:number|null;created_at:string;finished_at:string|null;error_code:string|null};
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
-const publicReport=(r:ReportRow)=>({id:r.request_id,date:r.entry_date,revision:r.revision,sourceVersion:r.source_version,predecessorId:r.predecessor_id,critique:r.critique,status:r.status,text:r.report_text,inputTokens:r.input_tokens,outputTokens:r.output_tokens,thoughtTokens:r.thought_tokens,costMicros:r.cost_micros,reservedMicros:r.reserved_micros,model:r.model,createdAt:r.created_at,errorCode:r.error_code});
-const requestSchema=z.object({date:dateSchema,requestId:z.string().uuid(),sourceVersion:z.number().int().positive(),predecessorId:z.string().max(80).nullable(),critique:z.string().trim().max(1000),consent:z.literal(true)}).strict();
+export const publicReport=(r:ReportRow)=>({id:r.request_id,date:r.entry_date,cadence:r.cadence||'daily',from:r.window_start||r.entry_date,revision:r.revision,sourceVersion:r.source_version,predecessorId:r.predecessor_id,critique:r.critique,status:r.status,text:r.report_text,inputTokens:r.input_tokens,outputTokens:r.output_tokens,thoughtTokens:r.thought_tokens,costMicros:r.cost_micros,reservedMicros:r.reserved_micros,model:r.model,createdAt:r.created_at,errorCode:r.error_code});
+const requestSchema=z.object({date:dateSchema,cadence:cadenceSchema.default('daily'),requestId:z.string().uuid(),sourceVersion:z.number().int().positive(),predecessorId:z.string().max(80).nullable(),critique:z.string().trim().max(1000),consent:z.literal(true)}).strict();
 async function getReport(db:Database,userId:string,id:string){return db.prepare('SELECT * FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2').bind(userId,id).first<ReportRow>();}
 const inMonth=(now:Date)=>now.toISOString().slice(0,7)+'-01T00:00:00.000Z';
-export async function listAI(db:Database,userId:string,date:string|null,settings:AISettings,now:Date){
+export async function listAI(db:Database,userId:string,date:string|null,settings:AISettings,now:Date,cadence:Cadence='daily'){
  if(date&&!dateSchema.safeParse(date).success)return json({error:'Choose a valid review date.'},400);
- const result=await db.prepare(`SELECT * FROM life_ai_reviews WHERE user_id=?1${date?' AND entry_date=?2':''} ORDER BY created_at DESC LIMIT 100`).bind(...(date?[userId,date]:[userId])).all<ReportRow>();
+ const result=await db.prepare(`SELECT * FROM life_ai_reviews WHERE user_id=?1 AND cadence=?2${date?' AND entry_date=?3':''} ORDER BY revision DESC,created_at DESC LIMIT 100`).bind(...(date?[userId,cadence,date]:[userId,cadence])).all<ReportRow>();
  const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_usage WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
- return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
+ return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date&&cadence==='daily'?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),regenerationsRemaining:Math.max(0,2-result.results.filter(r=>r.revision>1&&r.created_at>=now.toISOString().slice(0,10)+'T00:00:00.000Z').length),usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
 }
 // The final argument is server-only. HTTP callers can never supply automatic consent.
-export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date,automatic?:{consentVersion:number}){
+export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date,automatic?:{consentVersion:number;cadence?:Cadence}){
  const parsed=requestSchema.safeParse(body);if(!parsed.success)return json({error:'Choose a saved day and confirm using its data for AI analysis.'},400);
  const input=parsed.data;
- const requestId=input.predecessorId?input.requestId:`daily:${input.date}`;
+ const cadence=input.cadence,periodic=cadence!=='daily';
+ let window;try{window=analysisWindow(cadence,input.date);}catch(e){return json({error:(e as Error).message},400);}
+ const requestId=input.predecessorId?input.requestId:`${cadence}:${input.date}`;
  const existing=await getReport(db,userId,requestId);
- if(existing)return json({report:publicReport(existing)},existing.status==='generating'?202:200);
+ if(existing)return existing.entry_date===input.date&&(existing.cadence||'daily')===cadence?json({report:publicReport(existing)},existing.status==='generating'?202:200):json({error:'This request belongs to a different analysis. Refresh and try again.'},409);
  if(!settings.enabled||!settings.provider)return json({error:'LifeApp’s AI connection needs to be activated by the app owner.'},503);
  if(now.valueOf()>=Date.parse(PRICE_EXPIRES))return json({error:'AI pricing needs a server-side update before more reviews can run.'},503);
- const consent=automatic?await readAutomaticConsent(db,userId):null;
- if(automatic&&(!automaticAvailable(settings,now)||!consent?.enabled||consent.version!==automatic.consentVersion||!consent.startDate||input.date<consent.startDate||input.predecessorId))return json({error:'Automatic analysis is not authorized for this day.'},409);
+ const consent=automatic?(periodic?await readPeriodConsent(db,userId):await readAutomaticConsent(db,userId)):null;
+ if(automatic&&((automatic.cadence||'daily')!==cadence||!automaticAvailable(settings,now)||!consent?.enabled||consent.version!==automatic.consentVersion||!consent.startDate||input.date<consent.startDate||input.predecessorId))return json({error:'Automatic analysis is not authorized for this period.'},409);
  const pr=await db.prepare('SELECT payload,version FROM life_profiles WHERE user_id=?1').bind(userId).first<{payload:string;version:number}>();
  if(!pr)return json({error:'Complete your setup first.'},400);
  const profile=profileSchema.parse({...JSON.parse(pr.payload),version:pr.version});
- const due=automatic?dueDailyDate(profile,now):null;
- if(automatic&&(!due||input.date>due))return json({error:'This day is not due under your saved schedule.'},409);
- const er=await db.prepare('SELECT payload,version FROM life_entries WHERE user_id=?1 AND entry_date=?2').bind(userId,input.date).first<{payload:string;version:number}>();
- if(!er)return json({error:'This day has no check-in. Finish it before requesting analysis.'},409);
- const entry={...JSON.parse(er.payload),version:er.version} as Entry;
- if(input.date>todayIn(profile.timezone,now)||!entry.complete||completionIssues(entry).length||entry.version!==input.sourceVersion)return json({error:'Finish and sync this day before requesting its review.'},409);
- const latest=await db.prepare('SELECT * FROM life_ai_reviews WHERE user_id=?1 AND entry_date=?2 ORDER BY revision DESC LIMIT 1').bind(userId,input.date).first<ReportRow>();
- if(input.predecessorId&&(!latest||latest.request_id!==input.predecessorId||latest.status!=='complete'||!input.critique))return json({error:'Choose the latest completed review and describe what you want changed.'},409);
+ const due=automatic?(periodic?duePeriod(profile,cadence,now)?.through:dueDailyDate(profile,now)):null;
+ if(automatic&&(!due||input.date>due))return json({error:'This analysis is not due under your saved schedule.'},409);
+ if(periodic&&input.date>=todayIn(profile.timezone,now))return json({error:'This period has not ended yet.'},409);
+ const source=await db.prepare('SELECT payload,version FROM life_entries WHERE user_id=?1 AND entry_date>=?2 AND entry_date<=?3 ORDER BY entry_date LIMIT 367').bind(userId,window.from,window.through).all<{payload:string;version:number}>();
+ const entries=source.results.map(r=>({...JSON.parse(r.payload),version:r.version})) as Entry[],entry=entries[0];
+ const eligible=entries.filter(e=>e.complete&&!completionIssues(e).length);
+ if(!eligible.length)return json({error:'Save a complete journal entry before generating this analysis.'},409);
+ if(!periodic&&(input.date>todayIn(profile.timezone,now)||!entry?.complete||completionIssues(entry).length||entry.version!==input.sourceVersion))return json({error:'Save a complete response before generating its analysis.'},409);
+ if(periodic&&profile.version!==input.sourceVersion)return json({error:'Your preferences changed. Refresh before generating this analysis.'},409);
+ const latest=await db.prepare('SELECT * FROM life_ai_reviews WHERE user_id=?1 AND entry_date=?2 AND cadence=?3 ORDER BY revision DESC LIMIT 1').bind(userId,input.date,cadence).first<ReportRow>();
+ if(input.predecessorId&&(!latest||latest.request_id!==input.predecessorId||latest.status!=='complete'))return json({error:'Refresh to open the latest completed analysis.'},409);
  const previous=input.predecessorId?latest:null;
- const month=input.date.slice(0,7),budget=profile.modules.includes('money')?await readResource(db,userId,'budget',month):null;
- const tx=budget?await db.prepare("SELECT resource_id,payload,version FROM life_resources WHERE user_id=?1 AND kind='transaction' AND period=?2 LIMIT 501").bind(userId,month).all<{resource_id:string;payload:string;version:number}>():{results:[]};
- if(tx.results.length>500)return json({error:'This budget needs a larger-context review path before AI can summarize it.'},413);
- const workouts=profile.modules.includes('fitness')?await db.prepare("SELECT resource_id,payload,version FROM life_resources WHERE user_id=?1 AND kind='workout' AND period=?2 LIMIT 101").bind(userId,month).all<{resource_id:string;payload:string;version:number}>():{results:[]};
- if(workouts.results.length>100)return json({error:'This workout history exceeds the initial review context limit.'},413);
- const context=buildReviewContext({profile,from:input.date,through:input.date,entries:[entry],budget:budget||undefined,transactions:tx.results.map(r=>({id:r.resource_id,data:JSON.parse(r.payload),version:r.version})),workouts:workouts.results.map(r=>({id:r.resource_id,data:JSON.parse(r.payload),version:r.version}))});
- const snapshot=JSON.stringify({context,previousReview:previous?.report_text||null,revisionRequest:input.critique||null,...(consent?{automaticConsent:{version:consent.version,policyVersion:AUTOMATIC_POLICY,startDate:consent.startDate,acceptedAt:consent.acceptedAt}}:{})});
+ const month=input.date.slice(0,7),budget=!periodic?await readResource(db,userId,'budget',month):null;
+ if(!profile.budgetGoals){const goalPlan=budget||await db.prepare("SELECT payload FROM life_resources WHERE user_id=?1 AND kind='budget' ORDER BY period DESC LIMIT 1").bind(userId).first<{payload:string}>();if(goalPlan)profile.budgetGoals='data' in goalPlan?goalPlan.data.goals:JSON.parse(goalPlan.payload).goals;}
+ const activity=await readActivity(db,userId,periodic?window.from:month+'-01',input.date);
+ const prior=periodic?await db.prepare("SELECT request_id,entry_date,window_start,cadence,revision,report_text FROM life_ai_reviews WHERE user_id=?1 AND status='complete' AND entry_date>=?2 AND entry_date<=?3 AND cadence<>?4 ORDER BY CASE cadence WHEN 'monthly' THEN 0 WHEN 'weekly' THEN 1 ELSE 2 END,entry_date DESC,revision DESC LIMIT 100").bind(userId,window.from,window.through,cadence).all<{request_id:string;entry_date:string;window_start:string|null;cadence:Cadence;revision:number;report_text:string}>():{results:[]};
+ const allowed=cadence==='weekly'?['daily']:cadence==='monthly'?['weekly','daily']:['monthly','weekly','daily'];
+ const seen=new Set<string>();
+ const evidence:ReviewRecord[]=prior.results.filter(r=>{const key=r.cadence+':'+r.entry_date;if(!allowed.includes(r.cadence)||seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>allowed.indexOf(a.cadence)-allowed.indexOf(b.cadence)).map(r=>({id:r.request_id,cadence:r.cadence,from:r.window_start||r.entry_date,through:r.entry_date,status:'complete',revision:r.revision,content:r.report_text}));
+ const context=periodic?buildPeriodContext(profile,cadence,window.from,window.through,entries,activity,evidence):buildReviewContext({profile,from:input.date,through:input.date,entries:[entry],budget:budget||undefined,...activity});
+ const critique=input.predecessorId?(input.critique||'Regenerate using the current saved context and guidance.'):'';
+ const snapshot=JSON.stringify({context,previousReview:previous?.report_text||null,revisionRequest:critique||null,...(consent?{automaticConsent:{version:consent.version,policyVersion:periodic?PERIOD_POLICY:AUTOMATIC_POLICY,startDate:consent.startDate,acceptedAt:consent.acceptedAt}}:{})});
  if(new TextEncoder().encode(snapshot+systemInstruction).length>MAX_INPUT_BYTES)return json({error:'This day’s context exceeds the initial AI limit. It needs a larger-context review path.'},413);
  const revision=previous?previous.revision+1:1;
  // Atomic admission: duplicate keys, monthly reservations, unresolved attempts and
  // daily rate limits are checked in the same serialized SQLite insert.
- const admitted=await db.prepare(`INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,predecessor_id,critique,status,input_snapshot,model,price_version,reserved_micros,created_at)
- SELECT ?1,?2,?3,?4,?5,?6,?7,'generating',?8,?9,?10,?11,?12
+ const admitted=await db.prepare(`INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,predecessor_id,critique,status,input_snapshot,model,price_version,reserved_micros,created_at,cadence,window_start)
+ SELECT ?1,?2,?3,?4,?5,?6,?7,'generating',?8,?9,?10,?11,?12,?18,?19
  WHERE (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?13)+?11<=?14
  AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE created_at>=?13)+?11<=?15
  AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?16)<5
  AND NOT EXISTS(SELECT 1 FROM life_ai_usage WHERE error_code='cost_bound_exceeded')
  AND EXISTS(SELECT 1 FROM life_profiles WHERE user_id=?1 AND version=?17)
- AND EXISTS(SELECT 1 FROM life_entries WHERE user_id=?1 AND entry_date=?3 AND version=?5)
- ${automatic?`AND (
-  EXISTS(SELECT 1 FROM life_automatic_consent WHERE user_id=?1 AND enabled=1 AND version=?18 AND policy_version=?19 AND start_date<=?3)
+ AND (SELECT COUNT(*) FROM life_ai_reviews WHERE user_id=?1 AND cadence=?18 AND entry_date=?3 AND revision>1 AND created_at>=?16)<2
+ AND (SELECT COALESCE(SUM(version),0) FROM life_entries WHERE user_id=?1 AND entry_date>=?19 AND entry_date<=?3)=?20
+ AND (SELECT COUNT(*) FROM life_entries WHERE user_id=?1 AND entry_date>=?19 AND entry_date<=?3)=?21
+ ${automatic?(periodic?`AND EXISTS(SELECT 1 FROM life_period_consent WHERE user_id=?1 AND enabled=1 AND version=?22 AND policy_version=?23 AND start_date<=?3)`:`AND (
+  EXISTS(SELECT 1 FROM life_automatic_consent WHERE user_id=?1 AND enabled=1 AND version=?22 AND policy_version=?23 AND start_date<=?3)
   AND EXISTS(SELECT 1 FROM life_daily_job_status WHERE user_id=?1 AND entry_date=?3 AND state='ready' AND source_version=?5)
- )`:''}
- ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,entry.version,previous?.request_id||null,input.critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),settings.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,...(automatic?[automatic.consentVersion,AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
- if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return json({report:publicReport(duplicate)},202);return json({error:'AI usage is at its current limit, or a newer review already exists. Refresh the review history.'},429);}
+ )`):''}
+ ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,periodic?profile.version:entry.version,previous?.request_id||null,critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),settings.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,cadence,window.from,entries.reduce((n,e)=>n+e.version,0),entries.length,...(automatic?[automatic.consentVersion,periodic?PERIOD_POLICY:AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
+ if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return json({report:publicReport(duplicate)},202);return json({error:'The analysis limit has been reached, or the saved context changed. Refresh first; if the limit remains, try again tomorrow.'},429);}
  try{
   const result=await settings.provider.generate(snapshot);
   const exceeded=result.costMicros>RESERVATION_MICROS,valid=result.text.trim().length>0&&result.finishReason==='STOP'&&!exceeded;

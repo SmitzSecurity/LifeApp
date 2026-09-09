@@ -5,7 +5,7 @@ import {savedDayQuery} from '@/lib/life/saved-day-link';
 export default function SignInCard({ready}:{ready:boolean}){
  const [busy,setBusy]=useState(false),[error,setError]=useState('');
  async function signIn(){setBusy(true);setError('');try{
-  const callbackURL='/'+savedDayQuery(new URLSearchParams(window.location.search).get('date'));
+  const params=new URLSearchParams(window.location.search),callbackURL='/'+savedDayQuery(params.get('date'),params.get('analysis'));
   const response=await fetch('/api/auth/sign-in/social',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({provider:'google',callbackURL})});
   const data=await response.json();if(!response.ok||!data.url)throw Error('Google sign-in could not start. Please try again.');
   const url=new URL(data.url);if(url.protocol!=='https:'||url.hostname!=='accounts.google.com')throw Error('The sign-in address could not be verified.');

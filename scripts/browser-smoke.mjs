@@ -4,16 +4,19 @@ import {readFileSync,readdirSync,existsSync,statSync} from 'node:fs';
 import {resolve,sep,extname} from 'node:path';
 import {randomBytes} from 'node:crypto';
 import {Miniflare,createFetchMock} from 'miniflare';
+import {AI_MODEL} from '../lib/life/ai-provider.ts';
 import {serializeSignedCookie} from 'better-call';
 
 const assets=resolve('dist-standalone/client');
 if(!existsSync(resolve('dist-standalone/server/index.js')))throw Error('Run npm run build first.');
 const secret=randomBytes(48).toString('base64url');
 const mock=createFetchMock();mock.disableNetConnect();
+const analysisFixture=process.argv.includes('--analysis');
+if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':generateContent',method:'POST'}).reply(200,()=>JSON.stringify({responseId:'synthetic-browser-analysis',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:'You made room for the things that matter, even on a full day. Reading and a short walk gave the day a steady rhythm.\n\nThe useful pattern is consistency: small actions were easier to keep than a perfect plan. Your spending stayed within the categories you chose, and the upcoming electric bill is still an estimate.\n\nFor tomorrow, protect one small block for your journal and movement. Keep it manageable, and adjust your plan when you have the actual bill amount.'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:120,thoughtsTokenCount:0,totalTokenCount:220}})).persist();
 const calmFixture=process.argv.includes('--calm');
 const editingFixture=process.argv.includes('--editing');
 const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],fetchMock:mock,
- bindings:{LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com',LIFEAPP_EMAIL_ENABLED:calmFixture?'true':'false'},
+ bindings:{...(analysisFixture?{LIFEAPP_AI_ENABLED:'true',LIFEAPP_AI_PAID_PROJECT:'true',GEMINI_API_KEY:'synthetic',LIFEAPP_REVIEW_PLANNER_ENABLED:'true',LIFEAPP_AUTOMATIC_REVIEWS_ENABLED:'true'}:{}),LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com',LIFEAPP_EMAIL_ENABLED:calmFixture?'true':'false'},
  email:calmFixture?{send_email:[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com'],destination_address:'smoke@example.test'}]}:undefined,
  serviceBindings:{ASSETS:async()=>new Response('Not found',{status:404})}
 });
@@ -28,6 +31,12 @@ const historyFixture=process.argv.includes('--history');
 for(let days=1;days<=(historyFixture?400:2);days++){
  const date=new Date(stamp-days*86400000).toISOString().slice(0,10);
  await db.prepare('INSERT INTO life_entries VALUES(?1,?2,?3,1,?4)').bind(userId,date,JSON.stringify({date,complete:!historyFixture||days%3!==0,journal:(historyFixture&&days%5===0?'Synthetic reading session ':'Synthetic preserved check-in ')+days,context:{},habits:[]}),new Date(stamp).toISOString()).run();
+}
+if(analysisFixture){
+ const month=new Date(stamp).toISOString().slice(0,7),date=month+'-01',category='22222222-2222-4222-8222-222222222222',recurring='33333333-3333-4333-8333-333333333333';
+ const plan={currency:'USD',categories:[{id:category,name:'Bills',limitCents:30000},...['Groceries','Dining out','Transport','Personal'].map((name,i)=>({id:'44444444-4444-4444-8444-'+String(i).padStart(12,'0'),name,limitCents:20000}))],recurring:[{id:recurring,title:'Electric bill',kind:'expense',amountCents:8000,categoryId:category,day:1,frequency:'monthly-weekday',week:'first',weekday:1,variable:true,active:true}],goals:{spending:'Spend intentionally.',saving:'A steady emergency fund.',investing:''}};
+ await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'budget',month,month,JSON.stringify(plan),new Date(stamp).toISOString()).run();
+ for(let i=0;i<12;i++)await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'transaction',crypto.randomUUID(),month,JSON.stringify({date,kind:'expense',amountCents:1200+i*23,categoryId:category,categoryName:'Bills',note:'Synthetic transaction '+(i+1),recurringId:null,voided:false}),new Date(stamp).toISOString()).run();
 }
 const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-browser-token',secret,{secure:true,httpOnly:true,path:'/'})).split(';')[0];
 const server=createServer(async(req,res)=>{
@@ -44,7 +53,7 @@ const server=createServer(async(req,res)=>{
    for await(const chunk of req){size+=chunk.length;if(size>65536){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
-   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource'].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
+   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource',...(analysisFixture?['ai','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
   const file=resolve(assets,'.'+decodeURIComponent(pathname));

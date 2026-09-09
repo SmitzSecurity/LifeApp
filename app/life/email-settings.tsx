@@ -19,7 +19,7 @@ export default function EmailSettings(){
   finally{setBusy(false);}
  }
  return <section className="review-settings email-settings"><div className="section-heading"><div><div className="eyebrow">YOUR REPORT, IN YOUR INBOX</div><h3><Mail size={18}/> Email reports</h3></div><Button variant="ghost" disabled={busy} onClick={refresh}>Refresh email status</Button></div>
-  <p className="muted">Get the full text of new completed reviews at your verified Google account email. Email copies can include personal details from your check-in and enabled sections.</p>
+  <p className="muted">Get the full text of new completed analyses at your verified Google account email. Email copies can include personal details from your check-in and enabled sections.</p>
   {error&&<p role="alert" className="error">{error}</p>}
   {data&&<><p className="email-destination">To <strong>{data.consent.recipient||'your verified Google email'}</strong>{data.sender&&<small>From {data.sender}</small>}</p><p role="status" className="completion-help">{data.consent.enabled?'Full-report emails are on.':'Full-report emails are off.'}{!data.available?' Sending is awaiting activation.':''}</p>
    {data.consent.enabled?<Button variant="outline" disabled={busy} onClick={()=>save(false)}>{busy?'Saving…':'Turn off report emails'}</Button>:<><label className="inline-check"><Checkbox checked={agreed} disabled={busy||!data.available||!data.consent.recipient} onCheckedChange={v=>setAgreed(v===true)}/>I agree to email copies of my full reports, including personal details they contain.</label><Button disabled={busy||!agreed||!data.available||!data.consent.recipient} onClick={()=>save(true)}>{busy?'Saving…':'Turn on report emails'}</Button></>}

@@ -153,10 +153,10 @@ test('compiled automatic handler uses explicit consent and stores one mocked Gem
   await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(id,JSON.stringify(profile),now.toISOString()).run();
   await db.prepare('INSERT INTO life_entries VALUES(?1,?2,?3,1,?4)').bind(id,date,JSON.stringify({date,complete:true,journal:'Synthetic check-in',habits:[],context:{}}),now.toISOString()).run();
   const worker=await enabled.getWorker();
-  assert.equal((await worker.scheduled({scheduledTime:now.valueOf(),cron:'*/5 * * * *'})).outcome,'ok');
+  assert.equal((await worker.scheduled({scheduledTime:Math.floor(now.valueOf()/600000)*600000,cron:'*/5 * * * *'})).outcome,'ok');
   assert.equal(calls,0);
   await db.prepare('INSERT INTO life_automatic_consent VALUES(?1,1,1,?2,?3,?4,?4)').bind(id,'daily-v1',date,new Date(now.valueOf()-86400000).toISOString()).run();
-  for(let i=0;i<2;i++)assert.equal((await worker.scheduled({scheduledTime:now.valueOf(),cron:'*/5 * * * *'})).outcome,'ok');
+  for(let i=0;i<2;i++)assert.equal((await worker.scheduled({scheduledTime:Math.floor(now.valueOf()/600000)*600000,cron:'*/5 * * * *'})).outcome,'ok');
   const result=await db.prepare('SELECT status,cost_micros,output_tokens,input_snapshot FROM life_ai_reviews').first();
   assert.equal(calls,1);assert.equal(result.status,'complete');assert.equal(result.cost_micros,225);assert.equal(result.output_tokens,40);
   assert.equal(JSON.parse(result.input_snapshot).automaticConsent.version,1);

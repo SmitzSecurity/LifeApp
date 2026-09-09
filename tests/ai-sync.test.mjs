@@ -84,7 +84,7 @@ test('concurrent daily requests call provider once and saved originals survive r
  const original=(await (await f.call(review())).json()).report;assert.equal(calls,1);
  assert.equal((await f.call({action:'entry',entry:{...entry(),version:1,journal:'Updated synthetic day'}})).status,200);
  const preserved=(await (await f.call(review({sourceVersion:2}))).json()).report;assert.equal(preserved.sourceVersion,1);
- assert.equal((await f.call(review({sourceVersion:2,predecessorId:original.id}))).status,409);
+ assert.equal((await f.call(review({sourceVersion:2,predecessorId:"not-the-latest-analysis"}))).status,409);
  const revision=review({sourceVersion:2,predecessorId:original.id,critique:'Focus more on reading.'});
  assert.equal((await f.call(revision)).status,200);assert.equal((await f.call(revision)).status,200);assert.equal(calls,2);
  const history=await (await f.call(undefined,'a','?ai=1')).json();assert.equal(history.reports.length,2);assert.equal(history.usage.measuredMicros,450);

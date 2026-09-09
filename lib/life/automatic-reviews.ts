@@ -5,6 +5,7 @@ import { scheduledReviewPlanning } from './scheduler.ts';
 import type { Database } from './service.ts';
 import {settingsForEmail,type EmailEnvironment} from './email-configuration.ts';
 import {consumeReportEmails,emailAvailable} from './email-service.ts';
+import {consumePeriodicAnalyses} from './periodic-analyses.ts';
 
 // Planner uses at most 22 D1 queries; two contexts plus settlement fit within
 // the free tier's 50-query invocation limit, including enabled module reads.
@@ -46,7 +47,10 @@ export async function scheduledDailyReviews(env: AIEnvironment & EmailEnvironmen
     if (automaticAvailable(settings, new Date())) {
       if (!env.DB) throw new Error('Automatic review database unavailable');
       // Bill/pricing checks use execution time, not a delayed Cron timestamp.
-      await consumeDailyReviews(env.DB, settings);
+      // Alternate consumers so periodic opt-ins cannot starve daily work, while
+      // retaining query headroom for planning and email on every five-minute tick.
+      if(Math.floor(scheduledTime/300000)%2===0)await consumeDailyReviews(env.DB, settings);
+      else await consumePeriodicAnalyses(env.DB,settings);
     }
   }finally{
     // Saved reports can still be delivered while AI is unavailable or switched off.

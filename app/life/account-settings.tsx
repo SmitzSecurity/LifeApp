@@ -19,14 +19,14 @@ export default function AccountSettings({disabled,onBusy,onDeleted,open:controll
   }catch(e){setError((e as Error).message);}
   finally{setBusy(false);onBusy(false);}
  }
- return <>{controlledOpen===undefined&&<Button variant="ghost" disabled={disabled} onClick={()=>setOpen(true)}>Account</Button>}
+ return <>{controlledOpen===undefined&&<Button variant="ghost" disabled={disabled} onClick={()=>setOpen(true)}>Delete account</Button>}
   <AlertDialog open={open} onOpenChange={value=>{if(!busy)setOpen(value);}}><AlertDialogContent>
    <AlertDialogHeader><AlertDialogTitle>Delete your LifeApp account?</AlertDialogTitle><AlertDialogDescription>This permanently removes your saved check-ins, goals, habits, budget and workout records, AI reports and Google sign-in connection from LifeApp. It signs you out on every device. Your Google account stays yours.</AlertDialogDescription></AlertDialogHeader>
    <p><a href="/api/life?export=1" download>Download my private data backup first</a></p>
    <p className="muted">Unsaved changes in this tab will also be discarded. We retain minimal AI usage records and a retired account ID for spending controls. An AI request already sent may still finish, but its report will not be saved. Provider backups expire on their normal retention schedule.</p>
    <label className="compact-field" htmlFor="delete-confirmation">Type DELETE to confirm<input id="delete-confirmation" autoComplete="off" spellCheck={false} value={confirmation} disabled={busy} onChange={e=>setConfirmation(e.target.value)}/></label>
    {error&&<p className="error" role="alert">{error}</p>}
-   <p className="muted">You must have signed in within the last 10 minutes. <a href="/sign-out">Sign out to sign in again</a>, then reopen Account.</p>
+   <p className="muted">You must have signed in within the last 10 minutes. <a href="/sign-out">Sign out to sign in again</a>, then return to Delete account in Settings.</p>
    <AlertDialogFooter><AlertDialogCancel disabled={busy}>Keep my account</AlertDialogCancel><Button variant="destructive" disabled={busy||confirmation!=='DELETE'} onClick={remove}>{busy?'Deleting…':'Delete my account'}</Button></AlertDialogFooter>
   </AlertDialogContent></AlertDialog>
  </>;

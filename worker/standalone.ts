@@ -17,7 +17,7 @@ export default {
    return new Response('LifeApp hosting is connected. Sign-in setup is still in progress.',{status:503,headers:{'Content-Type':'text/plain; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
   }
   const response=await worker.fetch(withoutSitesIdentity(request),env,ctx);
-  const url=new URL(request.url),query=savedDayQuery(url.searchParams.get('date'));
+  const url=new URL(request.url),query=savedDayQuery(url.searchParams.get('date'),url.searchParams.get('analysis'));
   // Preserve a saved report's date at the HTTP boundary; sign-in still runs normally.
   if(url.pathname==='/'&&query&&[302,303,307,308].includes(response.status)){
    const location=new URL(response.headers.get('Location')||'/',url);

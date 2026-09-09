@@ -46,8 +46,8 @@ export async function handleGoogleAuth(request:Request,auth:ReturnType<typeof cr
   const text=await request.clone().text();if(new TextEncoder().encode(text).length>4096)return Response.json({error:'Request too large'},{status:413});
   let body;try{body=JSON.parse(text);}catch{return Response.json({error:'Invalid request'},{status:400});}
   if(!body||typeof body!=='object'||Array.isArray(body))return Response.json({error:'Invalid request'},{status:400});
-  const date=typeof body.callbackURL==='string'&&body.callbackURL.startsWith('/?date=')?body.callbackURL.slice(7):null;
-  const safeCallback=body.callbackURL==='/'||!!date&&body.callbackURL==='/'+savedDayQuery(date);
+  const params=typeof body.callbackURL==='string'&&body.callbackURL.startsWith('/?date=')?new URLSearchParams(body.callbackURL.slice(2)):null;
+  const safeCallback=body.callbackURL==='/'||!!params&&body.callbackURL==='/'+savedDayQuery(params.get('date'),params.get('analysis'));
   if(path.endsWith('/sign-in/social')&&(body.provider!=='google'||!safeCallback||Object.keys(body).some(k=>!['provider','callbackURL'].includes(k))))return Response.json({error:'Use the Google sign-in button.'},{status:400});
  }
  const response=await auth.handler(request),headers=new Headers(response.headers);

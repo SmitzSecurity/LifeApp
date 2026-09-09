@@ -57,6 +57,13 @@
       "when": 1788981265220,
       "tag": "0007_report_email",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1788990000000,
+      "tag": "0008_analysis_periods",
+      "breakpoints": true
     }
   ]
 }

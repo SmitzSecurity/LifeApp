@@ -148,7 +148,7 @@ test('sender configuration fails closed and only native binding is used',()=>{
  assert.equal(settingsForEmail({...env,LIFEAPP_EMAIL_FROM:'bad\r\nBcc:x@example.test'}).from,'');
  assert.equal(settingsForEmail({...env,BETTER_AUTH_URL:'http://life.test'}).origin,'');
  assert.equal(settingsForEmail({...env,REPORT_EMAILS:undefined}).send,null);
- const email=reportEmail({date,revision:2,text:'full report',recipient:'a@example.test',unsubscribeToken:'a'.repeat(64)},s);assert.match(email.subject,/revision 2/);assert.equal(email.headers['List-Unsubscribe-Post'],'List-Unsubscribe=One-Click');
+ const email=reportEmail({date,revision:2,text:'full report',recipient:'a@example.test',unsubscribeToken:'a'.repeat(64)},s);assert.match(email.subject,/Your LifeApp analysis/);assert.equal(email.headers['List-Unsubscribe-Post'],'List-Unsubscribe=One-Click');
 });
 test('0007 preserves every pre-existing row and creates no grants or retrospective email jobs',()=>{
  const raw=new DatabaseSync(':memory:');try{

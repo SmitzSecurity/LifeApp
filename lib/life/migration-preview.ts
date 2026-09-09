@@ -1,7 +1,8 @@
 import {z} from 'zod/v3';
 import {dateSchema,habitSchema,profileSchema,moduleId,statusSchema} from './domain.ts';
 import {resourceKind,resourceSchemas,monthSchema,occurrenceId,type Transaction,type Workout} from './modules.ts';
-import {completionIssues} from './reviews.ts';
+import {completionIssues,cadenceSchema} from './reviews.ts';
+import {analysisWindow} from './analysis-periods.ts';
 
 export const MAX_BACKUP_BYTES=8*1024*1024;
 const integer=z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -13,6 +14,7 @@ const resourceRow=row.extend({kind:resourceKind,resource_id:z.string().min(1).ma
 const id=z.string().min(1).max(100);
 const reviewRow=z.object({
  request_id:id,entry_date:dateSchema,revision:version,source_version:version,predecessor_id:id.nullable(),
+ cadence:cadenceSchema.optional(),window_start:dateSchema.nullable().optional(),
  critique:z.string().max(1000),status:z.enum(['generating','uncertain','complete','failed']),input_snapshot:z.string().max(48000),
  report_text:z.string().max(200000).nullable(),model:z.string().min(1).max(200),price_version:z.string().min(1).max(200),
  provider_id:z.string().max(500).nullable(),input_tokens:integer.nullable(),output_tokens:integer.nullable(),thought_tokens:integer.nullable(),
@@ -21,7 +23,7 @@ const reviewRow=z.object({
 const emailData=z.object({consent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.string().max(100),recipient:z.string().email().max(254),enabled_at:timestamp,updated_at:timestamp}).strict().nullable(),
  deliveries:z.array(z.object({request_id:id,consent_version:version,state:z.enum(['pending','sending','sent','retry','failed','uncertain','cancelled']),attempts:integer,created_at:timestamp,next_attempt_at:timestamp,last_attempt_at:timestamp.nullable(),finished_at:timestamp.nullable(),message_id:z.string().max(500).nullable(),error_code:z.string().max(200).nullable()}).strict()).max(10000)}).strict();
 const backupSchema=z.object({format:z.literal('lifeapp-portable-v1'),exportedAt:timestamp,profile:row.nullable(),
- entries:z.array(entryRow).max(10000),resources:z.array(resourceRow).max(10000),reviews:z.array(reviewRow).max(10000),email:emailData.optional()}).strict();
+ entries:z.array(entryRow).max(10000),resources:z.array(resourceRow).max(10000),reviews:z.array(reviewRow).max(10000),email:emailData.optional(),periodicConsent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.literal('periods-v1'),start_date:dateSchema,accepted_at:timestamp,updated_at:timestamp}).strict().nullable().optional()}).strict();
 const entryPayload=z.object({date:dateSchema,journal:z.string().max(6000),context:z.record(moduleId,z.string().max(2000)),
  habits:z.array(habitSchema.omit({archived:true}).extend({status:statusSchema})).max(50),complete:z.boolean().optional(),mutationId:z.string().uuid().optional()}).strict();
 type Backup=z.infer<typeof backupSchema>;
@@ -57,9 +59,9 @@ export function validateBackup(text:string):Backup{
  const b=validate(backupSchema,parseJSON(text,'backup'),'backup');
  const profile=b.profile?validate(profileSchema,{...validate(z.record(z.unknown()),parseJSON(b.profile.payload,'profile'),'profile'),version:b.profile.version},'profile'):null;
  if(b.profile)requireThat(!Object.hasOwn(JSON.parse(b.profile.payload),'version'),'embedded_version','profile');
- requireThat(profile||!(b.entries.length+b.resources.length+b.reviews.length),'missing_profile','backup');
+ requireThat(profile||!(b.entries.length+b.resources.length+b.reviews.length+(b.periodicConsent?1:0)),'missing_profile','backup');
  unique(b.entries.map(r=>r.entry_date),'entries');unique(b.resources.map(r=>r.kind+':'+r.resource_id),'resources');
- unique(b.reviews.map(r=>r.request_id),'reviews');unique(b.reviews.map(r=>r.entry_date+':'+r.revision),'reviews');
+ unique(b.reviews.map(r=>r.request_id),'reviews');unique(b.reviews.map(r=>(r.cadence||'daily')+':'+r.entry_date+':'+r.revision),'reviews');
  const entries=new Map(b.entries.map(r=>[r.entry_date,r]));
  for(const [i,r] of b.entries.entries()){
   const at=`entries[${i}]`,e=validate(entryPayload,parseJSON(r.payload,at),at);
@@ -93,18 +95,20 @@ export function validateBackup(text:string):Backup{
  requireThat(b.resources.filter(r=>r.active_slot==='active').length<=1,'multiple_active_workouts','resources');
  const reviews=new Map(b.reviews.map(r=>[r.request_id,r]));
  for(const [i,r] of b.reviews.entries()){
-  const at=`reviews[${i}]`,entry=entries.get(r.entry_date);
-  requireThat(entry&&r.source_version<=entry.version,'missing_source_revision',at);
-  if(r.revision===1)requireThat(r.request_id==='daily:'+r.entry_date&&r.predecessor_id===null&&!r.critique,'invalid_initial_review',at);
+  const at=`reviews[${i}]`,entry=entries.get(r.entry_date),cadence=r.cadence||'daily';
+  requireThat(cadence==='daily'?entry&&r.source_version<=entry.version:profile&&r.source_version<=profile.version,'missing_source_revision',at);
+  if(r.revision===1)requireThat(r.request_id===cadence+':'+r.entry_date&&r.predecessor_id===null&&!r.critique,'invalid_initial_review',at);
   else{
    const previous=r.predecessor_id?reviews.get(r.predecessor_id):null;
-   requireThat(z.string().uuid().safeParse(r.request_id).success&&previous&&previous.entry_date===r.entry_date&&previous.revision===r.revision-1&&previous.status==='complete'&&r.critique.trim(),'broken_review_chain',at);
+   requireThat(z.string().uuid().safeParse(r.request_id).success&&previous&&previous.entry_date===r.entry_date&&(previous.cadence||'daily')===cadence&&previous.revision===r.revision-1&&previous.status==='complete'&&r.critique.trim(),'broken_review_chain',at);
   }
-  const snapshot=validate(z.object({context:z.record(z.unknown()),previousReview:z.string().nullable(),revisionRequest:z.string().nullable(),automaticConsent:z.object({version:z.number().int().positive(),policyVersion:z.literal('daily-v1'),startDate:dateSchema,acceptedAt:timestamp}).strict().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
+  const snapshot=validate(z.object({context:z.record(z.unknown()),previousReview:z.string().nullable(),revisionRequest:z.string().nullable(),automaticConsent:z.object({version:z.number().int().positive(),policyVersion:z.enum(['daily-v1','periods-v1']),startDate:dateSchema,acceptedAt:timestamp}).strict().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
   if(snapshot.automaticConsent)requireThat(r.revision===1&&r.predecessor_id===null&&r.entry_date>=snapshot.automaticConsent.startDate,'automatic_consent_evidence_mismatch',at);
   requireThat(snapshot.context.contractVersion===1,'unknown_evidence_contract',at);
   const window=validate(z.object({from:dateSchema,through:dateSchema}).strict(),snapshot.context.window,at);
-  requireThat(window.from===r.entry_date&&window.through===r.entry_date,'evidence_window_mismatch',at);
+  let expected;try{expected=analysisWindow(cadence,r.entry_date);}catch{throw new MigrationValidationError('evidence_window_mismatch',at);}
+  requireThat(window.from===expected.from&&window.through===expected.through&&(!r.window_start||r.window_start===expected.from),'evidence_window_mismatch',at);
+  if(snapshot.automaticConsent)requireThat(snapshot.automaticConsent.policyVersion===(cadence==='daily'?'daily-v1':'periods-v1'),'automatic_consent_evidence_mismatch',at);
   requireThat(snapshot.revisionRequest===(r.critique||null)&&snapshot.previousReview===(r.predecessor_id?reviews.get(r.predecessor_id)?.report_text:null),'revision_evidence_mismatch',at);
   if(r.status==='complete'||r.status==='failed'){
    requireThat(r.finished_at!==null&&r.cost_micros!==null&&r.input_tokens!==null&&r.output_tokens!==null&&r.thought_tokens!==null,'missing_usage',at);
@@ -131,12 +135,13 @@ function rows(b:Backup){
   ...b.reviews.map(r=>['review:'+r.request_id,r] as [string,unknown]),
   ...(b.email?.consent?[['email-consent',b.email.consent] as [string,unknown]]:[]),
   ...(b.email?.deliveries||[]).map(r=>['email-delivery:'+r.request_id,r] as [string,unknown]),
+  ...(b.periodicConsent?[['periodic-consent',b.periodicConsent] as [string,unknown]]:[]),
  ]);
 }
 function sum(values:number[]){let total=0;for(const n of values){total+=n;requireThat(Number.isSafeInteger(total),'usage_overflow','reviews');}return total;}
 function summary(b:Backup){return{
  profiles:b.profile?1:0,checkIns:b.entries.length,resources:b.resources.length,reports:b.reviews.length,
- resourceKinds:Object.fromEntries(['budget','transaction','routine','workout'].map(kind=>[kind,b.resources.filter(r=>r.kind===kind).length])),
+ resourceKinds:Object.fromEntries(['budget','transaction','routine','workout','cardio'].map(kind=>[kind,b.resources.filter(r=>r.kind===kind).length])),
  reportStatuses:Object.fromEntries(['complete','failed','generating','uncertain'].map(status=>[status,b.reviews.filter(r=>r.status===status).length])),
  measuredCostMicros:sum(b.reviews.map(r=>r.cost_micros||0)),heldReservationMicros:sum(b.reviews.filter(r=>r.cost_micros===null).map(r=>r.reserved_micros)),
 };}

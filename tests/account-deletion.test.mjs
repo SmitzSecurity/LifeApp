@@ -12,7 +12,7 @@ const env={LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER
 const profile={goal:'PRIVATE GOAL',timezone:'UTC',modules:['reflection'],habits:[],version:0};
 const review={date:'2026-09-09',requestId:randomUUID(),sourceVersion:1,predecessorId:null,critique:'',consent:true};
 const result={text:'PRIVATE AI REPORT',inputTokens:100,outputTokens:40,thoughtTokens:10,costMicros:225,providerId:'PRIVATE PROVIDER ID',modelVersion:AI_MODEL,finishReason:'STOP'};
-const userTables=['life_profiles','life_entries','life_resources','life_ai_reviews','life_review_jobs','life_reminder_outbox','life_automatic_consent'];
+const userTables=['life_profiles','life_entries','life_resources','life_ai_reviews','life_review_jobs','life_reminder_outbox','life_automatic_consent','life_period_consent'];
 function fixture(){
  const raw=new DatabaseSync(':memory:');raw.exec('PRAGMA foreign_keys=ON');
  for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+f,'utf8'));
@@ -29,10 +29,11 @@ function fixture(){
   raw.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,access_token,created_at,updated_at) VALUES(?,?,?,?,?,?,?)').run('account-'+id,'PRIVATE GOOGLE SUBJECT '+id,'google',id,'PRIVATE OAUTH TOKEN',now.valueOf(),now.valueOf());
   assert.equal((await life({action:'profile',profile},'google:'+id)).status,200);
   assert.equal((await life({action:'entry',entry:{date:'2026-09-09',journal:'PRIVATE JOURNAL '+id,context:{},statuses:[],version:0,complete:true}},'google:'+id)).status,200);
-  raw.prepare('INSERT INTO life_resources VALUES(?,?,?,?,?,1,?,NULL)').run('google:'+id,'workout','synthetic-workout','2026-09','PRIVATE RESOURCE',now.toISOString());
+  raw.prepare('INSERT INTO life_resources VALUES(?,?,?,?,?,1,?,NULL)').run('google:'+id,'workout','synthetic-workout','2026-09',JSON.stringify({date:'2026-09-09',name:'PRIVATE RESOURCE',exercises:[],sets:[],finishedAt:null}),now.toISOString());
   raw.prepare('INSERT INTO life_review_jobs VALUES(?,?,?,?,?,1,NULL)').run('google:'+id,'2026-09-09',now.toISOString(),'UTC','08:00');
   raw.prepare('INSERT INTO life_reminder_outbox VALUES(?,?,?) ON CONFLICT DO NOTHING').run('google:'+id,'2026-09-09',now.toISOString());
   raw.prepare('INSERT INTO life_automatic_consent VALUES(?,1,1,?,?,?,?)').run('google:'+id,'daily-v1','2026-09-09',now.toISOString(),now.toISOString());
+  raw.prepare('INSERT INTO life_period_consent VALUES(?,1,1,?,?,?,?,NULL)').run('google:'+id,'periods-v1','2026-09-09',now.toISOString(),now.toISOString());
  }
  return {raw,db,auth,session,req,remove,settings,life,setup};
 }

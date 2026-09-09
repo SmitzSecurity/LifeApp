@@ -1,7 +1,7 @@
 import { reviewPreferencesSchema, defaultReviewPreferences } from './reviews.ts';
 import { z } from "zod/v3";
 export const modules = [
-{id:"reflection",name:"Reflection",hint:"A little room to think.",prompt:"What stood out today?",habit:"Take five minutes to reflect",glyph:"◈"},
+{id:"reflection",name:"Journal",hint:"A little room to think.",prompt:"What stood out today?",habit:"Take five minutes to reflect",glyph:"◈"},
 {id:"fitness",name:"Movement",hint:"Build a rhythm that feels good.",prompt:"How did you move or recover?",habit:"Move for 20 minutes",glyph:"↗"},
 {id:"work",name:"Work & learning",hint:"Make space for meaningful progress.",prompt:"What did you move forward?",habit:"Complete one focused work session",glyph:"▤"},
 {id:"money",name:"Money",hint:"Notice the choices you make.",prompt:"Any spending or money decisions to note?",habit:"Review today's spending",glyph:"◎"},
@@ -9,20 +9,25 @@ export const modules = [
 {id:"spiritual",name:"Spiritual life",hint:"Optional. Guided by your own tradition.",prompt:"What would you like to reflect on spiritually?",habit:"Make time for my chosen spiritual practice",glyph:"✧"},
 ] as const;
 export const moduleId=z.enum(["reflection","fitness","work","money","social","spiritual"]);
+export const coreModules=['reflection','fitness','money'] as const;
+export const withCoreModules=(ids:readonly z.infer<typeof moduleId>[])=>[...new Set<z.infer<typeof moduleId>>([...coreModules,...ids])];
 export const statusSchema=z.enum(["unrecorded","done","missed","exempt"]);
 export type HabitStatus=z.infer<typeof statusSchema>;
 export const habitSchema=z.object({id:z.string().uuid(),title:z.string().trim().min(1).max(100),module:moduleId,archived:z.boolean()}).strict();
 export const profileSchema=z.object({
 goal:z.string().trim().max(300),
+budgetGoals:z.object({spending:z.string().max(1000),saving:z.string().max(1000),investing:z.string().max(1000)}).strict().nullable().default(null),
+analysisGuidance:z.array(z.object({id:z.string().uuid(),text:z.string().trim().min(1).max(500),createdAt:z.string().datetime(),sourceDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),cadence:z.enum(['daily','weekly','monthly','annual'])}).strict()).max(12).default([]),
 reviewPreferences:reviewPreferencesSchema.default(defaultReviewPreferences),
 timezone:z.string().max(80).refine(v=>{try{new Intl.DateTimeFormat("en",{timeZone:v});return true}catch{return false}},"Choose a valid timezone"),
 timezoneMode:z.enum(["automatic","manual"]).default("automatic"),
 moduleGoals:z.record(moduleId,z.string().trim().max(1000)).default({}),
 spiritualTradition:z.string().trim().max(200).default(""),
-modules:z.array(moduleId).min(1).max(6),habits:z.array(habitSchema).max(50),version:z.number().int().min(0)
+modules:z.array(moduleId).min(1).max(6).refine(ids=>new Set(ids).size===ids.length,'Duplicate modules').transform(withCoreModules),habits:z.array(habitSchema).max(50),version:z.number().int().min(0)
 }).strict().superRefine((v,c)=>{
 if(new Set(v.modules).size!==v.modules.length)c.addIssue({code:"custom",message:"Duplicate modules"});
 if(new Set(v.habits.map(h=>h.id)).size!==v.habits.length)c.addIssue({code:"custom",message:"Duplicate habits"});
+if(new Set(v.analysisGuidance.map(g=>g.id)).size!==v.analysisGuidance.length)c.addIssue({code:'custom',message:'Duplicate guidance'});
 });
 export type Profile=z.infer<typeof profileSchema>;
 export type Habit=z.infer<typeof habitSchema>;

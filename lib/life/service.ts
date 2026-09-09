@@ -2,6 +2,10 @@ import { listAI, generateAI, type AISettings } from './ai-service.ts';
 import { automaticConsentStatus, saveAutomaticConsent } from './automatic-consent.ts';
 import {exportAccount} from './export.ts';
 import {readHistory} from './history.ts';
+import {saveAnalysisFeedback} from './analysis-feedback.ts';
+import {periodConsentStatus,savePeriodConsent} from './period-consent.ts';
+import {readDashboard} from './dashboard.ts';
+import {cadenceSchema} from './reviews.ts';
 import { completionIssues } from './reviews.ts';
 import { listResources, saveResource } from './resource-service.ts';
 import { profileSchema, entryInputSchema, dateSchema, emptyEntry, todayIn, score, type Entry, type Profile } from './domain.ts';
@@ -18,9 +22,11 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
  if(!userId)return json({error:'Sign in to open your journal.'},401);
  try{
   if(request.method==='GET'){
+   if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);
+   if(new URL(request.url).searchParams.has('periodic'))return await periodConsentStatus(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('automatic'))return await automaticConsentStatus(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('export'))return await exportAccount(db,userId,now);
-   if(new URL(request.url).searchParams.has('ai'))return await listAI(db,userId,new URL(request.url).searchParams.get('date'),ai,now);
+   if(new URL(request.url).searchParams.has('ai')){const cadence=cadenceSchema.safeParse(new URL(request.url).searchParams.get('cadence')||'daily');if(!cadence.success)return json({error:'Choose an analysis period.'},400);return await listAI(db,userId,new URL(request.url).searchParams.get('date'),ai,now,cadence.data);}
    if(new URL(request.url).searchParams.has('kind'))return await listResources(request,db,userId);
    const date=new URL(request.url).searchParams.get('date');
    if(date){if(!dateSchema.safeParse(date).success)return json({error:'Choose a valid date.'},400);return json({entry:await getEntry(db,userId,date)});}
@@ -40,6 +46,8 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   const b=body as Record<string,unknown>;
   if(b.action==='history')return await readHistory(db,userId,b.filters);
   const updated=now.toISOString();
+  if(b.action==='analysis-feedback')return await saveAnalysisFeedback(db,userId,b.feedback,now);
+  if(b.action==='period-consent')return await savePeriodConsent(db,userId,b.consent,ai,now);
   if(b.action==='automatic-consent')return await saveAutomaticConsent(db,userId,b.consent,ai,now);
   if(b.action==='ai')return await generateAI(db,userId,b.review,ai,now);
   if(b.action==='resource')return await saveResource(b.record,db,userId,await getProfile(db,userId),now);

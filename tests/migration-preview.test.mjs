@@ -57,7 +57,7 @@ test('actual private export validates losslessly with archived habits, workout s
  assert.equal(validated.reviews[1].predecessor_id,validated.reviews[0].request_id);
  const before=f.raw.prepare('SELECT total_changes() n').get().n;
  const preview=await previewMigration(f.text);assert.equal(preview.canApply,false);assert.equal(preview.targetCompared,false);assert.equal(preview.comparison,null);
- assert.deepEqual(preview.source.resourceKinds,{budget:1,transaction:1,routine:1,workout:1});assert.equal(preview.source.measuredCostMicros,600);
+ assert.deepEqual(preview.source.resourceKinds,{budget:1,transaction:1,routine:1,workout:1,cardio:0});assert.equal(preview.source.measuredCostMicros,600);
  assert.equal(preview.sourceSha256,createHash('sha256').update(f.text).digest('hex'));assert.equal(f.raw.prepare('SELECT total_changes() n').get().n,before);
  assert.doesNotMatch(encode(preview),/SYNTHETIC PRIVATE|reading|Synthetic routine|Please focus|Renamed/);f.raw.close();
 });
