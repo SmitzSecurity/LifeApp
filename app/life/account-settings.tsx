@@ -1,10 +1,13 @@
 'use client';
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogCancel} from '@/components/ui/alert-dialog';
 
-export default function AccountSettings({disabled,onBusy,onDeleted}:{disabled:boolean;onBusy:(busy:boolean)=>void;onDeleted:()=>void}){
- const [open,setOpen]=useState(false),[confirmation,setConfirmation]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+export default function AccountSettings({disabled,onBusy,onDeleted,open:controlledOpen,onOpenChange}:{disabled:boolean;onBusy:(busy:boolean)=>void;onDeleted:()=>void;open?:boolean;onOpenChange?:(open:boolean)=>void}){
+ const [localOpen,setLocalOpen]=useState(false),[confirmation,setConfirmation]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
+ const open=controlledOpen??localOpen;
+ const setOpen=onOpenChange??setLocalOpen;
+ useEffect(()=>{if(open){setConfirmation('');setError('');}},[open]);
  async function remove(){
   if(confirmation!=='DELETE'||busy)return;
   setBusy(true);onBusy(true);setError('');
@@ -16,7 +19,7 @@ export default function AccountSettings({disabled,onBusy,onDeleted}:{disabled:bo
   }catch(e){setError((e as Error).message);}
   finally{setBusy(false);onBusy(false);}
  }
- return <><Button variant="ghost" disabled={disabled} onClick={()=>{setConfirmation('');setError('');setOpen(true);}}>Account</Button>
+ return <>{controlledOpen===undefined&&<Button variant="ghost" disabled={disabled} onClick={()=>setOpen(true)}>Account</Button>}
   <AlertDialog open={open} onOpenChange={value=>{if(!busy)setOpen(value);}}><AlertDialogContent>
    <AlertDialogHeader><AlertDialogTitle>Delete your LifeApp account?</AlertDialogTitle><AlertDialogDescription>This permanently removes your saved check-ins, goals, habits, budget and workout records, AI reports and Google sign-in connection from LifeApp. It signs you out on every device. Your Google account stays yours.</AlertDialogDescription></AlertDialogHeader>
    <p><a href="/api/life?export=1" download>Download my private data backup first</a></p>

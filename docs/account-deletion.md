@@ -1,6 +1,6 @@
 # Account deletion
 
-The Account button is available after Google sign-in, including before onboarding.
+Account is available in the top-left menu after Google sign-in, including before onboarding.
 It offers the existing private export, describes the records removed and usage
 retained, and requires typing `DELETE`. The server requires an exact same-origin
 JSON POST and a verified, beta-permitted Google session created within the last

@@ -49,6 +49,25 @@ test('server acknowledges a lost draft response without a second write; rejects 
  assert.equal((await f.call({...body,entry:{...body.entry,journal:'Different'}})).status,409);
  assert.equal((await f.call({...body,entry:{...body.entry,mutationId:randomUUID()}})).status,409);f.raw.close();
 });
+test('explicit Save commits completion and text together; unchanged Save does not create a revision',async()=>{
+ const sent=[],initial={...entry(),habits:[],complete:false};
+ const writer=new DraftSync(initial,async(e,id)=>{sent.push({e,id});return {...e,version:e.version+1};},()=>{});
+ writer.edit({...initial,journal:'Only saved when requested'});
+ assert.equal(sent.length,0);assert.equal(writer.status,'waiting');
+ await writer.commit(true);
+ assert.equal(sent.length,1);assert.equal(sent[0].e.complete,true);assert.equal(sent[0].e.journal,'Only saved when requested');
+ await writer.commit(true);assert.equal(sent.length,1);assert.equal(writer.entry.version,1);
+ writer.edit({...writer.entry,journal:'',complete:false});await writer.commit(false);
+ assert.equal(sent.length,2);assert.equal(writer.entry.complete,false);
+});
+test('explicit Save retries the exact unconfirmed mutation before committing newer edits',async()=>{
+ const sent=[];let fail=true;const initial={...entry(),habits:[],complete:false};
+ const writer=new DraftSync(initial,async(e,id)=>{sent.push({e,id});if(fail){fail=false;throw Error('Lost acknowledgement');}return {...e,version:e.version+1};},()=>{});
+ writer.edit({...initial,journal:'First saved text'});await assert.rejects(writer.commit(true));
+ writer.edit({...writer.entry,journal:'New text after failure',complete:false});await writer.commit(false);
+ assert.equal(sent[0].id,sent[1].id);assert.deepEqual(sent[0].e,sent[1].e);
+ assert.equal(sent.length,3);assert.equal(sent[2].e.journal,'New text after failure');assert.equal(sent[2].e.complete,false);assert.equal(writer.dirty,false);
+});
 test('AI rejects incomplete, stale, unconsented and unconfigured requests without spending',async()=>{
  let calls=0;const f=fixture({generate:async()=>{calls++;return result;}});await f.setup('a','2026-09-08',false);
  assert.equal((await f.call(review())).status,409);

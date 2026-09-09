@@ -77,7 +77,7 @@ test('signed compiled history and export reads preserve records and isolate anot
   return result;
  };
  const before=await snapshot();
- const home=await call('/');assert.equal(home.status,200);assert.match(await home.text(),/Sign out/);
+ const home=await call('/');assert.equal(home.status,200);assert.match(await home.text(),/Open menu/);
  const history=await call('/api/life');assert.equal(history.status,200);
  assert.equal((await history.json()).entries[0].journal,'Synthetic preserved journal');
  const searched=await call('/api/life',{action:'history',filters:{query:'preserved',from:date,through:date,status:'complete'},userId:'google:another-synthetic-owner'});

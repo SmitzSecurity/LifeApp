@@ -1,4 +1,4 @@
-// Disposable, read-only browser fixture. Local synthetic D1 only; no provider access.
+// Disposable browser fixture. Local synthetic D1 only; no provider access.
 import {createServer} from 'node:http';
 import {readFileSync,readdirSync,existsSync,statSync} from 'node:fs';
 import {resolve,sep,extname} from 'node:path';
@@ -11,6 +11,7 @@ if(!existsSync(resolve('dist-standalone/server/index.js')))throw Error('Run npm 
 const secret=randomBytes(48).toString('base64url');
 const mock=createFetchMock();mock.disableNetConnect();
 const calmFixture=process.argv.includes('--calm');
+const editingFixture=process.argv.includes('--editing');
 const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],fetchMock:mock,
  bindings:{LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com',LIFEAPP_EMAIL_ENABLED:calmFixture?'true':'false'},
  email:calmFixture?{send_email:[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com'],destination_address:'smoke@example.test'}]}:undefined,
@@ -32,13 +33,18 @@ const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synt
 const server=createServer(async(req,res)=>{
  try{
   const pathname=new URL(req.url,'http://localhost').pathname;
+  if(editingFixture&&req.method==='GET'&&pathname==='/__fixture/status'){
+   const entries=await db.prepare('SELECT entry_date date,version,json_extract(payload,\'$.complete\') complete FROM life_entries ORDER BY entry_date DESC LIMIT 3').all();
+   const count=await db.prepare('SELECT count(*) n FROM life_entries').first();
+   res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({count:count.n,entries:entries.results}));return;
+  }
   let body;
   if(req.method==='POST'&&(pathname==='/api/life'||calmFixture&&pathname==='/api/life/email')){
    const chunks=[];let size=0;
    for await(const chunk of req){size+=chunk.length;if(size>65536){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
-   if(pathname==='/api/life'&&parsed?.action!=='history'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
+   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource'].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
   const file=resolve(assets,'.'+decodeURIComponent(pathname));
@@ -50,7 +56,7 @@ const server=createServer(async(req,res)=>{
   // Never use production data, keys, remote D1, or a non-loopback listen address here.
   const headers=new Headers();for(const [key,value] of Object.entries(req.headers))if(value&& !['host','cookie'].includes(key))headers.set(key,Array.isArray(value)?value.join(','):value);
   headers.set('Cookie',cookie);
-  // Only the explicitly read-only history action can reach this POST path.
+  // Only explicitly allowed fixture actions can reach this POST path.
   if(body!==undefined){headers.set('Origin','https://life.test');headers.set('Content-Type','application/json');}
   const response=await mf.dispatchFetch('https://life.test'+req.url,{method:req.method,body,headers,redirect:'manual'});
   res.writeHead(response.status,Object.fromEntries([...response.headers].filter(([key])=>key!=='set-cookie')));

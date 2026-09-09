@@ -1,0 +1,94 @@
+/* The signed-in app uses a compact, touch-friendly response list and editor. */
+.life-compact-theme,.compact-app{color-scheme:dark;--background:#1e1e1e;--foreground:#ededee;--card:#242424;--card-foreground:#ededee;--popover:#2b2b2b;--popover-foreground:#ededee;--primary:#cf96da;--primary-foreground:#241c27;--secondary:#343434;--secondary-foreground:#ededee;--muted:#292929;--muted-foreground:#b3b3b9;--accent:#3d3241;--accent-foreground:#e7b9ef;--destructive:#b74353;--border:#454549;--input:#737379;--ring:#cf96da}
+.compact-app{min-height:100dvh;background:var(--background);color:var(--foreground)}
+.compact-app [hidden]{display:none!important}
+.life-compact-theme input,.life-compact-theme textarea,.life-compact-theme select{background:#202020;color:var(--foreground);border-color:var(--input);border-radius:4px}
+.life-compact-theme input,.life-compact-theme select{min-height:46px}
+.life-compact-theme a:not([data-slot]){color:var(--primary)}
+.life-compact-theme [data-slot=alert-dialog-content]{max-height:90dvh;overflow-y:auto}
+.compact-app .workspace{max-width:1000px;padding:0 24px calc(100px + env(safe-area-inset-bottom))}
+.compact-topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:60px;padding:0 max(18px,calc((100vw - 952px)/2));background:#252525;border-bottom:1px solid var(--border)}
+.compact-topbar h1{font-size:1.1rem;font-weight:600;letter-spacing:0;flex:1;min-width:0}
+.compact-topbar button[data-slot=button]{height:44px;width:44px;color:var(--foreground);flex-shrink:0}
+.compact-topbar button svg{width:23px;height:23px}
+.toolbar-actions{display:flex;gap:4px}
+.compact-topbar button[aria-pressed=true]{background:var(--accent);color:var(--primary)}
+.life-menu{width:248px;padding:8px}
+.life-menu [data-slot=dropdown-menu-item]{min-height:48px;gap:14px;font-size:.95rem}
+.life-menu [data-slot=dropdown-menu-label]{font-size:1.2rem;padding:16px 10px}
+.compact-app .history-panel{padding:0;border:0;border-radius:0;background:transparent;overflow:visible}
+.compact-app .history-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:18px 4px 12px;border-top:0;border-bottom:1px solid var(--border);background:transparent;min-height:112px}
+.compact-app .history-row:hover{background:#272727}
+.compact-app .history-row:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.compact-app .history-date{font-size:1rem;font-weight:650;min-width:0}
+.compact-app .history-score{font-size:.9rem;font-weight:500;color:var(--foreground)}
+.compact-app .history-text{grid-column:1/-1;order:initial;font-size:.95rem;font-weight:400;min-height:24px;line-height:1.5;color:#dadadd}
+.response-row-footer{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;min-height:22px}
+.response-row-footer small{font-size:.72rem}
+.response-row-footer svg{width:21px;height:21px;color:#bfc0c6}
+.compact-app .history-filters{padding:18px 0;margin:0;border-bottom:1px solid var(--border)}
+.compact-app .history-filters input,.compact-app .history-filters select{background:#242424;color:var(--foreground);border-color:var(--input);border-radius:4px}
+.filter-summary{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--muted-foreground);gap:12px;min-height:44px;border-bottom:1px solid var(--border)}
+.compact-app .history-more{padding:24px 0 48px}
+.compact-app .add-response{position:fixed;z-index:25;right:max(22px,calc((100vw - 952px)/2));bottom:calc(88px + env(safe-area-inset-bottom));width:60px;height:60px;min-height:60px;border-radius:50%;box-shadow:0 5px 20px #0006;background:var(--primary);color:var(--primary-foreground)}
+.compact-app .add-response svg{width:30px;height:30px}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;justify-content:center;padding:0 12px env(safe-area-inset-bottom);background:#252525;border-top:1px solid var(--border);height:calc(72px + env(safe-area-inset-bottom))}
+.bottom-nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1;max-width:200px;color:#b8b8bf;font-size:.8rem;min-height:64px}
+.bottom-nav svg{width:23px;height:23px}
+.bottom-nav button[aria-current=page]{color:var(--primary)}
+.bottom-nav button[aria-current=page]:after{content:'';position:absolute;bottom:0;width:42px;height:4px;background:var(--primary);border-radius:3px 3px 0 0}
+.bottom-nav button:focus-visible,.clear-choice:focus-visible{outline:2px solid var(--ring);outline-offset:-3px}
+.response-editor{max-width:680px;margin:auto;padding:26px 0 0}
+.response-field{display:flex;flex-direction:column;gap:10px;margin:0 0 24px;font-size:1rem;font-weight:500}
+.response-field>span{display:flex;justify-content:space-between;align-items:center}
+.response-field small{font-size:.75rem}
+.response-field input{width:100%;min-height:50px}
+.response-field textarea{line-height:1.6;padding:12px;min-height:76px}
+.response-habit{margin:30px 0}
+.response-habit-label{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px;min-height:28px}
+.response-habit-label>span{font-size:1rem}
+.response-habit-label small{font-size:.72rem;text-align:right}
+.clear-choice{padding:10px 6px;font-size:.8rem;color:var(--primary);min-height:44px}
+.response-choices{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.response-choice{position:relative;display:flex;align-items:center;justify-content:center;min-height:50px;border:1px solid var(--input);border-radius:3px;color:#bfc0c6;cursor:pointer;font-weight:500}
+.response-choice [data-slot=radio-group-item]{position:absolute;inset:0;width:100%;height:100%;opacity:0;border:0}
+.response-choice:focus-within{outline:2px solid var(--ring);outline-offset:3px}
+.response-choice.selected{background:#443149;border-color:var(--primary);color:#eed0f3}
+.response-score{border-top:1px solid var(--border);padding:16px 0;font-size:.875rem;color:var(--muted-foreground)}
+.response-score summary{cursor:pointer;min-height:28px}
+.response-score strong{float:right;color:var(--foreground);font-weight:500}
+.response-score p{margin:12px 0 5px}
+.response-actions{position:fixed;z-index:30;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px max(24px,calc((100vw - 680px)/2)) calc(12px + env(safe-area-inset-bottom));background:#252525;border-top:1px solid var(--border)}
+.response-actions>span{font-size:.75rem;color:var(--muted-foreground)}
+.response-actions>div{display:flex;gap:12px}
+.response-actions button[data-slot=button]{min-width:96px;font-size:1rem}
+.response-reviews{max-width:680px;margin:24px auto 0;border-top:1px solid var(--border)}
+.response-reviews>summary{padding:18px 0;cursor:pointer;font-weight:550;min-height:56px}
+.compact-app .response-reviews .ai-review-card{margin:0;padding:18px 0;border:0;background:transparent}
+.compact-app .settings-panel{max-width:760px;margin:auto;padding:24px 0;border:0;border-radius:0;background:transparent;overflow:visible}
+.compact-app .settings-panel>h2{font-size:1.1rem;margin-bottom:12px}
+.compact-app .quiet-details{border-top:1px solid var(--border);padding:18px 0;margin-top:16px}
+.compact-app .quiet-details>summary{font-size:1rem;cursor:pointer;padding:6px 0;min-height:44px}
+.compact-app .quiet-details>summary span{display:block;font-size:.8rem;font-weight:400;color:var(--muted-foreground);margin:6px 0 0 17px}
+.compact-app .quiet-details[open]>summary{margin-bottom:18px}
+.compact-app .module-workspace{padding-top:24px}
+.compact-app .module-workspace>.section-heading h2{font-size:1.2rem}
+.compact-app .module-workspace>.section-heading .eyebrow{display:none}
+.compact-app .module-card,.compact-app .module-choice,.compact-app .metric-grid>div,.compact-app .recurring-editor,.compact-app .exercise-editor,.compact-app .gym-active,.compact-app .current-set,.compact-app .ai-usage-receipt{background:#262626;border-color:var(--border);border-radius:6px;box-shadow:none}
+.compact-app .module-card{padding:20px}
+.compact-app .module-choice.chosen{border-color:var(--primary)}
+.compact-app .module-choice{padding:16px}
+.compact-app .module-glyph,.compact-app .rest-clock strong,.compact-app .ai-usage-receipt summary{color:var(--primary)}
+.compact-app .habit-picker [data-slot=select-trigger],.compact-app .custom-habit [data-slot=select-trigger],.compact-app .action-row [data-slot=select-trigger],.compact-app .recurring-editor>[data-slot=select-trigger]{background:#242424;color:var(--foreground)}
+.compact-app .muted,.compact-app .eyebrow,.compact-app .section-heading>span,.compact-app .intro,.compact-app .privacy-note,.compact-app .empty-history p,.compact-app .empty-inline,.compact-app .onboarding-footer>span,.compact-app .save-bar>span{color:var(--muted-foreground)}
+.compact-app .goal-reminder{background:#302c32;color:#dac5de}
+.compact-app .completion-help{color:#ccc0ad;font-size:.8rem;line-height:1.6}
+.life-compact-theme .error{background:#3d252b;color:#ffc8d1;border-color:#744451}
+.compact-app .notice{background:#292d2b;color:#c6ddce;border-color:#49594e;font-size:.8rem;border-radius:4px;margin:12px 0;padding:10px 14px}
+.compact-app .negative{color:#ffa7b5}
+.compact-app .allowance-row,.compact-app .ledger-row,.compact-app .chosen-habits>div,.compact-app .save-bar,.compact-app .exercise-log{border-color:var(--border)}
+.compact-app .email-settings h3{display:flex;align-items:center;gap:9px}
+.compact-app .email-destination{margin:18px 0;font-size:.875rem;overflow-wrap:anywhere}
+.compact-app .email-help{margin-top:16px}
+.compact-app .email-delivery{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);font-size:.8rem}
+@media(max-width:600px){.compact-app .workspace{padding:0 18px calc(104px + env(safe-area-inset-bottom))}.compact-topbar{height:56px;padding-inline:8px;gap:8px}.compact-topbar h1{font-size:1rem}.compact-app .history-row{padding:16px 2px 10px;min-height:112px}.compact-app .module-card{padding:16px}.response-editor{padding-top:22px}.response-actions{padding:10px 18px calc(10px + env(safe-area-inset-bottom));gap:8px}.response-actions>div{gap:6px}.response-actions button[data-slot=button]{min-width:78px}.response-actions>span{max-width:125px}.compact-app .add-response{right:20px}.compact-app .history-filters .action-row{margin-bottom:0}.response-choice{font-size:.95rem}.compact-app .settings-panel{padding-top:20px}}

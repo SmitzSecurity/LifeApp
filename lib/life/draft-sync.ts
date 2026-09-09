@@ -14,6 +14,12 @@ export class DraftSync {
  get dirty(){return this.sequence!==this.acknowledged||!!this.pending;}
  get entry(){return this.latest;}
  edit(entry:Entry){this.latest={...entry,version:this.latest.version};this.sequence++;if(this.status!=='error')this.status=this.running?'saving':'waiting';this.changed(this.latest,this.status,this.error);}
+ async commit(complete:boolean){
+  // Resolve an ambiguous earlier submission with its original mutation first.
+  if(this.pending||this.running)await this.flush();
+  if(this.latest.complete!==complete)this.edit({...this.latest,complete});
+  await this.flush();
+ }
  flush():Promise<void>{if(this.running)return this.running;this.running=this.run().finally(()=>{this.running=null;});return this.running;}
  private async run(){
   while(this.dirty){

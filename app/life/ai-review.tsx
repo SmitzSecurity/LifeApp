@@ -10,7 +10,7 @@ type Report=AIUsageReceiptData&{id:string;date:string;revision:number;sourceVers
 type State={automaticExecutionEnabled:boolean;available:boolean;reports:Report[];schedule:DailyJobStatus|null;usage:{allocatedMicros:number;measuredMicros:number;capMicros:number}};
 const scheduleMessage:Record<DailyJobStatus['state'],string>={
  missing:'This scheduled day is waiting for a check-in. No analysis has run.',
- incomplete:'This scheduled day is on hold until you finish and sync the check-in.',
+ incomplete:'This scheduled day is on hold until you save a complete response.',
  ready:'This scheduled day is complete and eligible. Automatic analysis requires your separate opt-in in My setup; you can also request its review below.',
  disabled:'Scheduled daily reviews are turned off in your saved preferences.',
  'already-generated':'This day already has an original review. The schedule will not replace it.',
@@ -31,7 +31,7 @@ export default function AIReview({entry,synced,onBusy}:{entry:Entry;synced:boole
  {!data.available&&<p className="notice">The AI connection is awaiting activation by the LifeApp owner. Your journal continues to work.</p>}
  {data.schedule&&<p className="completion-help" role="status">{scheduleMessage[data.schedule.state]}</p>}
  <p className="muted">AI uses this completed check-in, your saved goals and feedback preferences, and relevant enabled budget/workout records. Google Gemini processes that context for each review you authorize.</p>
- {!entry.complete||!synced?<p className="completion-help">Finish and sync this check-in to make it eligible for analysis.</p>:null}
+ {!entry.complete||!synced?<p className="completion-help">Save a complete response to make it eligible for analysis.</p>:null}
  {latest&&latest.sourceVersion!==entry.version&&<p className="completion-help">This entry changed after the latest review. The saved review is preserved; request a revision to include your changes.</p>}
  {latest?.status==='generating'&&<p className="notice">This review is being generated, or its completion is not yet confirmed. Refresh its status; a second copy will not start automatically.</p>}
  {unfinished&&latest.status!=='generating'&&<p className="completion-help">The last attempt did not produce a confirmed complete report. Its usage reservation is retained where cost is unknown. Automatic retries are disabled.</p>}
