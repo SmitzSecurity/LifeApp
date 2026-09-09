@@ -18,7 +18,7 @@ export async function listAI(db:Database,userId:string,date:string|null,settings
  if(date&&!dateSchema.safeParse(date).success)return json({error:'Choose a valid review date.'},400);
  const result=await db.prepare(`SELECT * FROM life_ai_reviews WHERE user_id=?1${date?' AND entry_date=?2':''} ORDER BY created_at DESC LIMIT 100`).bind(...(date?[userId,date]:[userId])).all<ReportRow>();
  const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_usage WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
- return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),emailDeliveryEnabled:false,usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
+ return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
 }
 // The final argument is server-only. HTTP callers can never supply automatic consent.
 export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date,automatic?:{consentVersion:number}){

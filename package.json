@@ -16,8 +16,9 @@
     "build:cloudflare": "node scripts/cloudflare.mjs build",
     "deploy:cloudflare": "node scripts/cloudflare.mjs deploy",
     "dev:standalone": "node scripts/standalone.mjs dev",
-    "test:source": "node --test tests/ai-sync.test.mjs tests/lifeapp.test.mjs tests/modules.test.mjs tests/reviews.test.mjs tests/google-auth.test.mjs tests/migration-preview.test.mjs tests/scheduler.test.mjs tests/automatic-reviews.test.mjs tests/migration-upgrade.test.mjs tests/account-deletion.test.mjs tests/cloudflare-build.test.mjs tests/history.test.mjs",
-    "migration:preview": "node scripts/migration-preview.mjs"
+    "test:source": "node --test tests/ai-sync.test.mjs tests/lifeapp.test.mjs tests/modules.test.mjs tests/reviews.test.mjs tests/google-auth.test.mjs tests/migration-preview.test.mjs tests/scheduler.test.mjs tests/automatic-reviews.test.mjs tests/migration-upgrade.test.mjs tests/account-deletion.test.mjs tests/cloudflare-build.test.mjs tests/history.test.mjs tests/email-reports.test.mjs",
+    "migration:preview": "node scripts/migration-preview.mjs",
+    "types:email": "node scripts/email-binding-types.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
@@ -49,6 +50,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

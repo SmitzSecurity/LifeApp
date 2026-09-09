@@ -30,6 +30,8 @@ test('Google start uses persisted state, PKCE, limited scopes and secure cookies
   assert.equal(url.hostname,'accounts.google.com');assert.equal(url.searchParams.get('redirect_uri'),'https://life.test/api/auth/callback/google');assert.equal(url.searchParams.get('code_challenge_method'),'S256');assert.ok(url.searchParams.get('state').length>=20);
   assert.deepEqual([...new Set(url.searchParams.get('scope').split(' '))].sort(),['email','openid','profile']);assert.match(r.headers.get('set-cookie'),/HttpOnly/i);assert.match(r.headers.get('set-cookie'),/Secure/i);assert.match(r.headers.get('set-cookie'),/SameSite=Lax/i);
   assert.equal((await f.db.prepare('SELECT count(*) n FROM life_auth_verification').first()).n,1);
+  assert.equal((await f.call('sign-in/social',{provider:'google',callbackURL:'/?date=2025-08-05'})).status,200);
+  for(const callbackURL of ['https://evil.test','//evil.test','/?date=2026-02-31','/?date=2025-08-05&return=https://evil.test'])assert.equal((await f.call('sign-in/social',{provider:'google',callbackURL})).status,400);
   assert.equal((await f.call('sign-in/social',{provider:'google',callbackURL:'/',scopes:['gmail.readonly']})).status,400);
   assert.equal((await f.call('sign-in/social',{provider:'google',callbackURL:'/',idToken:{token:'forged'}})).status,400);
   assert.equal((await f.call('sign-in/social',{provider:'google',callbackURL:'/'},'','https://evil.test')).status,403);

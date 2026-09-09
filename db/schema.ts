@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { integer, text, sqliteTable, primaryKey, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { integer, text, sqliteTable, primaryKey, uniqueIndex, index, check } from 'drizzle-orm/sqlite-core';
 export const profiles=sqliteTable('life_profiles',{userId:text('user_id').primaryKey(),payload:text('payload').notNull(),version:integer('version').notNull(),updatedAt:text('updated_at').notNull()});
 export const entries=sqliteTable('life_entries',{userId:text('user_id').notNull(),entryDate:text('entry_date').notNull(),payload:text('payload').notNull(),version:integer('version').notNull(),updatedAt:text('updated_at').notNull()},t=>[primaryKey({columns:[t.userId,t.entryDate]})]);
 
@@ -38,3 +38,17 @@ export const deletedAIUsage=sqliteTable('life_deleted_ai_usage',{
  reservedMicros:integer('reserved_micros').notNull(),costMicros:integer('cost_micros'),
  createdAt:text('created_at').notNull(),finishedAt:text('finished_at'),errorCode:text('error_code')
 },t=>[primaryKey({columns:[t.userId,t.requestId]}),index('idx_life_deleted_usage_time').on(t.createdAt)]);
+
+// Separate explicit consent; the legacy review preference cannot enable delivery.
+export const emailConsent=sqliteTable('life_email_consent',{
+ userId:text('user_id').primaryKey().notNull(),enabled:integer('enabled').notNull(),version:integer('version').notNull(),
+ policyVersion:text('policy_version').notNull(),recipient:text('recipient').notNull(),enabledAt:text('enabled_at').notNull(),
+ updatedAt:text('updated_at').notNull(),unsubscribeToken:text('unsubscribe_token').notNull().unique()
+},t=>[check('email_consent_enabled',sql`${t.enabled} IN (0,1)`)]);
+export const emailOutbox=sqliteTable('life_email_outbox',{
+ userId:text('user_id').notNull(),requestId:text('request_id').notNull(),consentVersion:integer('consent_version').notNull(),
+ state:text('state').notNull(),attempts:integer('attempts').notNull().default(0),createdAt:text('created_at').notNull(),
+ nextAttemptAt:text('next_attempt_at').notNull(),lastAttemptAt:text('last_attempt_at'),finishedAt:text('finished_at'),
+ messageId:text('message_id'),errorCode:text('error_code')
+},t=>[primaryKey({columns:[t.userId,t.requestId]}),index('idx_life_email_due').on(t.state,t.nextAttemptAt),
+ check('email_outbox_state',sql`${t.state} IN ('pending','sending','sent','retry','failed','uncertain','cancelled')`)]);

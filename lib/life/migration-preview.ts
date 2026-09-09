@@ -18,8 +18,10 @@ const reviewRow=z.object({
  provider_id:z.string().max(500).nullable(),input_tokens:integer.nullable(),output_tokens:integer.nullable(),thought_tokens:integer.nullable(),
  reserved_micros:integer,cost_micros:integer.nullable(),created_at:timestamp,finished_at:timestamp.nullable(),error_code:z.string().max(200).nullable(),
 }).strict();
+const emailData=z.object({consent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.string().max(100),recipient:z.string().email().max(254),enabled_at:timestamp,updated_at:timestamp}).strict().nullable(),
+ deliveries:z.array(z.object({request_id:id,consent_version:version,state:z.enum(['pending','sending','sent','retry','failed','uncertain','cancelled']),attempts:integer,created_at:timestamp,next_attempt_at:timestamp,last_attempt_at:timestamp.nullable(),finished_at:timestamp.nullable(),message_id:z.string().max(500).nullable(),error_code:z.string().max(200).nullable()}).strict()).max(10000)}).strict();
 const backupSchema=z.object({format:z.literal('lifeapp-portable-v1'),exportedAt:timestamp,profile:row.nullable(),
- entries:z.array(entryRow).max(10000),resources:z.array(resourceRow).max(10000),reviews:z.array(reviewRow).max(10000)}).strict();
+ entries:z.array(entryRow).max(10000),resources:z.array(resourceRow).max(10000),reviews:z.array(reviewRow).max(10000),email:emailData.optional()}).strict();
 const entryPayload=z.object({date:dateSchema,journal:z.string().max(6000),context:z.record(moduleId,z.string().max(2000)),
  habits:z.array(habitSchema.omit({archived:true}).extend({status:statusSchema})).max(50),complete:z.boolean().optional(),mutationId:z.string().uuid().optional()}).strict();
 type Backup=z.infer<typeof backupSchema>;
@@ -113,6 +115,11 @@ export function validateBackup(text:string):Backup{
    requireThat(r.status==='generating'?r.finished_at===null&&r.error_code===null:r.finished_at!==null&&!!r.error_code,'invalid_report_status',at);
   }
  }
+ if(b.email){
+  requireThat(profile||!b.email.consent&&!b.email.deliveries.length,'missing_profile','email');
+  unique(b.email.deliveries.map(r=>r.request_id),'email');
+  for(const r of b.email.deliveries)requireThat(reviews.has(r.request_id),'missing_report','email');
+ }
  return b;
 }
 
@@ -122,6 +129,8 @@ function rows(b:Backup){
   ...b.entries.map(r=>['entry:'+r.entry_date,r] as [string,unknown]),
   ...b.resources.map(r=>['resource:'+r.kind+':'+r.resource_id,r] as [string,unknown]),
   ...b.reviews.map(r=>['review:'+r.request_id,r] as [string,unknown]),
+  ...(b.email?.consent?[['email-consent',b.email.consent] as [string,unknown]]:[]),
+  ...(b.email?.deliveries||[]).map(r=>['email-delivery:'+r.request_id,r] as [string,unknown]),
  ]);
 }
 function sum(values:number[]){let total=0;for(const n of values){total+=n;requireThat(Number.isSafeInteger(total),'usage_overflow','reviews');}return total;}

@@ -10,11 +10,26 @@ const env={LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER
 const config={modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],serviceBindings:{ASSETS:async()=>new Response('Not found',{status:404})}};
 const mf=new Miniflare({...config,bindings:env});after(()=>mf.dispose());
 before(async()=>{const db=await mf.getD1Database('DB');for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();});
+test('compiled email-only Cron uses the native local binding and records one acceptance across ticks',async t=>{
+ const mail=new Miniflare({...config,bindings:{...env,LIFEAPP_EMAIL_ENABLED:'true',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com'},email:{send_email:[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com'],destination_address:'owner@example.test'}]}});t.after(()=>mail.dispose());
+ const db=await mail.getD1Database('DB');for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+ const stamp=new Date(Date.now()-60000).toISOString();
+ await db.prepare("INSERT INTO life_auth_user VALUES('mail-owner','Synthetic','owner@example.test',1,NULL,1,1)").run();
+ await db.prepare("INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES('mail-account','mail-google-sub','google','mail-owner',1,1)").run();
+ await db.prepare("INSERT INTO life_profiles VALUES('google:mail-owner','{}',1,?1)").bind(stamp).run();
+ await db.prepare("INSERT INTO life_email_consent VALUES('google:mail-owner',1,1,'full-report-v1','owner@example.test',?1,?1,?2)").bind(stamp,'a'.repeat(64)).run();
+ await db.prepare("INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,critique,status,input_snapshot,model,price_version,reserved_micros,created_at) VALUES('google:mail-owner','daily:2026-09-08','2026-09-08',1,1,'','generating','{}','synthetic','synthetic',0,?1)").bind(stamp).run();
+ await db.prepare("UPDATE life_ai_reviews SET status='complete',report_text='Synthetic local email fixture. No real recipient.',finished_at=?1 WHERE user_id='google:mail-owner'").bind(stamp).run();
+ const worker=await mail.getWorker();for(let n=0;n<2;n++)assert.equal((await worker.scheduled({scheduledTime:Date.now(),cron:'*/5 * * * *'})).outcome,'ok');
+ const row=await db.prepare('SELECT state,attempts,message_id FROM life_email_outbox').first();assert.equal(row.state,'sent');assert.equal(row.attempts,1);assert.ok(row.message_id);
+});
 test('standalone Worker uses Google sign-in and rejects forged Sites identity',async()=>{
  const headers={'oai-authenticated-user-id':'forged-owner','oai-authenticated-user-email':'owner@example.test',accept:'text/html'};
  const home=await mf.dispatchFetch('https://life.test/',{headers,redirect:'manual'});assert.ok([302,303,307,308].includes(home.status));assert.equal(new URL(home.headers.get('location'),'https://life.test').pathname,'/sign-in');
  const r=await mf.dispatchFetch('https://life.test/api/life',{headers});assert.equal(r.status,401);
  const signIn=await mf.dispatchFetch('https://life.test/sign-in',{headers});assert.equal(signIn.status,200);assert.match(await signIn.text(),/Continue with Google/);
+ const linked=await mf.dispatchFetch('https://life.test/?date=2025-08-05',{headers,redirect:'manual'});assert.equal(new URL(linked.headers.get('location'),'https://life.test').pathname+new URL(linked.headers.get('location'),'https://life.test').search,'/sign-in?date=2025-08-05');
+ const invalid=await mf.dispatchFetch('https://life.test/?date=https://evil.test',{headers,redirect:'manual'});assert.equal(new URL(invalid.headers.get('location'),'https://life.test').search,'');
 });
 test('compiled standalone Google initiation persists state through D1 and enforces origin',async()=>{
  const body=JSON.stringify({provider:'google',callbackURL:'/'});
@@ -82,6 +97,22 @@ test('signed compiled history and export reads preserve records and isolate anot
  assert.match(JSON.stringify(backup),/Synthetic preserved review/);
  assert.doesNotMatch(JSON.stringify(backup),/OTHER ACCOUNT PRIVATE MARKER|synthetic-export-token|synthetic-export-google-sub|user_id|life_auth/);
  assert.deepEqual(await snapshot(),before);
+ // Exercise the compiled email endpoint with the real signed session and D1.
+ const email=await call('/api/life/email');assert.equal(email.status,200);
+ const emailState=await email.json();assert.equal(emailState.available,false);assert.equal(emailState.consent.enabled,false);assert.equal(emailState.consent.recipient,'owner@example.test');
+ const choice={enabled:true,version:0,policyVersion:'full-report-v1'};
+ assert.equal((await call('/api/life/email',choice)).status,503);
+ assert.equal((await isolated.dispatchFetch('https://life.test/api/life/email')).status,401);
+ const blocked=await isolated.dispatchFetch('https://life.test/api/life/email',{method:'POST',headers:{Cookie:cookie,Origin:'https://evil.test','Content-Type':'application/json'},body:JSON.stringify(choice)});assert.equal(blocked.status,403);
+ assert.equal((await call('/api/life/email',{...choice,enabled:false})).status,200);
+ const token=(await db.prepare('SELECT unsubscribe_token FROM life_email_consent WHERE user_id=?1').bind(userId).first()).unsubscribe_token;
+ await db.prepare('UPDATE life_email_consent SET enabled=1 WHERE user_id=?1').bind(userId).run();
+ const url='https://life.test/email/unsubscribe?token='+token;
+ assert.equal((await isolated.dispatchFetch(url)).status,200);
+ assert.equal((await db.prepare('SELECT enabled FROM life_email_consent WHERE user_id=?1').bind(userId).first()).enabled,1);
+ assert.equal((await isolated.dispatchFetch(url,{method:'POST',body:'List-Unsubscribe=One-Click'})).status,200);
+ assert.equal((await db.prepare('SELECT enabled FROM life_email_consent WHERE user_id=?1').bind(userId).first()).enabled,0);
+ const emailBackup=await (await call('/api/life?export=1')).json();assert.equal(emailBackup.email.consent.enabled,0);assert.ok(!JSON.stringify(emailBackup).includes(token));
  // The reusable runtime verification SQL must also execute on real local D1.
  await db.prepare('CREATE TABLE IF NOT EXISTS d1_migrations(id INTEGER PRIMARY KEY,name TEXT)').run();
  for(const sql of readFileSync('docs/setup/d1-runtime-verify.sql','utf8').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(sql).all();

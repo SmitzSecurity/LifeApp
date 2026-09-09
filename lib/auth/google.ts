@@ -1,4 +1,5 @@
 import {betterAuth} from 'better-auth/minimal';
+import {savedDayQuery} from '../life/saved-day-link.ts';
 import {verifyGoogleIdToken,type GoogleProfile} from 'better-auth/social-providers';
 import {drizzleAdapter} from '@better-auth/drizzle-adapter';
 import {drizzle,type AnyD1Database} from 'drizzle-orm/d1';
@@ -45,7 +46,9 @@ export async function handleGoogleAuth(request:Request,auth:ReturnType<typeof cr
   const text=await request.clone().text();if(new TextEncoder().encode(text).length>4096)return Response.json({error:'Request too large'},{status:413});
   let body;try{body=JSON.parse(text);}catch{return Response.json({error:'Invalid request'},{status:400});}
   if(!body||typeof body!=='object'||Array.isArray(body))return Response.json({error:'Invalid request'},{status:400});
-  if(path.endsWith('/sign-in/social')&&(body.provider!=='google'||body.callbackURL!=='/'||Object.keys(body).some(k=>!['provider','callbackURL'].includes(k))))return Response.json({error:'Use the Google sign-in button.'},{status:400});
+  const date=typeof body.callbackURL==='string'&&body.callbackURL.startsWith('/?date=')?body.callbackURL.slice(7):null;
+  const safeCallback=body.callbackURL==='/'||!!date&&body.callbackURL==='/'+savedDayQuery(date);
+  if(path.endsWith('/sign-in/social')&&(body.provider!=='google'||!safeCallback||Object.keys(body).some(k=>!['provider','callbackURL'].includes(k))))return Response.json({error:'Use the Google sign-in button.'},{status:400});
  }
  const response=await auth.handler(request),headers=new Headers(response.headers);
  headers.set('Cache-Control','private, no-store');headers.set('X-Content-Type-Options','nosniff');

@@ -10,8 +10,10 @@ const assets=resolve('dist-standalone/client');
 if(!existsSync(resolve('dist-standalone/server/index.js')))throw Error('Run npm run build first.');
 const secret=randomBytes(48).toString('base64url');
 const mock=createFetchMock();mock.disableNetConnect();
+const calmFixture=process.argv.includes('--calm');
 const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],fetchMock:mock,
- bindings:{LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test'},
+ bindings:{LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com',LIFEAPP_EMAIL_ENABLED:calmFixture?'true':'false'},
+ email:calmFixture?{send_email:[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com'],destination_address:'smoke@example.test'}]}:undefined,
  serviceBindings:{ASSETS:async()=>new Response('Not found',{status:404})}
 });
 const db=await mf.getD1Database('DB');
@@ -20,7 +22,7 @@ const stamp=Date.now(),id='browser-smoke',userId='google:'+id;
 await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic browser fixture','smoke@example.test',stamp).run();
 await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('smoke-session',stamp+3600000,'synthetic-browser-token',stamp,id).run();
 await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('smoke-account','smoke-google-sub','google',id,stamp).run();
-await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',timezone:'America/New_York',modules:['reflection'],habits:[]}),new Date(stamp).toISOString()).run();
+await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
 const historyFixture=process.argv.includes('--history');
 for(let days=1;days<=(historyFixture?400:2);days++){
  const date=new Date(stamp-days*86400000).toISOString().slice(0,10);
@@ -31,12 +33,12 @@ const server=createServer(async(req,res)=>{
  try{
   const pathname=new URL(req.url,'http://localhost').pathname;
   let body;
-  if(req.method==='POST'&&pathname==='/api/life'){
+  if(req.method==='POST'&&(pathname==='/api/life'||calmFixture&&pathname==='/api/life/email')){
    const chunks=[];let size=0;
    for await(const chunk of req){size+=chunk.length;if(size>65536){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
-   if(parsed?.action!=='history'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
+   if(pathname==='/api/life'&&parsed?.action!=='history'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
   const file=resolve(assets,'.'+decodeURIComponent(pathname));

@@ -14,7 +14,7 @@ export function dueDailyDate(profile:Profile,now:Date):string|null {
  return time>=profile.reviewPreferences.daily.time?previousDay(todayIn(profile.timezone,now)):null;
 }
 
-export async function planDailyReviews(db:Database,now=new Date()) {
+export async function planDailyReviews(db:Database,now=new Date(),discoveryLimit=20) {
  // Explicit beta capacity bound: fail instead of silently starving later accounts.
  const {results}=await db.prepare('SELECT user_id,payload,version FROM life_profiles ORDER BY user_id LIMIT 501').bind().all<{user_id:string;payload:string;version:number}>();
  if(results.length>500)throw new Error('Daily planner capacity requires partitioning');
@@ -31,7 +31,7 @@ export async function planDailyReviews(db:Database,now=new Date()) {
   try{profile=profileSchema.parse({...JSON.parse(row.payload),version:row.version});}
   catch{invalidProfiles++;continue;}
   const date=dueDailyDate(profile,now);if(!date)continue;
-  if(existing.has(JSON.stringify([row.user_id,date]))||considered>=20)continue;
+  if(existing.has(JSON.stringify([row.user_id,date]))||considered>=discoveryLimit)continue;
   considered++;
   // The profile version guard prevents an in-flight scan from scheduling against
   // preferences that changed after the read. The next tick sees the new version.
@@ -51,9 +51,9 @@ export async function dailyJobStatus(db:Database,userId:string,date:string):Prom
 }
 
 /** No HTTP trigger and no implicit activation through existing AI flags. */
-export async function scheduledReviewPlanning(env:{DB?:unknown;LIFEAPP_AUTH_MODE?:string;LIFEAPP_REVIEW_PLANNER_ENABLED?:string},scheduledTime:number){
+export async function scheduledReviewPlanning(env:{DB?:unknown;LIFEAPP_AUTH_MODE?:string;LIFEAPP_REVIEW_PLANNER_ENABLED?:string},scheduledTime:number,discoveryLimit=20){
  if(env.LIFEAPP_AUTH_MODE!=='google'||env.LIFEAPP_REVIEW_PLANNER_ENABLED!=='true')return;
  if(!env.DB)throw new Error('Daily planner database unavailable');
- const result=await planDailyReviews(env.DB as Database,new Date(scheduledTime));
+ const result=await planDailyReviews(env.DB as Database,new Date(scheduledTime),discoveryLimit);
  if(result.invalidProfiles)throw new Error('Daily planner encountered invalid profiles');
 }

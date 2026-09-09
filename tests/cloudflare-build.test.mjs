@@ -10,6 +10,8 @@ function fixture(t){
  const root=mkdtempSync(join(tmpdir(),'lifeapp-cloudflare-'));
  t.after(()=>rmSync(root,{recursive:true,force:true}));
  mkdirSync(join(root,'scripts'));
+ mkdirSync(join(root,'config'));
+ cpSync(resolve('config/report-email.json'),join(root,'config/report-email.json'));
  mkdirSync(join(root,'node_modules/wrangler/bin'),{recursive:true});
  cpSync(resolve('scripts/cloudflare.mjs'),join(root,'scripts/cloudflare.mjs'));
  cpSync(resolve('wrangler.standalone.json'),join(root,'wrangler.standalone.json'));
@@ -31,6 +33,7 @@ test('Cloudflare build carries the production Cron, DB and runtime-variable safe
  assert.deepEqual(config.triggers,{crons:['*/5 * * * *']});
  assert.equal(config.d1_databases[0].database_id,f.id);
  assert.equal(config.keep_vars,true);
+ assert.deepEqual(config.send_email,[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com']}]);
  assert.deepEqual(config.vars,{LIFEAPP_AUTH_MODE:'google'});
  assert.doesNotMatch(JSON.stringify(config),/synthetic-do-not-copy/);
  const dry=f.run(['deploy','--dry-run']);

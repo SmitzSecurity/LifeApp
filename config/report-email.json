@@ -1,0 +1,5 @@
+{
+  "name": "lifeapp",
+  "compatibility_date": "2026-05-22",
+  "send_email": [{"name": "REPORT_EMAILS", "allowed_sender_addresses": ["reports@lifeapp.smitzgroup.com"]}]
+}

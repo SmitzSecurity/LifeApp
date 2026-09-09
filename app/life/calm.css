@@ -1,0 +1,61 @@
+.calm{min-height:100vh;background:#f6f7f3;color:#203a35}
+.calm .topbar{height:72px;background:#fff;color:#203a35;border-bottom:1px solid #e4e9e1;padding-inline:max(24px,calc((100vw - 1080px)/2))}
+.calm .brand-mark{background:#e3eee5;color:#286349;border-radius:50%;font-family:Georgia,serif;font-size:1.4rem}
+.calm .beta-label{color:#68796d;border-color:#e0e6dc;font-size:.7rem}
+.calm .signout{color:#56685c}
+.calm .workspace{max-width:1080px;padding:36px 24px}
+.calm .page-heading{margin-bottom:24px}
+.calm .page-heading h1{font-family:Georgia,'Times New Roman',serif;font-size:clamp(1.9rem,4vw,2.7rem);font-weight:400;letter-spacing:-.035em}
+.calm .page-heading p{font-size:.95rem;color:#66766a;margin-top:10px;max-width:660px}
+.calm .eyebrow{color:#6c7e70;font-size:.67rem;letter-spacing:.14em}
+.calm .main-tabs[data-slot=tabs-list]{border:0;background:#edf0e9;border-radius:12px;padding:5px;height:auto;min-height:50px;gap:3px;margin-bottom:28px;overflow-x:auto;justify-content:flex-start}
+.calm .main-tabs [data-slot=tabs-trigger]{border:0;border-radius:8px;height:40px;padding:0 20px;color:#68796c;font-size:.875rem;flex-shrink:0}
+.calm .main-tabs [data-slot=tabs-trigger][data-state=active]{background:white;color:#245c43;border:0;box-shadow:0 1px 3px #1d3b3010}
+.calm .daily-layout{grid-template-columns:minmax(0,1fr) 250px;gap:24px}
+.calm .entry-panel,.calm .history-panel,.calm .settings-panel{border:1px solid #e2e8de;border-radius:16px;box-shadow:0 3px 16px #203a3503}
+.calm .entry-panel{padding:30px}
+.calm .section-heading h2{font-size:1.45rem;font-weight:550;letter-spacing:-.035em}
+.calm .date-control{display:flex;flex-direction:column;gap:4px;font-size:.7rem;color:#68796c;font-weight:450}
+.calm .date-control input{padding:7px 9px;width:146px;background:#fafbf8;border-color:#e3e8de}
+.calm .journal-field{margin:26px 0 32px}
+.calm .journal-field label{font-size:1.2rem;font-weight:550;margin-bottom:5px}
+.calm .journal-prompt{font-size:.875rem;color:#637264;margin-bottom:16px}
+.calm .journal-field textarea{background:#fbfcf9;border-color:#e3e8de;font-size:1rem;line-height:1.85;padding:20px;min-height:210px}
+.calm .habits-heading{border-color:#e7ece3;padding-bottom:12px}
+.calm .habits-heading h3{font-size:1rem}
+.calm .habit-row{padding:15px 0;border-color:#ecf0e8}
+.calm .habit-row small{font-size:.75rem;color:#7a887d}
+.calm .status-option{font-size:.78rem;min-height:36px;border-color:#e3e9de;padding:7px 10px;border-radius:20px}
+.calm .status-option.selected.unrecorded{background:#f0f2ed;border-color:#d4ddd0;color:#677365}
+.calm .review-panel{display:block;background:transparent;border:0;padding:18px 4px;color:#59705f;border-radius:0}
+.calm .review-panel h3{font-family:Georgia,serif;font-size:1.3rem;font-weight:400;color:#3b5e43}
+.calm .score-number{font-size:2.5rem;font-weight:500;margin-top:26px;color:#38674c}
+.calm .score-number span{font-size:.8rem;color:#72856f}
+.calm .score-caption{font-size:.85rem;line-height:1.7;color:#72806e;margin:12px 0}
+.calm .quiet-details{border-top:1px solid #e2e8dc;padding-top:16px;margin-top:20px}
+.calm .quiet-details>summary{cursor:pointer;font-size:.9rem;font-weight:550;color:#49614c;padding:4px 0;list-style-position:inside}
+.calm .quiet-details>summary span{display:block;font-size:.78rem;font-weight:400;color:#7b887a;margin:5px 0 0 17px}
+.calm .quiet-details[open]>summary{margin-bottom:18px}
+.calm .setup-section{padding-block:20px;margin:0}
+.calm .setup-section>summary{font-size:1rem}
+.calm .settings-panel{max-width:860px;padding:30px}
+.calm .settings-panel>h2{font-family:Georgia,serif;font-weight:400;font-size:1.8rem}
+.calm .settings-panel>.muted{margin-bottom:28px}
+.calm .save-bar{border-color:#e4eadd}
+.calm .save-bar>span{font-size:.78rem;color:#778571}
+.calm .completion-help{font-size:.8rem;line-height:1.65}
+.calm .module-card{border-color:#e2e8de;box-shadow:none}
+.calm .ai-review-card{margin-top:28px;padding:28px}
+.calm .ai-review-card>.section-heading h3{font-family:Georgia,serif;font-size:1.3rem;font-weight:400}
+.calm .ai-usage{font-size:.8rem;border-color:#e6ebdf}
+.calm .history-row{border-color:#e8ece3}
+.calm .history-row:hover{background:#fafbf7}
+.calm .history-filters input,.calm .history-filters select{border-color:#e1e7db;background:#fafbf8;color:#35503c}
+.calm .app-footer{color:#8a9485;font-size:.72rem;margin-top:28px}
+.calm .email-settings h3{display:flex;align-items:center;gap:9px}
+.calm .email-destination{margin:20px 0;font-size:.875rem;overflow-wrap:anywhere}
+.calm .email-help{margin-top:16px;line-height:1.7}
+.calm .email-delivery{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #e5eadf;font-size:.8rem}
+@media(max-width:600px){.calm .main-tabs[data-slot=tabs-list]{flex-wrap:wrap;overflow:visible}}
+@media(max-width:900px){.calm .daily-layout{grid-template-columns:minmax(0,1fr)}.calm .review-panel{padding:12px 20px;background:#eef2e9;border-radius:12px}.calm .review-panel>.eyebrow{margin-bottom:8px}.calm .score-number{margin-top:14px}.calm .quiet-details{margin-top:14px}.calm .review-panel dl{display:block;margin:12px 0}}
+@media(max-width:600px){.calm .topbar{height:64px;padding-inline:18px;gap:10px}.calm .beta-label{display:none}.calm .brand{font-size:1.15rem}.calm .brand-mark{width:30px;height:30px}.calm .workspace{padding:24px 14px}.calm .page-heading h1{font-size:2rem}.calm .page-heading p{font-size:.85rem}.calm .main-tabs [data-slot=tabs-trigger]{padding-inline:14px;flex:1 0 auto;font-size:.8rem}.calm .entry-panel,.calm .history-panel,.calm .settings-panel,.calm .ai-review-card{padding:22px 18px}.calm .section-heading{align-items:flex-start}.calm .section-heading h2{font-size:1.25rem}.calm .date-control{margin-top:4px}.calm .journal-field textarea{padding:14px;font-size:1rem}.calm .status-options[data-slot=radio-group]{display:grid;grid-template-columns:1fr 1fr;gap:8px}.calm .status-option{min-height:40px;justify-content:center}.calm .save-bar .action-row{width:100%}.calm .save-bar .action-row>button{flex:1}.calm .review-panel{padding:18px}.calm .quiet-details>summary{line-height:1.5}}

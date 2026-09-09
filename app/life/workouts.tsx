@@ -11,7 +11,7 @@ const newRoutine=():Saved<Routine>=>({id:crypto.randomUUID(),version:0,data:{nam
 export default function Workouts({profile,onDirty}:{profile:Profile;onDirty:(v:boolean)=>void}){
  const [routines,setRoutines]=useState<Saved<Routine>[]>([]),[sessions,setSessions]=useState<Saved<Workout>[]>([]),[routine,setRoutine]=useState<Saved<Routine>|null>(null),[routineDirty,setRoutineDirty]=useState(false),[setDirty,setSetDirty]=useState(false),[busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reps,setReps]=useState(''),[load,setLoad]=useState(''),[clock,setClock]=useState(Date.now()),[vibration,setVibration]=useState(false),[supportsVibration,setSupportsVibration]=useState(false),[pending,setPending]=useState<Saved<Workout>|null>(null),[editingSet,setEditingSet]=useState<{exerciseId:string;setNumber:number}|null>(null);
  const alerted=useRef<string|null>(null),active=sessions.find(s=>!s.data.finishedAt),current=active?nextSet(active.data):null;
- useUnsaved(routineDirty||setDirty||busy||!!pending,onDirty);
+ useUnsaved(routineDirty||setDirty||(busy&&loaded)||!!pending,onDirty);
  async function reload(){setBusy(true);setError('');try{const [r,w]=await Promise.all([request('?kind=routine'),request('?kind=workout')]);setRoutines(r.records);setSessions(w.records);setLoaded(true);setNotice(w.hasMore?'Showing your current workout and 99 recent sessions.':'');}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  useEffect(()=>{reload();setSupportsVibration(typeof navigator.vibrate==='function');},[]);
  const currentKey=active?.id+':'+current?.exercise.id+':'+current?.setNumber;

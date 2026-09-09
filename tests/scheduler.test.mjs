@@ -97,7 +97,7 @@ test('status API is private, contains no journal and cannot be used to run the p
  const a=await (await f.call(undefined,'a','?ai=1&date='+date)).json();
  const b=await (await f.call(undefined,'b','?ai=1&date='+date+'&userId=a')).json();
  assert.equal(a.schedule.state,'ready');assert.equal(b.schedule.state,'missing');
- assert.equal(a.automaticExecutionEnabled,false);assert.equal(a.emailDeliveryEnabled,false);
+ assert.equal(a.automaticExecutionEnabled,false);assert.equal(a.emailDeliveryEnabled,undefined); // Email has its own status/consent endpoint.
  assert.doesNotMatch(JSON.stringify(a.schedule),/Synthetic reading|user_id/);
  assert.equal((await f.call(undefined,null,'?ai=1&date='+date)).status,401);
  assert.equal((await f.call({action:'schedule'})).status,400);f.raw.close();
