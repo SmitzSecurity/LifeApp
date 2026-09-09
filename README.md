@@ -39,6 +39,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 - Expandable usage details on each review show reported input/output/thinking tokens, the saved provider cost in USD to six decimal places, and the remaining budget reservation. Thinking tokens are included in output; unknown usage stays unconfirmed rather than appearing free. These are application accounting records, not provider invoices or customer charges.
 - Automatic cloud check-in drafts, serialized/idempotent saves, visible sync errors and leave-page protection.
 - Durable daily scheduling, explicit automatic-analysis opt-in and a bounded consumer share the manual AI reservation/duplicate gate. New admissions recheck consent, preferences, completion and caps atomically. Production activation requires migration 0005, operator flags and Cron; email remains off. See `docs/daily-scheduling.md`.
+- Private data export and confirmed account deletion, including session revocation and separate minimal AI usage retention. Deletion requires a recent Google sign-in and migration 0006; see `docs/account-deletion.md` and `docs/setup/account-deletion-0006.md`.
 - Evolving AI memory and biography generation remain disconnected.
 - No real personal source records, credentials, AI calls, sample records, or billing are seeded into the app.
 
@@ -55,7 +56,7 @@ npx tsc --noEmit
 
 `npm test` builds and tests the standalone target without Sites helpers. Retired Sites-specific checks are preserved in `legacy/sites/`; they are not part of the standalone gate.
 
-The first suite uses the actual migration and SQLite statements with synthetic users; the second executes the compiled Worker with local D1 under Miniflare. Its compatibility date matches the installed workerd binary (2026-05-22). It does not contact the published app. No browser automation has been performed.
+The first suite uses the actual migration and SQLite statements with synthetic users; the second executes the compiled Worker with local D1 under Miniflare. Its compatibility date matches the installed workerd binary (2026-05-22). It does not contact the published app. The deletion checks also exercise signed session cookies, atomic rollback and in-flight AI settlement. No browser automation has been performed.
 
 See `docs/structured-modules.md` and `docs/feedback-engine.md` for earlier implementation boundaries. Current additions and activation dependencies: `docs/cloud-drafts.md`, `docs/ai-activation.md` and `docs/google-sign-in.md`.
 

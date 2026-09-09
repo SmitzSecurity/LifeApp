@@ -25,3 +25,16 @@ export const automaticConsent=sqliteTable('life_automatic_consent',{
  userId:text('user_id').primaryKey(),enabled:integer('enabled').notNull(),version:integer('version').notNull(),
  policyVersion:text('policy_version').notNull(),startDate:text('start_date').notNull(),acceptedAt:text('accepted_at').notNull(),updatedAt:text('updated_at').notNull()
 });
+
+// Opaque retired account IDs stop stale requests from recreating deleted data.
+export const accountDeletions=sqliteTable('life_account_deletions',{
+ userId:text('user_id').primaryKey(),deletedAt:text('deleted_at').notNull()
+});
+// No journal, report, email, OAuth identity/token or provider response is retained.
+export const deletedAIUsage=sqliteTable('life_deleted_ai_usage',{
+ userId:text('user_id').notNull(),requestId:text('request_id').notNull(),status:text('status').notNull(),
+ model:text('model').notNull(),priceVersion:text('price_version').notNull(),
+ inputTokens:integer('input_tokens'),outputTokens:integer('output_tokens'),thoughtTokens:integer('thought_tokens'),
+ reservedMicros:integer('reserved_micros').notNull(),costMicros:integer('cost_micros'),
+ createdAt:text('created_at').notNull(),finishedAt:text('finished_at'),errorCode:text('error_code')
+},t=>[primaryKey({columns:[t.userId,t.requestId]}),index('idx_life_deleted_usage_time').on(t.createdAt)]);
