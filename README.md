@@ -30,18 +30,19 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 - Two-step onboarding, six selectable context modules, explicit habit adoption, custom habit names, renaming and archiving.
 - Daily journal, optional module notes, done/missed/exempt/unrecorded states, saved history and editing by calendar date.
 - Deterministic scoring with exempt and missing entries excluded and a separate count for each status.
-- D1 persistence for profiles and dated entries; server identity from the private Sites boundary; optimistic revisions prevent stale saves.
+- D1 persistence for profiles and dated entries; server identity from authenticated Google sessions; optimistic revisions prevent stale saves.
 - Historical habit snapshots preserve old names and choices. Archived habits remain visible on their saved days.
 - 36 standard habits, per-section goals, automatic timezone with advanced override.
 - Structured monthly budgets, scheduled payments/income, category allowances, actual transactions and saving/investing goals; exact cents and duplicate occurrence protection.
 - Workout routines/splits, saved set-by-set gym logging, rest deadline/countdown, optional supported-browser vibration, corrections and session history.
-- AI feedback preferences, explicit completion, missing-prior-day UI and tested hierarchical/late-completion rules. Manual daily AI review and critique-based preserved revisions, server Gemini adapter and usage reservations/caps are implemented; activation needs a fresh owner server secret.
+- AI feedback preferences, explicit completion, missing-prior-day UI and tested hierarchical/late-completion rules. Manual daily AI review and critique-based preserved revisions, server Gemini adapter and usage reservations/caps are implemented.
+- Expandable usage details on each review show reported input/output/thinking tokens, the saved provider cost in USD to six decimal places, and the remaining budget reservation. Thinking tokens are included in output; unknown usage stays unconfirmed rather than appearing free. These are application accounting records, not provider invoices or customer charges.
 - Automatic cloud check-in drafts, serialized/idempotent saves, visible sync errors and leave-page protection.
 - Durable daily scheduling, explicit automatic-analysis opt-in and a bounded consumer share the manual AI reservation/duplicate gate. New admissions recheck consent, preferences, completion and caps atomically. Production activation requires migration 0005, operator flags and Cron; email remains off. See `docs/daily-scheduling.md`.
 - Evolving AI memory and biography generation remain disconnected.
 - No real personal source records, credentials, AI calls, sample records, or billing are seeded into the app.
 
-This is a private web beta, not a consumer account service or an app-store release. The current live sign-in uses ChatGPT/Sites identity. The standalone target now implements Google sign-in and server sessions, tested with synthetic credentials but not connected to a real Google client. See `docs/architecture.md` for the migration boundary and remaining capabilities.
+This is a private web beta, not an app-store release. On September 9, 2026, the owner confirmed Google sign-in and check-in persistence on the deployed Cloudflare app, then supplied a screenshot of a completed Gemini review for a synthetic check-in with measured usage and no remaining reservation. Independent provider invoice reconciliation and live cross-account isolation checks remain outstanding. The old Sites app and its records remain separate until verified account/data cutover. See `docs/architecture.md` for the migration boundary and remaining capabilities.
 
 ## Validation
 

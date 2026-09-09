@@ -84,3 +84,26 @@ test('compiled automatic handler uses explicit consent and stores one mocked Gem
   fetchMock.assertNoPendingInterceptors();
  }finally{await enabled.dispose();await fetchMock.close();}
 });
+
+test('prepared upgrade and verification queries run on local D1 without granting automatic consent',async()=>{
+ const upgrade=new Miniflare({...config,bindings:env});
+ try{
+  const db=await upgrade.getD1Database('DB');
+  await db.prepare('CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)').run();
+  for(const f of readdirSync('drizzle').filter(f=>/^000[0-4]_.*\.sql$/.test(f)).sort()){
+   for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+   await db.prepare('INSERT INTO d1_migrations(name) VALUES(?1)').bind(f).run();
+  }
+  const load=name=>readFileSync('docs/setup/d1-upgrade-0005'+name+'.sql','utf8');
+  assert.deepEqual(await db.prepare(load('-preflight')).first(),{migrations:5,required_prior_migrations:5,app_tables:11,consent_table:0,consideration_column:0,job_date_index:0,reminder_trigger:1,status_view:1});
+  await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind('synthetic-upgrade-owner',JSON.stringify({goal:'Synthetic upgrade',timezone:'UTC',modules:['reflection'],habits:[]}),new Date().toISOString()).run();
+  const before=await db.prepare(load('-counts')).first();
+  await db.exec(load(''));
+  assert.deepEqual(await db.prepare(load('-verify')).first(),{migrations:6,migration_0005:1,app_tables:12,consent_table:1,consideration_column:1,job_date_index:1,reminder_trigger:1,status_view:1,consent_rows:0});
+  assert.deepEqual(await db.prepare(load('-counts')).first(),before);
+  const worker=await upgrade.getWorker();
+  assert.equal((await worker.scheduled({scheduledTime:Date.now(),cron:'*/5 * * * *'})).outcome,'ok');
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_review_jobs').first()).n,0);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_automatic_consent').first()).n,0);
+ }finally{await upgrade.dispose();}
+});

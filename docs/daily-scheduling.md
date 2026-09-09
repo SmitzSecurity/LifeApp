@@ -86,6 +86,9 @@ pricing expiry and tracked monthly limits remain unchanged.
 
 ## Operator activation order
 
+The existing populated beta database has a console-ready upgrade, before/after
+checks and recovery notes in [setup/README.md](setup/README.md).
+
 1. Review the change and apply pending migration `0005_automatic_daily_consent.sql`
    through the existing D1 migration workflow to the existing database. It adds
    the consent table, consideration timestamp and date index. It does not alter
