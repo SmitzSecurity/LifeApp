@@ -24,6 +24,20 @@ test('standalone Worker cannot fall back to Sites headers when auth mode is miss
  const unset=new Miniflare(config);try{const r=await unset.dispatchFetch('https://life.test/api/life',{headers:{'oai-authenticated-user-id':'forged','oai-authenticated-user-email':'owner@example.test'}});assert.equal(r.status,503);}finally{await unset.dispose();}
 });
 
+test('initial hosting without Google secrets stays closed before database/auth access',async()=>{
+ const unconfigured=new Miniflare({...config,bindings:{LIFEAPP_AUTH_MODE:'google'}});
+ try{
+  for(const path of ['/','/sign-in','/api/life','/api/life?export=1','/api/auth/get-session']){
+   const response=await unconfigured.dispatchFetch('https://life.test'+path,{headers:{'oai-authenticated-user-id':'forged'}});
+   assert.equal(response.status,503);assert.equal(response.headers.get('cache-control'),'no-store');
+   assert.match(await response.text(),/Sign-in setup is still in progress/);
+  }
+  // No migrations were installed; the closed response does not depend on tables.
+  const db=await unconfigured.getD1Database('DB');
+  assert.equal((await db.prepare("SELECT COUNT(*) n FROM sqlite_master WHERE type='table' AND name LIKE 'life_%'").first()).n,0);
+ }finally{await unconfigured.dispose();}
+});
+
 test('compiled scheduled handler persists D1 jobs and observes late completion atomically',async()=>{
  const enabled=new Miniflare({...config,bindings:{...env,LIFEAPP_REVIEW_PLANNER_ENABLED:'true'}});
  try{

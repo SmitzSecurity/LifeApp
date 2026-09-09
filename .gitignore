@@ -47,5 +47,6 @@ next-env.d.ts
 .dev.vars*
 !.dev.vars.example
 /wrangler.standalone.local.json
+/wrangler.cloudflare.generated.json
 /dist-standalone/
 /private-backups/

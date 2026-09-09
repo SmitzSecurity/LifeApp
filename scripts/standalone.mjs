@@ -4,7 +4,7 @@ import {randomBytes} from 'node:crypto';
 import {parseEnv} from 'node:util';
 import {spawnSync} from 'node:child_process';
 const command=process.argv[2]||'doctor',args=process.argv.slice(3);
-const configPath=existsSync('wrangler.standalone.local.json')?'wrangler.standalone.local.json':'wrangler.standalone.json';
+const configPath=process.env.LIFEAPP_CLOUDFLARE_BUILD==='true'?'wrangler.cloudflare.generated.json':existsSync('wrangler.standalone.local.json')?'wrangler.standalone.local.json':'wrangler.standalone.json';
 const config=JSON.parse(readFileSync(configPath,'utf8'));
 function runWrangler(args){const r=spawnSync(process.execPath,[resolve('node_modules/wrangler/bin/wrangler.js'),...args],{stdio:'inherit'});if(r.status!==0)process.exit(r.status||1);}
 function requireProductionConfig(){

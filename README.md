@@ -21,6 +21,8 @@ npm run dev
 
 Open http://localhost:3000. Google sign-in requires owner credentials in the ignored local settings file; it is intentionally unavailable until configured. See `docs/migration-to-codex.md` for guided Google/AI/hosting setup. Customers never provide API keys.
 
+For Cloudflare's GitHub-connected creation form, use the prepared commands and build setting in `docs/cloudflare-git-build.md`. That path preserves dashboard runtime settings and keeps the initial deployment closed until Google sign-in is configured.
+
 The local migration checker is implemented: `npm run migration:preview -- SOURCE.json [--target TARGET.json] [--out NEW_REPORT.json]`. See `docs/data-migration-preview.md`. It validates private exports and flags conflicts/held AI usage; it cannot import data or prove account ownership.
 
 ## Implemented
