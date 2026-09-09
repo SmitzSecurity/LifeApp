@@ -1,6 +1,7 @@
 import { listAI, generateAI, type AISettings } from './ai-service.ts';
 import { automaticConsentStatus, saveAutomaticConsent } from './automatic-consent.ts';
 import {exportAccount} from './export.ts';
+import {readHistory} from './history.ts';
 import { completionIssues } from './reviews.ts';
 import { listResources, saveResource } from './resource-service.ts';
 import { profileSchema, entryInputSchema, dateSchema, emptyEntry, todayIn, score, type Entry, type Profile } from './domain.ts';
@@ -37,6 +38,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   let body:unknown;try{body=JSON.parse(bodyText)}catch{return json({error:'Invalid request.'},400);}
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);
   const b=body as Record<string,unknown>;
+  if(b.action==='history')return await readHistory(db,userId,b.filters);
   const updated=now.toISOString();
   if(b.action==='automatic-consent')return await saveAutomaticConsent(db,userId,b.consent,ai,now);
   if(b.action==='ai')return await generateAI(db,userId,b.review,ai,now);

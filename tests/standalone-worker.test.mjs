@@ -65,6 +65,13 @@ test('signed compiled history and export reads preserve records and isolate anot
  const home=await call('/');assert.equal(home.status,200);assert.match(await home.text(),/Sign out/);
  const history=await call('/api/life');assert.equal(history.status,200);
  assert.equal((await history.json()).entries[0].journal,'Synthetic preserved journal');
+ const searched=await call('/api/life',{action:'history',filters:{query:'preserved',from:date,through:date,status:'complete'},userId:'google:another-synthetic-owner'});
+ assert.equal(searched.status,200);assert.equal(searched.headers.get('cache-control'),'private, no-store');
+ const page=await searched.json();assert.equal(page.entries.length,1);assert.equal(page.entries[0].journal,'Synthetic preserved journal');assert.equal(page.nextCursor,null);
+ const otherSearch=await call('/api/life',{action:'history',filters:{query:'OTHER ACCOUNT PRIVATE MARKER'}});
+ assert.deepEqual(await otherSearch.json(),{entries:[],nextCursor:null});
+ const anonymousSearch=await isolated.dispatchFetch('https://life.test/api/life',{method:'POST',headers:{Origin:'https://life.test','Content-Type':'application/json'},body:JSON.stringify({action:'history',filters:{}})});
+ assert.equal(anonymousSearch.status,401);
  const entry=await (await call('/api/life?date='+date+'&userId=google:another-synthetic-owner')).json();
  assert.equal(entry.entry.journal,'Synthetic preserved journal');
  const response=await call('/api/life?export=1&userId=google:another-synthetic-owner');

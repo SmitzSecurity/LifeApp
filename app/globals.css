@@ -1,6 +1,14 @@
 @import "tailwindcss";
+
 @import "tw-animate-css";
 @import "../vendor/shadcn-tailwind-4.13.0.css";
+
+.history-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:22px 0}
+.history-filters label{display:flex;flex-direction:column;gap:6px;font-size:.875rem;font-weight:600;min-width:140px}
+.history-filters .history-search{flex:1;min-width:200px}
+.history-filters input,.history-filters select{min-height:42px;border:1px solid #cbd5e1;border-radius:8px;padding:9px 11px;background:white;color:#172d43;font:inherit;font-weight:400;max-width:100%}
+.history-more{padding-top:20px;text-align:center}
+@media(max-width:600px){.history-filters label{flex:1;min-width:0}.history-filters .history-search{flex-basis:100%}.history-filters .action-row{flex-basis:100%}.history-filters input,.history-filters select{width:100%}}
 
 @utility scrollbar-thin {
   scrollbar-width: thin;

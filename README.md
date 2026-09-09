@@ -28,7 +28,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 ## Implemented
 
 - Two-step onboarding, six selectable context modules, explicit habit adoption, custom habit names, renaming and archiving.
-- Daily journal, optional module notes, done/missed/exempt/unrecorded states, saved history and editing by calendar date.
+- Daily journal, optional module notes, done/missed/exempt/unrecorded states, saved history and editing by calendar date. History searches journal text and filters inclusive dates and completion status, with 30-entry pages reaching beyond the initial 366-day list. Search text stays in a private JSON request body; search does not change saved entries or reports.
 - Deterministic scoring with exempt and missing entries excluded and a separate count for each status.
 - D1 persistence for profiles and dated entries; server identity from authenticated Google sessions; optimistic revisions prevent stale saves.
 - Historical habit snapshots preserve old names and choices. Archived habits remain visible on their saved days.
@@ -61,11 +61,16 @@ The first suite uses the actual migration and SQLite statements with synthetic u
 Browser checks can run against a disposable synthetic fixture after building:
 `node scripts/browser-smoke.mjs`. Open the loopback URL printed by the command.
 It serves the compiled app with a synthetic signed session and two saved check-ins,
-blocks all non-GET requests and external provider calls, and uses temporary local
+allows GET and read-only history search, blocks data changes and external provider calls, and uses temporary local
 D1 only. Check Account, download the synthetic backup, choose Keep my account,
 and reopen a check-in from History. Stop the process when finished. This verifies
 local UI behavior; production Google sign-in and the owner's data need their own
 authenticated smoke check.
+
+Use `node scripts/browser-smoke.mjs --history` for 400 synthetic days. Check
+loading older pages, journal search, date/status filters, clearing filters, and
+reopening an entry older than the initial 366-entry list. No migration is needed
+for history search; every query uses the verified account and existing entry dates.
 
 See `docs/structured-modules.md` and `docs/feedback-engine.md` for earlier implementation boundaries. Current additions and activation dependencies: `docs/cloud-drafts.md`, `docs/ai-activation.md` and `docs/google-sign-in.md`.
 
