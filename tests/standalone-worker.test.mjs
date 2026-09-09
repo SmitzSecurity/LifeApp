@@ -1,8 +1,10 @@
 import test,{after,before} from 'node:test';
 import assert from 'node:assert/strict';
-import {Miniflare} from 'miniflare';
+import {Miniflare,createFetchMock} from 'miniflare';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomBytes} from 'node:crypto';
+import {AI_MODEL} from '../lib/life/ai-provider.ts';
+import {defaultReviewPreferences} from '../lib/life/reviews.ts';
 const env={LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:randomBytes(48).toString('base64url'),GOOGLE_CLIENT_ID:'synthetic-worker-client',GOOGLE_CLIENT_SECRET:'synthetic-worker-secret',LIFEAPP_BETA_EMAILS:'owner@example.test'};
 const config={modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],serviceBindings:{ASSETS:async()=>new Response('Not found',{status:404})}};
 const mf=new Miniflare({...config,bindings:env});after(()=>mf.dispose());
@@ -55,4 +57,53 @@ test('compiled scheduled handler persists D1 jobs and observes late completion a
   assert.equal(status.state,'ready');assert.equal(status.reminder_pending,0);
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_ai_reviews').first()).n,0);
  }finally{await enabled.dispose();}
+});
+
+test('compiled automatic handler uses explicit consent and stores one mocked Gemini result across ticks',async()=>{
+ const fetchMock=createFetchMock();fetchMock.disableNetConnect();let calls=0;
+ fetchMock.get('https://generativelanguage.googleapis.com').intercept({path:`/v1beta/models/${AI_MODEL}:generateContent`,method:'POST'}).reply(200,()=>{
+  calls++;return JSON.stringify({responseId:'synthetic-worker-review',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:'Synthetic compiled scheduled review'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:30,thoughtsTokenCount:10,totalTokenCount:140}});
+ });
+ const enabled=new Miniflare({...config,fetchMock,bindings:{...env,LIFEAPP_REVIEW_PLANNER_ENABLED:'true',LIFEAPP_AUTOMATIC_REVIEWS_ENABLED:'true',LIFEAPP_AI_ENABLED:'true',LIFEAPP_AI_PAID_PROJECT:'true',GEMINI_API_KEY:'synthetic-gemini-key'}});
+ try{
+  const db=await enabled.getD1Database('DB');
+  for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+  const now=new Date(),date=new Date(now.valueOf()-86400000).toISOString().slice(0,10),id='synthetic-consented-owner';
+  const preferences=defaultReviewPreferences();preferences.daily.time='00:00';
+  const profile={goal:'Synthetic goal',timezone:'UTC',modules:['reflection'],habits:[],reviewPreferences:preferences};
+  await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(id,JSON.stringify(profile),now.toISOString()).run();
+  await db.prepare('INSERT INTO life_entries VALUES(?1,?2,?3,1,?4)').bind(id,date,JSON.stringify({date,complete:true,journal:'Synthetic check-in',habits:[],context:{}}),now.toISOString()).run();
+  const worker=await enabled.getWorker();
+  assert.equal((await worker.scheduled({scheduledTime:now.valueOf(),cron:'*/5 * * * *'})).outcome,'ok');
+  assert.equal(calls,0);
+  await db.prepare('INSERT INTO life_automatic_consent VALUES(?1,1,1,?2,?3,?4,?4)').bind(id,'daily-v1',date,new Date(now.valueOf()-86400000).toISOString()).run();
+  for(let i=0;i<2;i++)assert.equal((await worker.scheduled({scheduledTime:now.valueOf(),cron:'*/5 * * * *'})).outcome,'ok');
+  const result=await db.prepare('SELECT status,cost_micros,output_tokens,input_snapshot FROM life_ai_reviews').first();
+  assert.equal(calls,1);assert.equal(result.status,'complete');assert.equal(result.cost_micros,225);assert.equal(result.output_tokens,40);
+  assert.equal(JSON.parse(result.input_snapshot).automaticConsent.version,1);
+  fetchMock.assertNoPendingInterceptors();
+ }finally{await enabled.dispose();await fetchMock.close();}
+});
+
+test('prepared upgrade and verification queries run on local D1 without granting automatic consent',async()=>{
+ const upgrade=new Miniflare({...config,bindings:env});
+ try{
+  const db=await upgrade.getD1Database('DB');
+  await db.prepare('CREATE TABLE d1_migrations(id INTEGER PRIMARY KEY AUTOINCREMENT,name TEXT UNIQUE,applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)').run();
+  for(const f of readdirSync('drizzle').filter(f=>/^000[0-4]_.*\.sql$/.test(f)).sort()){
+   for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+   await db.prepare('INSERT INTO d1_migrations(name) VALUES(?1)').bind(f).run();
+  }
+  const load=name=>readFileSync('docs/setup/d1-upgrade-0005'+name+'.sql','utf8');
+  assert.deepEqual(await db.prepare(load('-preflight')).first(),{migrations:5,required_prior_migrations:5,app_tables:11,consent_table:0,consideration_column:0,job_date_index:0,reminder_trigger:1,status_view:1});
+  await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind('synthetic-upgrade-owner',JSON.stringify({goal:'Synthetic upgrade',timezone:'UTC',modules:['reflection'],habits:[]}),new Date().toISOString()).run();
+  const before=await db.prepare(load('-counts')).first();
+  await db.exec(load(''));
+  assert.deepEqual(await db.prepare(load('-verify')).first(),{migrations:6,migration_0005:1,app_tables:12,consent_table:1,consideration_column:1,job_date_index:1,reminder_trigger:1,status_view:1,consent_rows:0});
+  assert.deepEqual(await db.prepare(load('-counts')).first(),before);
+  const worker=await upgrade.getWorker();
+  assert.equal((await worker.scheduled({scheduledTime:Date.now(),cron:'*/5 * * * *'})).outcome,'ok');
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_review_jobs').first()).n,0);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_automatic_consent').first()).n,0);
+ }finally{await upgrade.dispose();}
 });

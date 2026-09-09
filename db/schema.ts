@@ -11,12 +11,17 @@ export const aiReviews=sqliteTable('life_ai_reviews',{
 },t=>[primaryKey({columns:[t.userId,t.requestId]}),uniqueIndex('idx_life_ai_revision').on(t.userId,t.entryDate,t.revision),index('idx_life_ai_account_time').on(t.userId,t.createdAt),index('idx_life_ai_time').on(t.createdAt)]);
 
 // Eligibility is a live SQL view, not a stale copy of a journal's completion state.
-// These are scheduling intents only; no provider or delivery worker consumes them yet.
+// Automatic execution requires separate consent; reminder delivery remains inactive.
 export const reviewJobs=sqliteTable('life_review_jobs',{
  userId:text('user_id').notNull(),entryDate:text('entry_date').notNull(),
  detectedAt:text('detected_at').notNull(),timezone:text('timezone').notNull(),
- localTime:text('local_time').notNull(),profileVersion:integer('profile_version').notNull()
-},t=>[primaryKey({columns:[t.userId,t.entryDate]})]);
+ localTime:text('local_time').notNull(),profileVersion:integer('profile_version').notNull(),lastConsideredAt:text('last_considered_at')
+},t=>[primaryKey({columns:[t.userId,t.entryDate]}),index('idx_life_review_job_date').on(t.entryDate)]);
 export const reminderOutbox=sqliteTable('life_reminder_outbox',{
  userId:text('user_id').notNull(),entryDate:text('entry_date').notNull(),createdAt:text('created_at').notNull()
 },t=>[primaryKey({columns:[t.userId,t.entryDate]})]);
+
+export const automaticConsent=sqliteTable('life_automatic_consent',{
+ userId:text('user_id').primaryKey(),enabled:integer('enabled').notNull(),version:integer('version').notNull(),
+ policyVersion:text('policy_version').notNull(),startDate:text('start_date').notNull(),acceptedAt:text('accepted_at').notNull(),updatedAt:text('updated_at').notNull()
+});

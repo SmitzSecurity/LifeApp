@@ -98,7 +98,8 @@ export function validateBackup(text:string):Backup{
    const previous=r.predecessor_id?reviews.get(r.predecessor_id):null;
    requireThat(z.string().uuid().safeParse(r.request_id).success&&previous&&previous.entry_date===r.entry_date&&previous.revision===r.revision-1&&previous.status==='complete'&&r.critique.trim(),'broken_review_chain',at);
   }
-  const snapshot=validate(z.object({context:z.record(z.unknown()),previousReview:z.string().nullable(),revisionRequest:z.string().nullable()}).strict(),parseJSON(r.input_snapshot,at),at);
+  const snapshot=validate(z.object({context:z.record(z.unknown()),previousReview:z.string().nullable(),revisionRequest:z.string().nullable(),automaticConsent:z.object({version:z.number().int().positive(),policyVersion:z.literal('daily-v1'),startDate:dateSchema,acceptedAt:timestamp}).strict().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
+  if(snapshot.automaticConsent)requireThat(r.revision===1&&r.predecessor_id===null&&r.entry_date>=snapshot.automaticConsent.startDate,'automatic_consent_evidence_mismatch',at);
   requireThat(snapshot.context.contractVersion===1,'unknown_evidence_contract',at);
   const window=validate(z.object({from:dateSchema,through:dateSchema}).strict(),snapshot.context.window,at);
   requireThat(window.from===r.entry_date&&window.through===r.entry_date,'evidence_window_mismatch',at);
