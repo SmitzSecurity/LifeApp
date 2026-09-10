@@ -10,7 +10,7 @@ export async function readActivity(db:Database,userId:string,from:string,through
 }
 export function activityTotals(records:ActivityRecords,from:string,through:string){
  const inWindow=(date:string)=>date>=from&&date<=through;
- const tx=records.transactions.filter(t=>inWindow(t.data.date)&&!t.data.voided),workouts=records.workouts.filter(w=>inWindow(w.data.date)&&!!w.data.finishedAt),cardio=records.cardio.filter(c=>inWindow(c.data.date)&&!c.data.voided);
+ const tx=records.transactions.filter(t=>inWindow(t.data.date)&&!t.data.voided&&!t.data.deleted),workouts=records.workouts.filter(w=>inWindow(w.data.date)&&!!w.data.finishedAt),cardio=records.cardio.filter(c=>inWindow(c.data.date)&&!c.data.voided);
  const total=(kind:Transaction['kind'])=>tx.filter(t=>t.data.kind===kind).reduce((sum,t)=>sum+t.data.amountCents,0);
  return {from,through,transactions:tx.length,spendingCents:total('expense'),incomeCents:total('income'),savingCents:total('saving')+total('investing'),strengthSessions:workouts.length,sets:workouts.reduce((sum,w)=>sum+w.data.sets.length,0),cardioSessions:cardio.length,cardioMinutes:cardio.reduce((sum,c)=>sum+c.data.minutes,0),cardioKm:Math.round(cardio.reduce((sum,c)=>sum+(c.data.distance??0)*(c.data.unit==='mi'?1.609344:c.data.unit==='m'?.001:1),0)*100)/100};
 }

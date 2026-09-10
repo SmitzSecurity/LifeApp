@@ -59,6 +59,60 @@ test('variable occurrence forecasts become actuals once, with inline-compatible 
  const backup=validateBackup(JSON.stringify(await (await f.call(undefined,'a','?export=1')).json()));assert.equal(backup.resources.length,2);
  }finally{f.raw.close();}
 });
+test('transaction delete, restore and void preserve versions, references, totals and portable backup',async()=>{
+ const f=fixture();try{await f.setup();const category=randomUUID(),recurring=randomUUID();
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:category,name:'Bills',limitCents:20000}],recurring:[{id:recurring,title:'Electric',kind:'expense',amountCents:8000,categoryId:category,day:1}],goals:{spending:'',saving:'',investing:''}});
+ const save=(kind,{id,version,data})=>f.call({action:'resource',record:{kind,id,version,data}});
+ await save('budget',{id:'2026-09',version:0,data:plan});
+ const original=(await (await save('transaction',{id:occurrenceId('2026-09',recurring),version:0,data:{date:'2026-09-01',kind:'expense',amountCents:9257,categoryId:category,note:'Synthetic actual',recurringId:recurring,voided:false}})).json()).record;
+ assert.equal(original.data.deleted,false);
+ const mutation={...original,data:{...original.data,deleted:true}};
+ const removed=(await (await save('transaction',mutation)).json()).record;
+ assert.equal(removed.version,2);assert.equal((await (await save('transaction',mutation)).json()).record.version,2);
+ assert.equal(budgetSummary(plan,[removed],'2026-09').expenses,0);assert.equal(budgetSummary(plan,[removed],'2026-09').categories[0].scheduled,8000);
+ assert.equal((await (await f.call(undefined,'a','?dashboard=1')).json()).trends.at(-2).spendingCents,0);
+ assert.equal(activityTotals({transactions:[removed],workouts:[],cardio:[]},'2026-09-01','2026-09-30').transactions,0);
+ assert.equal((await save('transaction',{...original,data:{...original.data,amountCents:1}})).status,409);
+ const restored=(await (await save('transaction',{...removed,data:{...removed.data,deleted:false}})).json()).record;
+ assert.equal(restored.id,original.id);assert.equal(restored.version,3);assert.equal(budgetSummary(plan,[restored],'2026-09').expenses,9257);
+ const voided=(await (await save('transaction',{...restored,data:{...restored.data,voided:true}})).json()).record;
+ assert.equal(voided.data.deleted,false);assert.equal(budgetSummary(plan,[voided],'2026-09').expenses,0);
+ await save('transaction',{...voided,data:{...voided.data,deleted:true}});
+ const backup=validateBackup(JSON.stringify(await (await f.call(undefined,'a','?export=1')).json()));assert.equal(backup.resources.length,2);
+ const payload=f.raw.prepare("SELECT payload FROM life_resources WHERE kind='transaction'").get().payload;assert.equal(JSON.parse(payload).deleted,true);
+ assert.equal((await (await f.call(undefined,'b','?kind=transaction&month=2026-09')).json()).records.length,0);
+ assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE kind='transaction'").get().n,1);
+ }finally{f.raw.close();}
+});
+test('deleted monthly items leave recorded payments intact and cannot create new occurrences until restored',async()=>{
+ const f=fixture();try{await f.setup();const category=randomUUID(),recurring=randomUUID();
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:category,name:'Bills',limitCents:20000}],recurring:[{id:recurring,title:'Electric',kind:'expense',amountCents:8000,categoryId:category,day:1}],goals:{spending:'',saving:'',investing:''}});
+ const save=(kind,{id,version,data})=>f.call({action:'resource',record:{kind,id,version,data}});
+ await save('budget',{id:'2026-09',version:0,data:plan});
+ const deleted={...plan,recurring:plan.recurring.map(r=>({...r,deleted:true,active:false}))};
+ let saved=(await (await save('budget',{id:'2026-09',version:1,data:deleted})).json()).record;
+ assert.equal(budgetSummary(saved.data,[],'2026-09').due.length,0);
+ const tx={id:occurrenceId('2026-09',recurring),version:0,data:{date:'2026-09-01',kind:'expense',amountCents:8000,categoryId:category,note:'Synthetic actual',recurringId:recurring,voided:false}};
+ assert.equal((await save('transaction',tx)).status,409);
+ saved=(await (await save('budget',{...saved,data:plan})).json()).record;
+ const actual=(await (await save('transaction',tx)).json()).record;
+ assert.equal((await save('budget',{...saved,data:deleted})).status,200);
+ assert.equal(budgetSummary(deleted,[actual],'2026-09').expenses,8000);assert.equal(budgetSummary(deleted,[actual],'2026-09').due.length,0);
+ assert.equal((await save('transaction',{...actual,data:{...actual.data,amountCents:8100}})).status,200);
+ const backup=validateBackup(JSON.stringify(await (await f.call(undefined,'a','?export=1')).json()));assert.equal(backup.resources.length,2);
+ }finally{f.raw.close();}
+});
+test('budget goal updates appear in Settings and analysis without replacing unrelated preferences on conflicts',async()=>{
+ const f=fixture();try{await f.setup();const original=(await (await f.call()).json()).profile;
+ const current=(await (await f.call({action:'profile',profile:{...original,timezone:'America/New_York'}})).json()).profile;
+ const budgetGoals={spending:'Keep bills predictable',saving:'Emergency fund',investing:'Long term'};
+ assert.equal((await f.call({action:'profile',profile:{...original,budgetGoals}})).status,409);
+ assert.equal((await f.call({action:'profile',profile:{...current,budgetGoals}})).status,200);
+ const saved=(await (await f.call()).json()).profile;assert.deepEqual(saved.budgetGoals,budgetGoals);assert.equal(saved.timezone,'America/New_York');assert.deepEqual(saved.reviewPreferences,original.reviewPreferences);
+ assert.deepEqual(buildPeriodContext(saved,'monthly','2026-09-01','2026-09-30',[],{transactions:[],workouts:[],cardio:[]},[]).budgetGoals,budgetGoals);
+ assert.equal(f.state.calls.length,0);
+ }finally{f.raw.close();}
+});
 test('feedback saves without AI, is idempotent and account-scoped, and guides future generations',async()=>{
  const f=fixture();try{await f.setup();await f.setup('b');const original=(await (await f.call(ai())).json()).report;
  const feedback={action:'analysis-feedback',feedback:{id:randomUUID(),text:'Keep suggestions practical.',reportId:original.id,date:original.date,cadence:'daily',profileVersion:1}};

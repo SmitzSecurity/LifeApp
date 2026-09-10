@@ -47,6 +47,7 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    if(id!==occurrenceId(period,t.recurringId))return json({error:'Invalid scheduled occurrence.'},400);
    const recurring=plan?.recurring.find(r=>r.id===t.recurringId);
    if(!recurring||recurring.kind!==t.kind||recurring.categoryId!==t.categoryId)return json({error:'This scheduled payment changed. Reload the monthly plan.'},409);
+   if(recurring.deleted&&!previous)return json({error:'This monthly item was deleted. Restore it in the monthly plan first.'},409);
   }else if(id.startsWith('due:'))return json({error:'Missing scheduled occurrence.'},400);
   data={...t,categoryId:t.kind==='expense'?t.categoryId:'',categoryName:t.kind==='expense'?category!.name:''};
  }

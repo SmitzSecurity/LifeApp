@@ -16,6 +16,16 @@ Allowance headings expand into their limit editor and contributing transactions.
 
 Settings groups goals, habits, analysis/guidance, timezone and automation/email. Download data and Delete account are at the bottom; there is no Account menu. The existing recent-login and exact DELETE confirmation remain mandatory.
 
+## Budget editing follow-up
+
+Budget goals open in a dialog over Budget, using the same fields and saved profile as Settings. Saving retains transaction and monthly-plan drafts. Concurrent Settings changes use the profile version guard; the popup retains its draft and reconciles the latest profile before retrying, including a lost save response.
+
+Transaction history offers Edit, Void/Unvoid and Delete in the row. Voided text is struck through and excluded from totals. Delete hides the transaction from normal history, category totals, Home trends and future analysis context. Deleted transactions provides Restore; exports retain the payload and identity. Restoring a voided item leaves it voided until explicitly unvoided.
+
+Recurring editors and expected payments offer Delete monthly item. Save plan applies it to the selected month. Saved recurring IDs remain as deleted, inactive records, with Restore under Deleted monthly items; recorded payments stay intact. New unsaved recurring drafts can be removed entirely. Plans copied into new months exclude deleted items from forecasts. A stale client cannot create a new occurrence for a deleted item. Confirming a deleted actual again reuses its deterministic occurrence ID.
+
+Expanded allowances show a downward chevron, accent heading and Collapse hint. Desktop tile pairs stretch to equal height; mobile uses natural-height single columns. This follow-up requires no database migration or production data rewrite. Older payloads default to not deleted. After a user deletes an item, do not roll back to code that ignores deleted flags: it would incorrectly count deleted values. Use a compatible forward fix.
+
 ## Deployment
 
 Apply only `0008_analysis_periods.sql` after confirming 0000–0007 are present. It adds cadence/window columns, changes the revision unique index, creates empty period consent with deletion guards, and recreates daily eligibility with the original logic plus a daily-only report join. It does not modify old journal/resource/report payloads or opt anyone in. Snapshot/validate private export and record a D1 recovery bookmark first. Run the migration and its ledger insert in one D1 query batch; never replay prior migrations. Compare original rows/usage and confirm period consent is empty before deploying code.
