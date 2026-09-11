@@ -5,10 +5,12 @@ import type {Database} from './service.ts';
 import type {Profile} from './domain.ts';
 
 const base={month:monthSchema,initial:budgetSchema.optional()};
+const categoryOrder=z.array(categorySchema.shape.id).max(30);
 export const budgetItemSchema=z.discriminatedUnion('kind',[
  z.object({...base,kind:z.literal('initialize'),initial:budgetSchema}).strict(),
  z.object({...base,kind:z.literal('category'),previous:categorySchema.nullable(),item:categorySchema}).strict(),
  z.object({...base,kind:z.literal('recurring'),previous:recurringSchema.nullable(),item:recurringSchema}).strict(),
+ z.object({...base,kind:z.literal('category-order'),previous:categoryOrder,order:categoryOrder}).strict(),
 ]);
 export type BudgetItemChange=z.infer<typeof budgetItemSchema>;
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
@@ -21,7 +23,7 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
  const parsed=budgetItemSchema.safeParse(body);
  if(!parsed.success)return json({error:'Check the name, amount and schedule for this item.'},400);
  const change=parsed.data;
- if(change.kind!=='initialize'&&change.previous&&change.previous.id!==change.item.id)return json({error:'Keep the original item identity.'},400);
+ if((change.kind==='category'||change.kind==='recurring')&&change.previous&&change.previous.id!==change.item.id)return json({error:'Keep the original item identity.'},400);
  let latest:Saved<Budget>|null=null;
  for(let attempt=0;attempt<3;attempt++){
   const stored=await readResource(db,userId,'budget',change.month);
@@ -30,7 +32,13 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
   const current=latest?.data||change.initial;
   if(!current)return json({error:'Reopen this month before saving an item.'},409);
   let data=current;
-  if(change.kind!=='initialize'){
+  if(change.kind==='category-order'){
+   const ids=current.categories.map(c=>c.id);
+   if(change.order.length!==change.previous.length||new Set(change.order).size!==change.order.length||new Set(change.previous).size!==change.previous.length||change.order.some(id=>!change.previous.includes(id)))return json({error:'Include each category exactly once when changing the order.'},400);
+   if(latest&&same(ids,change.order))return json({record:latest});
+   if(!same(ids,change.previous))return json({error:'The category list changed in another session. Cancel and reopen Reorder to use its saved order.',record:latest},409);
+   data={...current,categories:change.order.map(id=>current.categories.find(c=>c.id===id)!)};
+  }else if(change.kind!=='initialize'){
    const list=change.kind==='category'?current.categories:current.recurring;
    const existing=list.find(item=>item.id===change.item.id)||null;
    if(latest&&same(existing,change.item))return json({record:latest});

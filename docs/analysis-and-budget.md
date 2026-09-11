@@ -32,6 +32,10 @@ Expanded allowances show a downward chevron, accent heading and Collapse hint. D
 
 The recurring popup aligns the Type and amount controls even when labels wrap. Dollar prefixes replace redundant USD suffixes. Its fields scroll independently while Save, Cancel and Delete stay visible on smaller screens.
 
+Budget section headings toggle Quick transaction, Category allowances, Recurring income & expenses, Transaction history and Expected income & expenses. Each section remembers its open/closed state in this browser. Collapsing keeps editors mounted and preserves unfinished drafts; a collapsed section with pending edits shows an Unsaved changes cue. Equal-height desktop pairs remain intact.
+
+Reorder opens a category list with accessible move-up/down controls and its own Save order/Cancel. The saved category order belongs to the selected month and carries forward with its plan into unsaved future months. Archived categories retain their IDs and positions. The category-order action compares the previous ID order and merges only ordering into the latest saved month, retaining concurrent allowance/name changes and all transaction/recurring references. Duplicate, missing or foreign IDs are rejected. Concurrent list or ordering changes return a conflict, while exact retries do not create extra versions. No migration is required.
+
 ## Deployment
 
 Apply only `0008_analysis_periods.sql` after confirming 0000–0007 are present. It adds cadence/window columns, changes the revision unique index, creates empty period consent with deletion guards, and recreates daily eligibility with the original logic plus a daily-only report join. It does not modify old journal/resource/report payloads or opt anyone in. Snapshot/validate private export and record a D1 recovery bookmark first. Run the migration and its ledger insert in one D1 query batch; never replay prior migrations. Compare original rows/usage and confirm period consent is empty before deploying code.

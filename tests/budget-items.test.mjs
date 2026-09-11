@@ -60,3 +60,36 @@ test('recurring item edits preserve recorded-payment identity and remain scoped 
  assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE user_id='b'").get().n,0);
  }finally{f.raw.close();}
 });
+
+test('category order saves for a new month, retains archived identities and retries without another version',async()=>{
+ const f=fixture();try{await f.setup();f.initial.categories.push({id:randomUUID(),name:'Archived',limitCents:1200,archived:true});
+ const ids=f.initial.categories.map(c=>c.id),order=[ids[1],ids[0],ids[2]],change={kind:'category-order',previous:ids,order,initial:f.initial};
+ let response=await f.change(change);assert.equal(response.status,200);const saved=(await response.json()).record;assert.equal(saved.version,1);assert.deepEqual(saved.data.categories.map(c=>c.id),order);
+ assert.deepEqual([...saved.data.categories].sort((a,b)=>a.id.localeCompare(b.id)),[...f.initial.categories].sort((a,b)=>a.id.localeCompare(b.id)));
+ assert.equal((await (await f.change(change)).json()).record.version,1);
+ const read=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.deepEqual(read.data.categories.map(c=>c.id),order);
+ }finally{f.raw.close();}
+});
+
+test('reordering merges concurrent allowance edits and preserves transactions and recurring references',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;
+ const item={id:randomUUID(),title:'Electric',kind:'expense',amountCents:8000,categoryId:a.id,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,active:true,deleted:false};
+ await f.change({kind:'recurring',initial:f.initial,previous:null,item});
+ const tx={kind:'transaction',id:randomUUID(),version:0,data:{date:month+'-01',kind:'expense',amountCents:8100,categoryId:a.id,note:'Existing payment',recurringId:null,voided:false}};
+ assert.equal((await f.call({action:'resource',record:tx})).status,200);const txBefore=f.raw.prepare("SELECT * FROM life_resources WHERE kind='transaction'").all();
+ const responses=await Promise.all([f.change({kind:'category-order',previous:[a.id,b.id],order:[b.id,a.id]}),f.change({kind:'category',previous:a,item:{...a,name:'Utilities',limitCents:45000}})]);assert.deepEqual(responses.map(r=>r.status),[200,200]);
+ const saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.deepEqual(saved.data.categories.map(c=>c.id),[b.id,a.id]);assert.equal(saved.data.categories[1].limitCents,45000);assert.equal(saved.data.categories[1].name,'Utilities');assert.deepEqual(saved.data.recurring,[item]);assert.deepEqual(f.raw.prepare("SELECT * FROM life_resources WHERE kind='transaction'").all(),txBefore);
+ }finally{f.raw.close();}
+});
+
+test('category reorder rejects malformed lists, stale order or changed membership and stays account scoped',async()=>{
+ const f=fixture();try{await f.setup();f.initial.categories.push({id:randomUUID(),name:'Travel',limitCents:5000,archived:false});await f.change({kind:'initialize',initial:f.initial});const ids=f.initial.categories.map(c=>c.id),reverse=[...ids].reverse();
+ for(const order of [[ids[0],ids[0],ids[2]],ids.slice(1),[ids[0],ids[1],randomUUID()]])assert.equal((await f.change({kind:'category-order',previous:ids,order})).status,400);
+ assert.equal((await f.change({kind:'category-order',previous:ids,order:reverse})).status,200);
+ const conflict=await f.change({kind:'category-order',previous:ids,order:[ids[1],ids[0],ids[2]]});assert.equal(conflict.status,409);assert.deepEqual((await conflict.json()).record.data.categories.map(c=>c.id),reverse);
+ const category={id:randomUUID(),name:'New category',limitCents:0,archived:false};await f.change({kind:'category',previous:null,item:category});
+ assert.equal((await f.change({kind:'category-order',previous:reverse,order:ids})).status,409);
+ assert.equal((await f.change({kind:'category-order',previous:reverse,order:ids},'b')).status,400);assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE user_id='b'").get().n,0);
+ assert.equal((await f.call({action:'budget-item',change:{kind:'category-order',month,previous:reverse,order:ids}},null)).status,401);
+ }finally{f.raw.close();}
+});
