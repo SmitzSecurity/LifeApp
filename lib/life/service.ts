@@ -8,6 +8,7 @@ import {readDashboard} from './dashboard.ts';
 import {cadenceSchema} from './reviews.ts';
 import { completionIssues } from './reviews.ts';
 import { listResources, saveResource } from './resource-service.ts';
+import {saveBudgetItem} from './budget-items.ts';
 import { profileSchema, entryInputSchema, dateSchema, emptyEntry, todayIn, score, type Entry, type Profile } from './domain.ts';
 
 // The caller supplies verified server identity, never an id from JSON or query parameters.
@@ -51,6 +52,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   if(b.action==='automatic-consent')return await saveAutomaticConsent(db,userId,b.consent,ai,now);
   if(b.action==='ai')return await generateAI(db,userId,b.review,ai,now);
   if(b.action==='resource')return await saveResource(b.record,db,userId,await getProfile(db,userId),now);
+  if(b.action==='budget-item')return await saveBudgetItem(b.change,db,userId,await getProfile(db,userId),now);
   if(b.action==='profile'){
    const parsed=profileSchema.safeParse(b.profile);
    if(!parsed.success)return json({error:parsed.error.issues[0]?.message||'Check your setup.'},400);

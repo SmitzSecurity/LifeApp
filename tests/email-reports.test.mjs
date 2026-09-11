@@ -14,7 +14,11 @@ import {validateBackup,previewMigration} from '../lib/life/migration-preview.ts'
 const deliveryNow=new Date('2026-09-10T12:00:00.000Z');
 const now=new Date('2026-09-09T12:00:00.000Z'),before=new Date('2026-09-08T12:00:00.000Z'),date='2026-09-08';
 const providerResult={text:'Synthetic full report <script>alert("no")</script> & reflection',inputTokens:100,outputTokens:40,thoughtTokens:10,costMicros:225,providerId:'synthetic',modelVersion:'synthetic',finishReason:'STOP'};
+const clockedTests=new WeakSet();
 function fixture(t,send=async()=>({messageId:'synthetic-mail-id'})){
+ // AI completion uses the wall clock. Keep it before the fixture's delivery
+ // tick so these tests do not expire when the real calendar advances.
+ if(!clockedTests.has(t)){t.mock.timers.enable({apis:['Date'],now:now.valueOf()});clockedTests.add(t);}
  const raw=new DatabaseSync(':memory:');raw.exec('PRAGMA foreign_keys=ON');t.after(()=>raw.close());
  for(const file of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+file,'utf8'));
  const db={prepare(sql){return {bind(...params){return {async first(){return raw.prepare(sql).get(...params)||null;},async all(){return {results:raw.prepare(sql).all(...params)};}};}};}};

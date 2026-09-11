@@ -53,7 +53,7 @@ const server=createServer(async(req,res)=>{
    for await(const chunk of req){size+=chunk.length;if(size>65536){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
-   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource',...(analysisFixture?['ai','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
+   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource','budget-item',...(analysisFixture?['ai','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
   const file=resolve(assets,'.'+decodeURIComponent(pathname));
