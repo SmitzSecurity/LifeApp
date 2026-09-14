@@ -7,7 +7,7 @@ import type {HistoryFilters,HistoryPage} from '@/lib/life/history';
 import {request} from './shared';
 
 type Filters=Omit<HistoryFilters,'before'>;
-const blank:Filters={query:'',from:'',through:'',status:'all'};
+const blank:Filters={query:'',from:'',through:'',status:'all',deleted:false};
 const niceDate=(date:string)=>new Date(date+'T12:00:00').toLocaleDateString(undefined,{year:'numeric',month:'numeric',day:'numeric'});
 
 export default function History({disabled,onOpen,onToday,searchOpen=false,refreshKey=0}:{disabled:boolean;onOpen:(date:string)=>void;onToday:()=>void;searchOpen?:boolean;refreshKey?:number}){
@@ -32,8 +32,9 @@ export default function History({disabled,onOpen,onToday,searchOpen=false,refres
  const filtersChanged=JSON.stringify(filters)!==JSON.stringify(applied);
  function search(event:FormEvent){event.preventDefault();void load(filters);}
  function clear(){setFilters(blank);void load(blank);}
+ async function remove(entry:Entry){setLoading(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'entry',id:entry.date,version:entry.version,deleted:!entry.deleted}});await load(applied);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
  return <section className="history-panel" aria-label="Saved responses">
-  <form className="history-filters" onSubmit={search} hidden={!searchOpen}>
+  <div className="action-row"><Button variant="ghost" disabled={disabled||loading} onClick={()=>{const next={...blank,deleted:!applied.deleted};setFilters(next);void load(next);}}>{applied.deleted?'Back to responses':'Trash'}</Button>{applied.deleted&&<small>Deleted responses · restore to edit</small>}</div><form className="history-filters" onSubmit={search} hidden={!searchOpen}>
    <label className="history-search">Search journal text<input type="search" maxLength={200} value={filters.query} onChange={e=>setFilters({...filters,query:e.target.value})} placeholder="Find a word or phrase"/></label>
    <label>From<input type="date" value={filters.from} max={filters.through||undefined} onChange={e=>setFilters({...filters,from:e.target.value})}/></label>
    <label>Through<input type="date" value={filters.through} min={filters.from||undefined} onChange={e=>setFilters({...filters,through:e.target.value})}/></label>
@@ -45,7 +46,7 @@ export default function History({disabled,onOpen,onToday,searchOpen=false,refres
   {error&&<div className="error" role="alert">{error} <Button variant="outline" onClick={()=>load(applied,cursor)} disabled={loading}>Retry</Button></div>}
   {loading&&<p className="muted" role="status">{entries.length?'Loading older responses…':'Loading your saved responses…'}</p>}
   {loaded&&!entries.length&&!loading&&<div className="empty-history"><BookOpen/><h3>{filtered?'No responses found.':'No responses yet.'}</h3><p>{filtered?'Try another phrase or date range.':'Add your first response to get started.'}</p>{filtered?<Button variant="outline" onClick={clear}>Show all responses</Button>:<Button onClick={onToday}>Add response</Button>}</div>}
-  {entries.map(entry=>{const s=score(entry.habits);return <button key={entry.date} className="history-row" aria-label={`Edit response for ${niceDate(entry.date)}`} disabled={disabled||loading} onClick={()=>onOpen(entry.date)}><span className="history-date">{niceDate(entry.date)}</span><span className="history-score" aria-label={s.percent===null?'No habit score':`Habit score ${s.percent}%`}>{s.percent===null?'—':s.percent+'%'}</span><span className="history-text">{entry.journal||'No journal text'}</span><span className="response-row-footer"><small>{entry.complete?'':'Draft'}</small><SquarePen aria-hidden="true"/></span></button>;})}
+  {entries.map(entry=>{const s=score(entry.habits);return <div key={entry.date}><button className="history-row" aria-label={`Edit response for ${niceDate(entry.date)}`} disabled={disabled||loading||entry.deleted} onClick={()=>onOpen(entry.date)}><span className="history-date">{niceDate(entry.date)}</span><span className="history-score" aria-label={s.percent===null?'No habit score':`Habit score ${s.percent}%`}>{s.percent===null?'—':s.percent+'%'}</span><span className="history-text">{entry.journal||'No journal text'}</span><span className="response-row-footer"><small>{entry.complete?'':'Draft'}</small><SquarePen aria-hidden="true"/></span></button><Button variant="ghost" disabled={disabled||loading} onClick={()=>void remove(entry)} aria-label={(entry.deleted?'Restore response for ':'Delete response for ')+niceDate(entry.date)}>{entry.deleted?'Restore':'Delete'}</Button></div>;})}
   {cursor&&!error&&<div className="history-more"><Button variant="outline" disabled={loading||disabled} onClick={()=>load(applied,cursor)}>Load older responses</Button></div>}
  </section>;
 }

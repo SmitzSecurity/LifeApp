@@ -9,6 +9,7 @@ export const historyFiltersSchema=z.object({
  from:optionalDate,
  through:optionalDate,
  status:z.enum(['all','complete','draft']).default('all'),
+ deleted:z.boolean().default(false),
  before:dateSchema.nullable().default(null),
 }).strict().refine(f=>!f.from||!f.through||f.from<=f.through,{message:'Choose an end date on or after the start date.'});
 export type HistoryFilters=z.infer<typeof historyFiltersSchema>;
@@ -20,7 +21,7 @@ export async function readHistory(db:Database,userId:string,body:unknown){
  const parsed=historyFiltersSchema.safeParse(body);
  const headers={'Cache-Control':'private, no-store',Vary:'Cookie','X-Content-Type-Options':'nosniff'};
  if(!parsed.success)return Response.json({error:'Check the search text (up to 200 characters) and date range.'},{status:400,headers});
- const f=parsed.data,where=['user_id=?'],params:unknown[]=[userId];
+ const f=parsed.data,where=['user_id=?',"COALESCE(json_extract(payload,'$.deleted'),0)=?"],params:unknown[]=[userId,f.deleted?1:0];
  if(f.from){where.push('entry_date>=?');params.push(f.from);}
  if(f.through){where.push('entry_date<=?');params.push(f.through);}
  if(f.before){where.push('entry_date<?');params.push(f.before);}

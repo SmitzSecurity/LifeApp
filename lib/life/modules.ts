@@ -13,25 +13,28 @@ export const budgetSchema=z.object({currency:z.literal('USD'),categories:z.array
 export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),voided:z.boolean(),deleted:z.boolean().default(false)}).strict();
 export const exerciseSchema=z.object({id:uuid,name:title,muscles:muscleTargetsSchema.optional(),sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
 export const routineSchema=z.object({name:title,weeklySessions:z.number().int().min(0).max(7).optional(),preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
-export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(20),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
-export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(600),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable()}).strict().superRefine((w,c)=>{
+export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(40),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
+export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(1200),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable(),deleted:z.boolean().optional()}).strict().superRefine((w,c)=>{
  if(new Set(w.exercises.map(e=>e.id)).size!==w.exercises.length)c.addIssue({code:'custom',message:'Exercise IDs must be unique.'});
  if(new Set(w.sets.map(s=>s.exerciseId+':'+s.setNumber)).size!==w.sets.length)c.addIssue({code:'custom',message:'A set can only be logged once.'});
- for(const s of w.sets){const e=w.exercises.find(e=>e.id===s.exerciseId);if(!e||s.setNumber>e.sets)c.addIssue({code:'custom',message:'This set is not in your workout.'});}
+ for(const e of w.exercises){const logged=w.sets.filter(s=>s.exerciseId===e.id);if(logged.filter(s=>!s.warmup).length>e.sets||logged.filter(s=>s.warmup).length>20)c.addIssue({code:'custom',message:'Keep the planned working sets and at most 20 warm-ups per exercise.'});}
+ for(const s of w.sets){const e=w.exercises.find(e=>e.id===s.exerciseId);if(!e)c.addIssue({code:'custom',message:'This set is not in your workout.'});}
 });
 export type Budget=z.infer<typeof budgetSchema>;
 export type Transaction=z.infer<typeof transactionSchema>;
 export type Routine=z.infer<typeof routineSchema>;
 export type Workout=z.infer<typeof workoutSchema>;
 export type Exercise=z.infer<typeof exerciseSchema>;
-export const cardioSchema=z.object({date:dateSchema,activity:z.enum(['walk','run','cycle','swim','row','elliptical','other']),minutes:z.number().min(1).max(1440),distance:z.number().min(0).max(2000).nullable(),unit:z.enum(['km','mi','m']),intensity:z.enum(['easy','moderate','hard']),note:z.string().trim().max(500),voided:z.boolean()}).strict();
+export const cardioSchema=z.object({date:dateSchema,activity:z.enum(['walk','run','cycle','swim','row','elliptical','other']),minutes:z.number().min(1).max(1440),distance:z.number().min(0).max(2000).nullable(),unit:z.enum(['km','mi','m']),intensity:z.enum(['easy','moderate','hard']),note:z.string().trim().max(500),voided:z.boolean(),deleted:z.boolean().optional()}).strict();
 export type Cardio=z.infer<typeof cardioSchema>;
 export type Saved<T>={id:string;data:T;version:number;updatedAt?:string};
-export const workoutNoteSchema=z.object({date:dateSchema,text:z.string().trim().min(1).max(5000),minutes:z.number().int().min(1).max(1440).nullable(),voided:z.boolean()}).strict();
+export const structuredWorkoutSchema=workoutSchema.innerType().pick({name:true,exercises:true,sets:true}).superRefine((w,c)=>{const valid=workoutSchema.safeParse({...w,date:'2000-01-01',routineId:'11111111-1111-4111-8111-111111111111',restUntil:null,finishedAt:null});if(!valid.success)for(const issue of valid.error.issues)c.addIssue(issue);});
+export type StructuredWorkout=z.infer<typeof structuredWorkoutSchema>;
+export const workoutNoteSchema=z.object({date:dateSchema,text:z.string().trim().min(1).max(5000),minutes:z.number().int().min(1).max(1440).nullable(),voided:z.boolean(),deleted:z.boolean().optional(),structured:structuredWorkoutSchema.optional()}).strict();
 export type WorkoutNote=z.infer<typeof workoutNoteSchema>;
-export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note']);
+export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note','visibility']);
 export type ResourceKind=z.infer<typeof resourceKind>;
-export const resourceSchemas={budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema};
+export const resourceSchemas={budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema,visibility:z.object({target:z.enum(['analysis','build']),id:z.string().min(1).max(80),deleted:z.boolean()}).strict()};
 export function parseMoney(value:string):number{
  if(!/^\d{1,7}(\.\d{1,2})?$/.test(value.trim()))throw new Error('Enter an amount with at most two decimal places.');
  const [whole,fraction='']=value.trim().split('.');const n=Number(whole)*100+Number(fraction.padEnd(2,'0'));
@@ -53,6 +56,14 @@ export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],mont
  const due=plan.recurring.filter(r=>r.active&&!r.deleted).map(r=>({...r,date:recurringDate(month,r),id:occurrenceId(month,r.id),recorded:live.some(t=>t.data.recurringId===r.id),actualCents:live.filter(t=>t.data.recurringId===r.id).reduce((n,t)=>n+t.data.amountCents,0)}));
  return {income:total('income'),expenses:total('expense'),saving:total('saving'),investing:total('investing'),cashFlow:total('income')-total('expense')-total('saving')-total('investing'),due,categories:plan.categories.map(c=>{const spent=live.filter(t=>t.data.kind==='expense'&&t.data.categoryId===c.id).reduce((n,t)=>n+t.data.amountCents,0);const scheduled=due.filter(r=>r.kind==='expense'&&r.categoryId===c.id&&!r.recorded).reduce((n,r)=>n+r.amountCents,0);return {...c,spent,remaining:c.limitCents-spent,scheduled,afterScheduled:c.limitCents-spent-scheduled};})};
 }
-export function nextSet(w:Workout){for(const exercise of w.exercises)for(let setNumber=1;setNumber<=exercise.sets;setNumber++)if(!w.sets.some(s=>s.exerciseId===exercise.id&&s.setNumber===setNumber))return {exercise,setNumber};return null;}
+export function nextSet(w:Workout){
+ for(const exercise of w.exercises){
+  const logged=w.sets.filter(s=>s.exerciseId===exercise.id),working=logged.filter(s=>!s.warmup).length;
+  if(working>=exercise.sets)continue;
+  let setNumber=1;while(logged.some(s=>s.setNumber===setNumber))setNumber++;
+  return {exercise,setNumber,workingSetNumber:working+1};
+ }
+ return null;
+}
 export function restRemaining(deadline:string|null,now=Date.now()){return deadline?Math.max(0,Math.ceil((Date.parse(deadline)-now)/1000)):0;}
 export function workoutTotals(w:Workout){return {sets:w.sets.length,reps:w.sets.reduce((n,s)=>n+s.reps,0),volume:w.exercises.map(e=>({id:e.id,name:e.name,unit:e.unit,volume:w.sets.filter(s=>s.exerciseId===e.id).reduce((n,s)=>n+s.reps*s.load,0)}))};}

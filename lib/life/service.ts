@@ -1,3 +1,5 @@
+import {setRecordDeleted} from './record-deletion.ts';
+import {generateTraining,personalExercises} from './training-ai.ts';
 import { listAI, generateAI, type AISettings } from './ai-service.ts';
 import { automaticConsentStatus, saveAutomaticConsent } from './automatic-consent.ts';
 import {exportAccount} from './export.ts';
@@ -26,6 +28,9 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
  try{
   if(request.method==='GET'){
    if(new URL(request.url).searchParams.has('training-summary'))return await readTrainingSummary(db,userId,now);
+   if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
+   if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout');
+   if(new URL(request.url).searchParams.has('training-analyses'))return await listRoutineBuilds(db,userId,ai,now,'training');
    if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);
    if(new URL(request.url).searchParams.has('periodic'))return await periodConsentStatus(db,userId,ai,now);
@@ -36,7 +41,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    const date=new URL(request.url).searchParams.get('date');
    if(date){if(!dateSchema.safeParse(date).success)return json({error:'Choose a valid date.'},400);return json({entry:await getEntry(db,userId,date)});}
    const profile=await getProfile(db,userId);
-   const result=await db.prepare('SELECT payload, version, updated_at FROM life_entries WHERE user_id = ?1 ORDER BY entry_date DESC LIMIT 366').bind(userId).all<Row>();
+   const result=await db.prepare("SELECT payload, version, updated_at FROM life_entries WHERE user_id = ?1 AND COALESCE(json_extract(payload,'$.deleted'),0)=0 ORDER BY entry_date DESC LIMIT 366").bind(userId).all<Row>();
    return json({profile,entries:result.results.map(r=>({...JSON.parse(r.payload),version:r.version,updatedAt:r.updated_at}))});
   }
   if(request.method!=='POST')return json({error:'Method not allowed.'},405);
@@ -49,8 +54,11 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   let body:unknown;try{body=JSON.parse(bodyText)}catch{return json({error:'Invalid request.'},400);}
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);
   const b=body as Record<string,unknown>;
+  if(b.action==='record-deletion')return await setRecordDeleted(db,userId,b.change,now);
   if(b.action==='history')return await readHistory(db,userId,b.filters);
   const updated=now.toISOString();
+  if(b.action==='workout-build')return await buildRoutines(db,userId,b.build,ai,now,'workout');
+  if(b.action==='training-analysis')return await generateTraining(db,userId,b.build,ai,now);
   if(b.action==='routine-build')return await buildRoutines(db,userId,b.build,ai,now);
   if(b.action==='analysis-feedback')return await saveAnalysisFeedback(db,userId,b.feedback,now);
   if(b.action==='period-consent')return await savePeriodConsent(db,userId,b.consent,ai,now);
@@ -78,6 +86,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(!profile)return json({error:'Complete your setup first.'},400);
    if(input.date>todayIn(profile.timezone,now))return json({error:'Choose today or an earlier date.'},400);
    const previous=await getEntry(db,userId,input.date);
+   if(previous?.deleted)return json({error:'This entry is in Trash. Restore it before editing.'},409);
    if(previous&&input.mutationId&&previous.mutationId===input.mutationId){
     const same=previous.journal===input.journal&&!!previous.complete===input.complete&&JSON.stringify(previous.context)===JSON.stringify(input.context)&&JSON.stringify(previous.habits.map(h=>({id:h.id,status:h.status})))===JSON.stringify(input.statuses);
     return same?json({entry:previous,summary:score(previous.habits)}):conflict();

@@ -55,7 +55,7 @@ export function plannedVolume(routines:Saved<Routine>[]){
  return {...tallyVolume(scheduled.flatMap(r=>r.data.exercises.map(exercise=>({routineId:r.id,exercise,sets:exercise.sets*r.data.weeklySessions!})))),scheduled:scheduled.length,unscheduled:active.length-scheduled.length,sessions:scheduled.reduce((n,r)=>n+r.data.weeklySessions!,0)};
 }
 export function recordedVolume(workouts:Saved<Workout>[],from:string,through:string){
- const inWindow=workouts.filter(w=>w.data.date>=from&&w.data.date<=through),items:{routineId:string;exercise:Exercise;sets:number}[]=[];let warmups=0,zeroRepSets=0;
+ const inWindow=workouts.filter(w=>!w.data.deleted&&w.data.date>=from&&w.data.date<=through),items:{routineId:string;exercise:Exercise;sets:number}[]=[];let warmups=0,zeroRepSets=0;
  for(const w of inWindow){for(const e of w.data.exercises){const logged=w.data.sets.filter(s=>s.exerciseId===e.id);warmups+=logged.filter(s=>s.warmup).length;zeroRepSets+=logged.filter(s=>!s.warmup&&s.reps===0).length;items.push({routineId:w.data.routineId,exercise:e,sets:logged.filter(s=>!s.warmup&&s.reps>0).length});}}
  return {...tallyVolume(items),from,through,sessions:inWindow.filter(w=>w.data.sets.some(s=>!s.warmup&&s.reps>0)).length,warmups,zeroRepSets};
 }

@@ -1,3 +1,4 @@
+import {visibleAnalysisSQL} from './record-deletion.ts';
 import {renderReportMarkdown} from './report-markdown.ts';
 import {z} from 'zod/v3';
 import type {Database} from './service.ts';
@@ -79,7 +80,7 @@ export async function consumeReportEmails(db:Database,settings:EmailSettings,clo
    AND EXISTS(SELECT 1 FROM life_email_consent c JOIN life_auth_user u ON 'google:'||u.id=c.user_id
     JOIN life_ai_reviews r ON r.user_id=c.user_id AND r.request_id=?2
     WHERE c.user_id=?1 AND c.enabled=1 AND c.policy_version='full-report-v1' AND c.version=life_email_outbox.consent_version
-    AND c.recipient=u.email AND u.email_verified=1 AND r.status='complete' AND length(r.report_text)>0
+    AND c.recipient=u.email AND u.email_verified=1 AND r.status='complete' AND ${visibleAnalysisSQL('r')} AND length(r.report_text)>0
     AND EXISTS(SELECT 1 FROM life_auth_account a WHERE a.user_id=u.id AND a.provider_id='google'))
    RETURNING attempts,
    (SELECT recipient FROM life_email_consent WHERE user_id=?1) AS recipient,

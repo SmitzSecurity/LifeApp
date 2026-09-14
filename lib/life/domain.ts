@@ -32,7 +32,7 @@ if(new Set(v.analysisGuidance.map(g=>g.id)).size!==v.analysisGuidance.length)c.a
 export type Profile=z.infer<typeof profileSchema>;
 export type Habit=z.infer<typeof habitSchema>;
 export type RecordedHabit=Omit<Habit,"archived">&{status:HabitStatus};
-export type Entry={date:string;journal:string;context:Partial<Record<z.infer<typeof moduleId>,string>>;habits:RecordedHabit[];version:number;mutationId?:string;complete?:boolean;updatedAt?:string};
+export type Entry={date:string;journal:string;context:Partial<Record<z.infer<typeof moduleId>,string>>;habits:RecordedHabit[];version:number;mutationId?:string;complete?:boolean;deleted?:boolean;deletedComplete?:boolean;updatedAt?:string};
 export const dateSchema=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>{const d=new Date(v+"T12:00:00Z");return !isNaN(d.valueOf())&&d.toISOString().slice(0,10)===v},"Choose a real date");
 export const entryInputSchema=z.object({date:dateSchema,mutationId:z.string().uuid().optional(),complete:z.boolean().default(false),journal:z.string().max(6000),context:z.record(moduleId,z.string().max(2000)),statuses:z.array(z.object({id:z.string().uuid(),status:statusSchema}).strict()).max(50),version:z.number().int().min(0)}).strict();
 export function todayIn(timezone:string,now=new Date()):string{

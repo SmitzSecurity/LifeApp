@@ -22,7 +22,7 @@ const envelope=z.object({kind:resourceKind,id:z.string().max(90),version:z.numbe
 export async function saveResource(body:unknown,db:Database,userId:string,profile:Profile|null,now:Date){
  if(!profile)return json({error:'Complete your setup first.'},400);
  const parsed=envelope.safeParse(body);if(!parsed.success)return json({error:'Invalid section record.'},400);
- const {kind,id,version}=parsed.data;
+ const {kind,id,version}=parsed.data;if(kind==='visibility')return json({error:'Use the record Delete or Restore action.'},400);
  if(!profile.modules.includes(kind==='budget'||kind==='transaction'?'money':'fitness'))return json({error:'Enable this section in Settings first.'},400);
  const validation=resourceSchemas[kind].safeParse(parsed.data.data);
  if(!validation.success)return json({error:validation.error.issues[0]?.message||'Check this form.'},400);
@@ -71,12 +71,12 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    const routine=(await readResource(db,userId,'routine',w.routineId))?.data as Routine|undefined;
    if(!routine||routine.archived||routine.name!==w.name||JSON.stringify(routine.exercises)!==JSON.stringify(w.exercises)||w.sets.length||w.finishedAt||w.restUntil)return json({error:'Start from a saved routine.'},400);
   }
-  if(!w.finishedAt){const active=await db.prepare("SELECT resource_id FROM life_resources WHERE user_id=?1 AND kind='workout' AND active_slot='active'").bind(userId).first<{resource_id:string}>();if(active&&active.resource_id!==id)return json({error:'Finish your current workout before starting another.'},409);}
+  if(!w.finishedAt&&!w.deleted){const active=await db.prepare("SELECT resource_id FROM life_resources WHERE user_id=?1 AND kind='workout' AND active_slot='active'").bind(userId).first<{resource_id:string}>();if(active&&active.resource_id!==id)return json({error:'Finish your current workout before starting another.'},409);}
  }
  // Retry of the exact saved result is successful without creating another row/version.
  if(previous&&JSON.stringify(previous.data)===JSON.stringify(data))return json({record:previous});
  if((previous?.version||0)!==version)return conflict();
- const activeSlot=kind==='workout'&&!(data as Workout).finishedAt?'active':null;
+ const activeSlot=kind==='workout'&&!(data as Workout).finishedAt&&!(data as Workout).deleted?'active':null;
  try{
  const row=await db.prepare(`INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at,active_slot) VALUES(?1,?2,?3,?4,?5,1,?6,?7)
  ON CONFLICT(user_id,kind,resource_id) DO UPDATE SET period=excluded.period,payload=excluded.payload,version=life_resources.version+1,updated_at=excluded.updated_at,active_slot=excluded.active_slot WHERE life_resources.version=?8 RETURNING version`).bind(userId,kind,id,period,JSON.stringify(data),now.toISOString(),activeSlot,version).first<{version:number}>();

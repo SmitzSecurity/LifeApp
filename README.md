@@ -27,6 +27,8 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 
 ## Implemented
 
+- [Workout logging and training analysis](docs/workout-logging.md): warm-ups preserve working-set targets, written AI drafts confirm structured sets and personal presets, and logs/analyses have recoverable Delete actions.
+
 - Two-step onboarding with Journal, Movement and Money included, three optional focus areas, explicit habit adoption, custom habit names, renaming and archiving.
 - Daily journal, preserved earlier section notes, done/missed/exempt/unrecorded states, saved history and editing by calendar date. History searches journal text and filters inclusive dates and completion status, with 30-entry pages reaching beyond the initial 366-day list. Search text stays in a private JSON request body; search does not change saved entries or reports.
 - Deterministic scoring with exempt and missing entries excluded and a separate count for each status.

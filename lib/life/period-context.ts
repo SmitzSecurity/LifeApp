@@ -7,7 +7,7 @@ import {completionIssues,type Cadence,type ReviewRecord} from './reviews.ts';
 // never silently pretend a sample of journal text is a complete transcript.
 export function buildPeriodContext(profile:Profile,cadence:Cadence,from:string,through:string,entries:Entry[],activity:ActivityRecords,priorReviews:ReviewRecord[]){
  const base=buildReviewContext({profile,cadence,from,through,entries});
- const complete=entries.filter(e=>e.complete&&!completionIssues(e).length).sort((a,b)=>a.date.localeCompare(b.date));
+ const complete=entries.filter(e=>!e.deleted&&e.complete&&!completionIssues(e).length).sort((a,b)=>a.date.localeCompare(b.date));
  const sample=complete.length<=24?complete:Array.from({length:24},(_,i)=>complete[Math.round(i*(complete.length-1)/23)]);
  const habits=new Map<string,{title:string;done:number;missed:number;exempt:number;unrecorded:number}>();
  for(const entry of complete)for(const habit of entry.habits){const key=habit.id+':'+habit.title;const item=habits.get(key)||{title:habit.title,done:0,missed:0,exempt:0,unrecorded:0};item[habit.status]++;habits.set(key,item);}
