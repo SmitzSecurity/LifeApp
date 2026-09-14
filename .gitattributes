@@ -1,0 +1,2 @@
+# D1 REST trigger parsing requires LF line endings.
+drizzle/0010_central_trash.sql text eol=lf

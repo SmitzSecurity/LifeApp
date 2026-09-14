@@ -1,6 +1,6 @@
 # Central Trash and analysis replacement
 
-Released from `codex/central-trash`. Migration `0010_central_trash.sql` is required before this binary runs. Never replay completed migrations 0000–0009.
+Released from `codex/central-trash`. Migration `0010_central_trash.sql` was applied and verified September 14, 2026. Never replay completed migrations 0000–0010.
 
 Trash lives in the top-left menu. Journal entries, transactions, recurring monthly items, strength/cardio logs, written workout notes and generated analyses/drafts have one account-scoped Restore/permanent-delete list. Normal screens keep Delete actions and omit deleted items. Archived categories/programs remain archives because saved records reference their identities.
 
@@ -20,7 +20,7 @@ Write workout no longer offers Organize with AI, and the `workout-build` HTTP ac
 
 2. Save a private portable backup and validate it; record a current D1 recovery bookmark. Compare personal-row fingerprints, usage and original eligibility objects before/after installation.
 
-3. Apply only the canonical 0010 statements and its migration-ledger insert in one D1 query batch. Installation backfills deletion metadata but removes no content. Do not replay on an ambiguous response; inspect schema/ledger first.
+3. Keep uppercase BEGIN and LF line endings for D1 REST trigger parsing (enforced for this migration by .gitattributes). Apply only the canonical 0010 statements and its migration-ledger insert in one D1 query batch. Installation backfills deletion metadata but removes no content. Do not replay on an ambiguous response; inspect schema/ledger first.
 
 4. Verify the new table, index and every trigger against the local canonical definitions, and verify unchanged old personal data/usage/consents and eligibility SQL. Deploy through the existing Git build.
 
