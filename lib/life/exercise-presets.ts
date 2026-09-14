@@ -1,3 +1,4 @@
+import {exerciseTargets} from './muscle-volume.ts';
 import type {Exercise} from './modules.ts';
 // Editable starting points for hypertrophy with strength secondary. Exercise-level
 // assignments are practical applications of the evidence, not proven optima.
@@ -19,6 +20,6 @@ const groups=[
 export const exercisePresets=groups.flatMap(({names,...settings})=>names.map(name=>({name,sets:3,...settings})));
 export function presetExercise(name='New exercise'):Exercise{
  const preset=exercisePresets.find(e=>e.name===name);
- return {id:crypto.randomUUID(),name,sets:preset?.sets||3,reps:preset?.reps||8,repMax:preset?.repMax||12,restSeconds:preset?.restSeconds||120,load:0,unit:'lb'};
+ return {id:crypto.randomUUID(),name,...(exerciseTargets({name})?{muscles:exerciseTargets({name})!}:{}),sets:preset?.sets||3,reps:preset?.reps||8,repMax:preset?.repMax||12,restSeconds:preset?.restSeconds||120,load:0,unit:'lb'};
 }
 export const repTarget=(exercise:Exercise)=>exercise.repMax&&exercise.repMax!==exercise.reps?`${exercise.reps}–${exercise.repMax}`:String(exercise.reps);

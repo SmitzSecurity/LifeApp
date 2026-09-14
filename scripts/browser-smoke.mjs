@@ -38,6 +38,17 @@ if(analysisFixture){
  await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'budget',month,month,JSON.stringify(plan),new Date(stamp).toISOString()).run();
  for(let i=0;i<12;i++)await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'transaction',crypto.randomUUID(),month,JSON.stringify({date,kind:'expense',amountCents:1200+i*23,categoryId:category,categoryName:'Bills',note:'Synthetic transaction '+(i+1),recurringId:null,voided:false}),new Date(stamp).toISOString()).run();
 }
+if(process.argv.includes('--training')){
+ const {presetExercise}=await import('../lib/life/exercise-presets.ts');
+ const {exerciseSchema}=await import('../lib/life/modules.ts');
+ const {todayIn}=await import('../lib/life/domain.ts');
+ const today=todayIn('America/New_York'),iso=new Date(stamp).toISOString();
+ for(const [name,names,weeklySessions] of [['Push day',['Bench press','Overhead press','Lateral raise','Triceps pushdown'],2],['Pull day',['Barbell row','Lat pulldown','Biceps curl'],2],['Leg day',['Squat','Romanian deadlift','Calf raise'],1]]){
+  const rid=crypto.randomUUID(),exercises=names.map(name=>exerciseSchema.parse(presetExercise(name))),data={name,preferences:'Synthetic muscle coverage fixture',exercises,weeklySessions,archived:false};
+  await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'routine',rid,'',JSON.stringify(data),iso).run();
+  if(name==='Push day')await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'workout',crypto.randomUUID(),today.slice(0,7),JSON.stringify({date:today,routineId:rid,name,exercises,sets:[{exerciseId:exercises[0].id,setNumber:1,reps:8,load:100,completedAt:iso},{exerciseId:exercises[0].id,setNumber:2,reps:8,load:100,completedAt:iso},{exerciseId:exercises[0].id,setNumber:3,reps:8,load:40,warmup:true,completedAt:iso}],restUntil:null,finishedAt:iso}),iso).run();
+ }
+}
 const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-browser-token',secret,{secure:true,httpOnly:true,path:'/'})).split(';')[0];
 const server=createServer(async(req,res)=>{
  try{

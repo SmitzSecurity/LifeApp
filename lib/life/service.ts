@@ -6,6 +6,7 @@ import {readHistory} from './history.ts';
 import {saveAnalysisFeedback} from './analysis-feedback.ts';
 import {periodConsentStatus,savePeriodConsent} from './period-consent.ts';
 import {readDashboard} from './dashboard.ts';
+import {readTrainingSummary} from './training-summary.ts';
 import {cadenceSchema} from './reviews.ts';
 import { completionIssues } from './reviews.ts';
 import { listResources, saveResource } from './resource-service.ts';
@@ -24,6 +25,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
  if(!userId)return json({error:'Sign in to open your journal.'},401);
  try{
   if(request.method==='GET'){
+   if(new URL(request.url).searchParams.has('training-summary'))return await readTrainingSummary(db,userId,now);
    if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);
    if(new URL(request.url).searchParams.has('periodic'))return await periodConsentStatus(db,userId,ai,now);

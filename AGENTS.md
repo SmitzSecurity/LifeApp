@@ -1,5 +1,7 @@
 # LifeApp project continuity
 
+Muscle coverage: read docs/muscle-coverage.md. Optional JSON muscle assignments, weeklySessions and warmup fields require no migration. Preserve existing workout snapshots and unknown-outcome retries. Direct + half indirect is an explicitly approximate estimate; the half-set rule comes from separate research, not ACSM. Unset routine frequency is not consent or a weekly schedule. Never infer lifting sets from written logs/cardio. Training-only and finance-only analyses are future work; the Workouts placeholder sends no AI request. Closed workout dialogs keep drafts mounted and must stop dictation.
+
 Canonical repository: https://github.com/SmitzSecurity/LifeApp. The owner authorized replacing the abandoned Apps Script repository contents with the current LifeApp on September 8, 2026. Preserve the existing repository identity; do not create another Site or repository.
 
 This is the standalone React/Vinext/Cloudflare Worker/D1 product. Use Node 24, npm ci, npm test, and npx tsc --noEmit. npm run dev and npm run build use the standalone configuration and require no Sites helpers. Runtime output is dist-standalone. The root Sites binding was removed intentionally during migration; do not recreate it. The old private Sites app remains a separate live fallback until account/data cutover.

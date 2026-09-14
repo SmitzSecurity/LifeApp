@@ -5,12 +5,13 @@ import {todayIn,type Profile} from '@/lib/life/domain';
 import type {Cardio,Saved} from '@/lib/life/modules';
 import {Choice,request,saveRecord,useUnsaved} from './shared';
 const activities=['walk','run','cycle','swim','row','elliptical','other'] as const;
-export default function CardioLog({profile,onDirty}:{profile:Profile;onDirty:(dirty:boolean)=>void}){
+export default function CardioLog({profile,onDirty,active=false}:{active?:boolean;profile:Profile;onDirty:(dirty:boolean)=>void}){
  const [records,setRecords]=useState<Saved<Cardio>[]>([]),[form,setForm]=useState<Saved<Cardio>|null>(null),[pending,setPending]=useState<Saved<Cardio>|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  useUnsaved(!!form||!!pending,onDirty);
  async function load(){try{const data=await request('?kind=cardio');setRecords(data.records);setError('');}catch{setError('Cardio history could not be loaded.');}}
  useEffect(()=>{void load();},[]);
  function start(){setError('');setNotice('');setForm({id:crypto.randomUUID(),version:0,data:{date:todayIn(profile.timezone),activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'',voided:false}});}
+ useEffect(()=>{if(active&&!form)start();},[active]);
  function edit(patch:Partial<Cardio>){if(form)setForm({...form,data:{...form.data,...patch}});}
  async function save(record=form){if(!record)return;setBusy(true);setError('');setPending(record);try{const saved=await saveRecord('cardio',record);setRecords(prev=>[saved,...prev.filter(r=>r.id!==saved.id)]);setForm(null);setPending(null);setNotice('Cardio saved.');}catch(e){setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500))setPending(null);}finally{setBusy(false);}}
  return <section className="module-card cardio-card" aria-label="Cardio"><div className="section-heading"><h3>Cardio</h3><Button disabled={!!form||busy} onClick={start}>Log cardio</Button></div>

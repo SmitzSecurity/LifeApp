@@ -1,4 +1,5 @@
 import { z } from 'zod/v3';
+import {muscleTargetsSchema} from './muscle-groups.ts';
 import { dateSchema } from './domain.ts';
 export const monthSchema=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const uuid=z.string().uuid(), title=z.string().trim().min(1).max(100);
@@ -10,9 +11,9 @@ export const budgetSchema=z.object({currency:z.literal('USD'),categories:z.array
  if(p.recurring.some(r=>r.kind==='expense'&&!p.categories.some(x=>x.id===r.categoryId)))c.addIssue({code:'custom',message:'Choose a category for every scheduled payment.'});
 });
 export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),voided:z.boolean(),deleted:z.boolean().default(false)}).strict();
-export const exerciseSchema=z.object({id:uuid,name:title,sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
-export const routineSchema=z.object({name:title,preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
-export const setSchema=z.object({exerciseId:uuid,setNumber:z.number().int().min(1).max(20),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
+export const exerciseSchema=z.object({id:uuid,name:title,muscles:muscleTargetsSchema.optional(),sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
+export const routineSchema=z.object({name:title,weeklySessions:z.number().int().min(0).max(7).optional(),preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
+export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(20),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
 export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(600),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable()}).strict().superRefine((w,c)=>{
  if(new Set(w.exercises.map(e=>e.id)).size!==w.exercises.length)c.addIssue({code:'custom',message:'Exercise IDs must be unique.'});
  if(new Set(w.sets.map(s=>s.exerciseId+':'+s.setNumber)).size!==w.sets.length)c.addIssue({code:'custom',message:'A set can only be logged once.'});
