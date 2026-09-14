@@ -1,3 +1,4 @@
+import {listTrash,changeTrash,trashState} from './trash.ts';
 import {setRecordDeleted} from './record-deletion.ts';
 import {generateTraining,personalExercises} from './training-ai.ts';
 import { listAI, generateAI, type AISettings } from './ai-service.ts';
@@ -21,12 +22,13 @@ type Row={payload:string;version:number;updated_at:string};
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
 const conflict=()=>json({error:'This was changed in another session. Keep a copy of your unsaved text, reload, and apply your changes again.'},409);
 async function getProfile(db:Database,id:string):Promise<Profile|null>{const row=await db.prepare('SELECT payload, version FROM life_profiles WHERE user_id = ?1').bind(id).first<Row>();return row?profileSchema.parse({...JSON.parse(row.payload),version:row.version}):null;}
-async function getEntry(db:Database,id:string,date:string):Promise<Entry|null>{const row=await db.prepare('SELECT payload, version, updated_at FROM life_entries WHERE user_id = ?1 AND entry_date = ?2').bind(id,date).first<Row>();return row?{...JSON.parse(row.payload),version:row.version,updatedAt:row.updated_at}:null;}
+async function getEntry(db:Database,id:string,date:string):Promise<Entry|null>{const row=await db.prepare('SELECT payload, version, updated_at FROM life_entries WHERE user_id = ?1 AND entry_date = ?2').bind(id,date).first<Row>();if(row)return {...JSON.parse(row.payload),version:row.version,updatedAt:row.updated_at};const trash=await trashState(db,id,'entry',date);if(trash?.purged_at&&trash.record_version){const profile=await getProfile(db,id);if(profile)return {...emptyEntry(profile,date),version:trash.record_version};}return null;}
 
 export async function handleLife(request:Request,userId:string|null,db:Database,now=new Date(),ai:AISettings={provider:null,enabled:false,userCapMicros:1000000,globalCapMicros:5000000}):Promise<Response>{
  if(!userId)return json({error:'Sign in to open your journal.'},401);
  try{
   if(request.method==='GET'){
+   if(new URL(request.url).searchParams.has('trash'))return await listTrash(db,userId,Number(new URL(request.url).searchParams.get('offset')||0));
    if(new URL(request.url).searchParams.has('training-summary'))return await readTrainingSummary(db,userId,now);
    if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
    if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout');
@@ -54,10 +56,11 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   let body:unknown;try{body=JSON.parse(bodyText)}catch{return json({error:'Invalid request.'},400);}
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);
   const b=body as Record<string,unknown>;
+  if(b.action==='trash')return await changeTrash(db,userId,b.change,now);
   if(b.action==='record-deletion')return await setRecordDeleted(db,userId,b.change,now);
   if(b.action==='history')return await readHistory(db,userId,b.filters);
   const updated=now.toISOString();
-  if(b.action==='workout-build')return await buildRoutines(db,userId,b.build,ai,now,'workout');
+  if(b.action==='workout-build')return json({error:'Organize with AI has been removed. Save your workout as a written note.'},410);
   if(b.action==='training-analysis')return await generateTraining(db,userId,b.build,ai,now);
   if(b.action==='routine-build')return await buildRoutines(db,userId,b.build,ai,now);
   if(b.action==='analysis-feedback')return await saveAnalysisFeedback(db,userId,b.feedback,now);
@@ -100,7 +103,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    const {version,updatedAt,...snapshot}=base;
    const entry={...snapshot,complete:input.complete,mutationId:input.mutationId,journal:input.journal,context:input.context,habits:base.habits.map(h=>({...h,status:statuses.get(h.id)!}))};
    if(input.complete&&completionIssues(entry).length)return json({error:completionIssues(entry).join(" ")},400);
-   const row=await db.prepare(`INSERT INTO life_entries(user_id,entry_date,payload,version,updated_at) VALUES(?1,?2,?3,1,?4)
+   const row=await db.prepare(`INSERT INTO life_entries(user_id,entry_date,payload,version,updated_at) VALUES(?1,?2,?3,?5+1,?4)
      ON CONFLICT(user_id,entry_date) DO UPDATE SET payload=excluded.payload,version=life_entries.version+1,updated_at=excluded.updated_at
      WHERE life_entries.version=?5 RETURNING version`).bind(userId,input.date,JSON.stringify(entry),updated,input.version).first<{version:number}>();
    if(!row)return conflict();

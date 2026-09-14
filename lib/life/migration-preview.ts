@@ -1,3 +1,4 @@
+import {trashRowSchema} from './trash.ts';
 import {workoutBuildResult,trainingResult} from './workout-ai-schema.ts';
 import {z} from 'zod/v3';
 import {dateSchema,habitSchema,profileSchema,moduleId,statusSchema} from './domain.ts';
@@ -26,7 +27,7 @@ const routineBuildRow=reviewRow.omit({entry_date:true,revision:true,source_versi
 const emailData=z.object({consent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.string().max(100),recipient:z.string().email().max(254),enabled_at:timestamp,updated_at:timestamp}).strict().nullable(),
  deliveries:z.array(z.object({request_id:id,consent_version:version,state:z.enum(['pending','sending','sent','retry','failed','uncertain','cancelled']),attempts:integer,created_at:timestamp,next_attempt_at:timestamp,last_attempt_at:timestamp.nullable(),finished_at:timestamp.nullable(),message_id:z.string().max(500).nullable(),error_code:z.string().max(200).nullable()}).strict()).max(10000)}).strict();
 const backupSchema=z.object({format:z.literal('lifeapp-portable-v1'),exportedAt:timestamp,profile:row.nullable(),
- entries:z.array(entryRow).max(10000),resources:z.array(resourceRow).max(10000),reviews:z.array(reviewRow).max(10000),routineBuilds:z.array(routineBuildRow).max(10000).optional(),email:emailData.optional(),periodicConsent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.literal('periods-v1'),start_date:dateSchema,accepted_at:timestamp,updated_at:timestamp}).strict().nullable().optional()}).strict();
+ trash:z.array(trashRowSchema).max(10000).optional(),entries:z.array(entryRow).max(10000),resources:z.array(resourceRow).max(10000),reviews:z.array(reviewRow).max(10000),routineBuilds:z.array(routineBuildRow).max(10000).optional(),email:emailData.optional(),periodicConsent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.literal('periods-v1'),start_date:dateSchema,accepted_at:timestamp,updated_at:timestamp}).strict().nullable().optional()}).strict();
 const entryPayload=z.object({date:dateSchema,journal:z.string().max(6000),context:z.record(moduleId,z.string().max(2000)),
  habits:z.array(habitSchema.omit({archived:true}).extend({status:statusSchema})).max(50),complete:z.boolean().optional(),deleted:z.boolean().optional(),deletedComplete:z.boolean().optional(),mutationId:z.string().uuid().optional()}).strict();
 type Backup=z.infer<typeof backupSchema>;
@@ -62,7 +63,7 @@ export function validateBackup(text:string):Backup{
  const b=validate(backupSchema,parseJSON(text,'backup'),'backup');
  const profile=b.profile?validate(profileSchema,{...validate(z.record(z.unknown()),parseJSON(b.profile.payload,'profile'),'profile'),version:b.profile.version},'profile'):null;
  if(b.profile)requireThat(!Object.hasOwn(JSON.parse(b.profile.payload),'version'),'embedded_version','profile');
- requireThat(profile||!(b.entries.length+b.resources.length+b.reviews.length+(b.routineBuilds?.length||0)+(b.periodicConsent?1:0)),'missing_profile','backup');
+ requireThat(profile||!(b.entries.length+b.resources.length+b.reviews.length+(b.routineBuilds?.length||0)+(b.periodicConsent?1:0)+(b.trash?.length||0)),'missing_profile','backup');
  unique(b.entries.map(r=>r.entry_date),'entries');unique(b.resources.map(r=>r.kind+':'+r.resource_id),'resources');
  unique(b.reviews.map(r=>r.request_id),'reviews');unique(b.reviews.map(r=>(r.cadence||'daily')+':'+r.entry_date+':'+r.revision),'reviews');
  const entries=new Map(b.entries.map(r=>[r.entry_date,r]));
@@ -72,6 +73,8 @@ export function validateBackup(text:string):Backup{
   requireThat(e.habits.every(h=>profile?.habits.some(p=>p.id===h.id)),'missing_habit',at);
   requireThat(!e.complete||completionIssues(e).length===0,'incomplete_marked_complete',at);
  }
+ unique((b.trash||[]).map(t=>t.kind+':'+t.record_id),'trash');
+ for(const t of b.trash||[])requireThat(!t.purged_at||t.purged_at>=t.deleted_at,'invalid_trash_time','trash');
  const resources=new Map(b.resources.map(r=>[r.kind+':'+r.resource_id,r]));
  for(const [i,r] of b.resources.entries()){
   const at=`resources[${i}]`,raw=parseJSON(r.payload,at);
@@ -103,12 +106,15 @@ export function validateBackup(text:string):Backup{
  const reviews=new Map(b.reviews.map(r=>[r.request_id,r]));
  for(const [i,r] of b.reviews.entries()){
   const at=`reviews[${i}]`,entry=entries.get(r.entry_date),cadence=r.cadence||'daily';
-  requireThat(cadence==='daily'?entry&&r.source_version<=entry.version:profile&&r.source_version<=profile.version,'missing_source_revision',at);
+  requireThat(cadence==='daily'?(entry&&r.source_version<=entry.version||(b.trash||[]).some(t=>t.kind==='entry'&&t.record_id===r.entry_date&&t.purged_at&&t.record_version&&t.record_version>=r.source_version)):profile&&r.source_version<=profile.version,'missing_source_revision',at);
+  const purged=validate(z.record(z.unknown()),parseJSON(r.input_snapshot,at),at).purged===true;
+  requireThat(!(b.trash||[]).some(t=>t.kind==='analysis'&&t.record_id===r.request_id&&t.purged_at)||purged,'invalid_purged_analysis',at);
   if(r.revision===1)requireThat(r.request_id===cadence+':'+r.entry_date&&r.predecessor_id===null&&!r.critique,'invalid_initial_review',at);
   else{
    const previous=r.predecessor_id?reviews.get(r.predecessor_id):null;
-   requireThat(z.string().uuid().safeParse(r.request_id).success&&previous&&previous.entry_date===r.entry_date&&(previous.cadence||'daily')===cadence&&previous.revision===r.revision-1&&previous.status==='complete'&&r.critique.trim(),'broken_review_chain',at);
+   requireThat(z.string().uuid().safeParse(r.request_id).success&&previous&&previous.entry_date===r.entry_date&&(previous.cadence||'daily')===cadence&&previous.revision===r.revision-1&&previous.status==='complete'&&(purged||r.critique.trim()),'broken_review_chain',at);
   }
+  if(purged){validate(z.object({purged:z.literal(true)}).strict(),parseJSON(r.input_snapshot,at),at);requireThat(r.report_text===null&&!r.critique&&r.provider_id===null&&(b.trash||[]).some(t=>t.kind==='analysis'&&t.record_id===r.request_id&&t.purged_at),'invalid_purged_analysis',at);}else{
   const snapshot=validate(z.object({context:z.record(z.unknown()),previousReview:z.string().nullable(),previousReviewExcluded:z.literal(true).optional(),revisionRequest:z.string().nullable(),automaticConsent:z.object({version:z.number().int().positive(),policyVersion:z.enum(['daily-v1','periods-v1']),startDate:dateSchema,acceptedAt:timestamp}).strict().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
   if(snapshot.automaticConsent)requireThat(r.revision===1&&r.predecessor_id===null&&r.entry_date>=snapshot.automaticConsent.startDate,'automatic_consent_evidence_mismatch',at);
   requireThat(snapshot.context.contractVersion===1,'unknown_evidence_contract',at);
@@ -117,10 +123,11 @@ export function validateBackup(text:string):Backup{
   requireThat(window.from===expected.from&&window.through===expected.through&&(!r.window_start||r.window_start===expected.from),'evidence_window_mismatch',at);
   if(snapshot.automaticConsent)requireThat(snapshot.automaticConsent.policyVersion===(cadence==='daily'?'daily-v1':'periods-v1'),'automatic_consent_evidence_mismatch',at);
   requireThat(snapshot.revisionRequest===(r.critique||null)&&(snapshot.previousReviewExcluded?!!r.predecessor_id&&snapshot.previousReview===null:snapshot.previousReview===(r.predecessor_id?reviews.get(r.predecessor_id)?.report_text:null)),'revision_evidence_mismatch',at);
+  }
   if(r.status==='complete'||r.status==='failed'){
    requireThat(r.finished_at!==null&&r.cost_micros!==null&&r.input_tokens!==null&&r.output_tokens!==null&&r.thought_tokens!==null,'missing_usage',at);
    requireThat(r.thought_tokens<=r.output_tokens,'invalid_usage',at);
-   requireThat(r.status==='complete'?r.report_text?.trim()&&r.error_code===null:r.error_code,'invalid_report_status',at);
+   requireThat(r.status==='complete'?(purged||r.report_text?.trim())&&r.error_code===null:r.error_code,'invalid_report_status',at);
   }else{
    requireThat(r.cost_micros===null&&r.report_text===null&&r.input_tokens===null&&r.output_tokens===null&&r.thought_tokens===null,'unreconciled_usage_mismatch',at);
    requireThat(r.status==='generating'?r.finished_at===null&&r.error_code===null:r.finished_at!==null&&!!r.error_code,'invalid_report_status',at);
@@ -129,11 +136,15 @@ export function validateBackup(text:string):Backup{
  unique((b.routineBuilds||[]).map(r=>r.request_id),'routineBuilds');
  for(const [i,r] of (b.routineBuilds||[]).entries()){
   const at=`routineBuilds[${i}]`;
+  const purged=validate(z.record(z.unknown()),parseJSON(r.input_snapshot,at),at).purged===true;
+  requireThat(!(b.trash||[]).some(t=>t.kind==='build'&&t.record_id===r.request_id&&t.purged_at)||purged,'invalid_purged_build',at);
+  if(purged){validate(z.object({purged:z.literal(true),recoveryOf:z.string().uuid().optional()}).strict(),parseJSON(r.input_snapshot,at),at);requireThat(r.result_json===null&&r.provider_id===null&&(b.trash||[]).some(t=>t.kind==='build'&&t.record_id===r.request_id&&t.purged_at),'invalid_purged_build',at);}else{
   validate(z.object({description:z.string().min(10).max(5000),movementGoal:z.string(),defaultGoal:z.string(),exerciseGuidance:z.array(z.unknown()),training:z.unknown().optional(),recoveryOf:z.string().uuid().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
+  }
   if(r.status==='complete'||r.status==='failed'){
    requireThat(r.finished_at&&r.cost_micros!==null&&r.input_tokens!==null&&r.output_tokens!==null&&r.thought_tokens!==null,'missing_usage',at);
    requireThat(r.thought_tokens<=r.output_tokens,'invalid_usage',at);
-   requireThat(r.status==='complete'?r.result_json&&r.error_code===null:r.result_json===null&&!!r.error_code,'invalid_routine_status',at);
+   requireThat(r.status==='complete'?(purged||r.result_json)&&r.error_code===null:r.result_json===null&&!!r.error_code,'invalid_routine_status',at);
    if(r.result_json)validate<unknown>(r.request_id.startsWith('workout:')?workoutBuildResult:r.request_id.startsWith('training:')?trainingResult:routineBuildResult,parseJSON(r.result_json,at),at);
   }else{
    requireThat(r.cost_micros===null&&r.result_json===null&&r.input_tokens===null&&r.output_tokens===null&&r.thought_tokens===null,'unreconciled_usage_mismatch',at);
@@ -150,6 +161,7 @@ export function validateBackup(text:string):Backup{
 
 function rows(b:Backup){
  return new Map<string,unknown>([
+  ...(b.trash||[]).map(t=>['trash:'+t.kind+':'+t.record_id,t] as [string,unknown]),
   ...(b.profile?[['profile',b.profile] as [string,unknown]]:[]),
   ...b.entries.map(r=>['entry:'+r.entry_date,r] as [string,unknown]),
   ...b.resources.map(r=>['resource:'+r.kind+':'+r.resource_id,r] as [string,unknown]),

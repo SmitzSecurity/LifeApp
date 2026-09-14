@@ -34,7 +34,7 @@ export default function History({disabled,onOpen,onToday,searchOpen=false,refres
  function clear(){setFilters(blank);void load(blank);}
  async function remove(entry:Entry){setLoading(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'entry',id:entry.date,version:entry.version,deleted:!entry.deleted}});await load(applied);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
  return <section className="history-panel" aria-label="Saved responses">
-  <div className="action-row"><Button variant="ghost" disabled={disabled||loading} onClick={()=>{const next={...blank,deleted:!applied.deleted};setFilters(next);void load(next);}}>{applied.deleted?'Back to responses':'Trash'}</Button>{applied.deleted&&<small>Deleted responses · restore to edit</small>}</div><form className="history-filters" onSubmit={search} hidden={!searchOpen}>
+  <form className="history-filters" onSubmit={search} hidden={!searchOpen}>
    <label className="history-search">Search journal text<input type="search" maxLength={200} value={filters.query} onChange={e=>setFilters({...filters,query:e.target.value})} placeholder="Find a word or phrase"/></label>
    <label>From<input type="date" value={filters.from} max={filters.through||undefined} onChange={e=>setFilters({...filters,from:e.target.value})}/></label>
    <label>Through<input type="date" value={filters.through} min={filters.from||undefined} onChange={e=>setFilters({...filters,through:e.target.value})}/></label>

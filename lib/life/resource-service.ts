@@ -1,3 +1,4 @@
+import {trashState,retentionMs} from './trash.ts';
 import { z } from 'zod/v3';
 import { todayIn, type Profile } from './domain.ts';
 import { resourceKind, resourceSchemas, monthSchema, occurrenceId, type ResourceKind, type Budget, type Transaction, type Routine, type Workout, type Cardio } from './modules.ts';
@@ -30,6 +31,8 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  const validId=kind==='budget'?monthSchema.safeParse(id).success:z.string().uuid().safeParse(id).success||(kind==='transaction'&&/^due:\d{4}-(0[1-9]|1[0-2]):[0-9a-f-]{36}$/i.test(id));
  if(!validId)return json({error:'Invalid record ID.'},400);
  const previous=await readResource(db,userId,kind,id);
+ const trash=await trashState(db,userId,kind,id);
+ if(trash?.purged_at||trash&&!(data as {deleted?:boolean}).deleted&&Date.parse(trash.deleted_at)+retentionMs<=now.valueOf())return json({error:'This item was permanently deleted or its restore period ended.'},410);
  const conflict=()=>json({error:'This record changed in another session. Your changes are still here. Reload the section before trying again.'},409);
  let period=kind==='budget'?id:'';
  if(kind==='workout-note'){
@@ -57,6 +60,8 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  }
  if(kind==='budget'&&previous){
   const p=data as Budget,old=previous.data as Budget;
+  if(old.recurring.some(r=>r.purged&&JSON.stringify(r)!==JSON.stringify(p.recurring.find(n=>n.id===r.id))))return json({error:'Permanently deleted monthly items cannot be changed.'},410);
+  if(p.recurring.some(r=>r.purged&&!old.recurring.find(n=>n.id===r.id)?.purged))return json({error:'Use Trash to permanently delete a monthly item.'},400);
   if(old.categories.some(c=>!p.categories.some(n=>n.id===c.id))||old.recurring.some(r=>!p.recurring.some(n=>n.id===r.id)))return json({error:'Keep saved categories and scheduled items to preserve transaction references.'},400);
  }
  if(kind==='workout'){

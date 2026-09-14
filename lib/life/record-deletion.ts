@@ -1,13 +1,16 @@
+import {trashState,retentionMs} from './trash.ts';
 import {z} from 'zod/v3';
 import {dateSchema} from './domain.ts';
 import type {Database} from './service.ts';
 const input=z.object({kind:z.enum(['entry','analysis','build']),id:z.string().min(1).max(80),version:z.number().int().positive().optional(),deleted:z.boolean()}).strict();
-export const visibleAnalysisSQL=(table='life_ai_reviews')=>`NOT EXISTS(SELECT 1 FROM life_resources hidden WHERE hidden.user_id=${table}.user_id AND hidden.kind='visibility' AND hidden.resource_id='analysis:'||${table}.request_id AND json_extract(hidden.payload,'$.deleted')=1)`;
-export const visibleBuildSQL=(table='life_routine_builds')=>`NOT EXISTS(SELECT 1 FROM life_resources hidden WHERE hidden.user_id=${table}.user_id AND hidden.kind='visibility' AND hidden.resource_id='build:'||${table}.request_id AND json_extract(hidden.payload,'$.deleted')=1)`;
+export const visibleAnalysisSQL=(table='life_ai_reviews')=>`NOT EXISTS(SELECT 1 FROM life_trash purged WHERE purged.user_id=${table}.user_id AND purged.kind='analysis' AND purged.record_id=${table}.request_id AND purged.purged_at IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM life_resources hidden WHERE hidden.user_id=${table}.user_id AND hidden.kind='visibility' AND hidden.resource_id='analysis:'||${table}.request_id AND json_extract(hidden.payload,'$.deleted')=1)`;
+export const visibleBuildSQL=(table='life_routine_builds')=>`NOT EXISTS(SELECT 1 FROM life_trash purged WHERE purged.user_id=${table}.user_id AND purged.kind='build' AND purged.record_id=${table}.request_id AND purged.purged_at IS NOT NULL) AND NOT EXISTS(SELECT 1 FROM life_resources hidden WHERE hidden.user_id=${table}.user_id AND hidden.kind='visibility' AND hidden.resource_id='build:'||${table}.request_id AND json_extract(hidden.payload,'$.deleted')=1)`;
 const json=(v:unknown,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'private, no-store',Vary:'Cookie'}});
 export async function setRecordDeleted(db:Database,userId:string,body:unknown,now:Date){
  const parsed=input.safeParse(body);if(!parsed.success)return json({error:'Choose a saved record.'},400);
  const p=parsed.data;
+ const trash=await trashState(db,userId,p.kind,p.id);
+ if(trash?.purged_at||!p.deleted&&trash&&Date.parse(trash.deleted_at)+retentionMs<=now.valueOf())return json({error:'This item can no longer be restored.'},410);
  if(p.kind==='entry'){
   if(!dateSchema.safeParse(p.id).success||!p.version)return json({error:'Choose a saved journal entry.'},400);
   const row=await db.prepare('SELECT payload,version FROM life_entries WHERE user_id=?1 AND entry_date=?2').bind(userId,p.id).first<{payload:string;version:number}>();

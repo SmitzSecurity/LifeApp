@@ -180,6 +180,8 @@ test('prepared upgrade and verification queries run on local D1 without granting
   await db.exec(load(''));
   assert.deepEqual(await db.prepare(load('-verify')).first(),{migrations:6,migration_0005:1,app_tables:12,consent_table:1,consideration_column:1,job_date_index:1,reminder_trigger:1,status_view:1,consent_rows:0});
   assert.deepEqual(await db.prepare(load('-counts')).first(),before);
+  // The historical bundle is verified above; current binaries require all later migrations.
+  for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')&&f>'0005_automatic_daily_consent.sql').sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
   const worker=await upgrade.getWorker();
   assert.equal((await worker.scheduled({scheduledTime:Date.now(),cron:'*/5 * * * *'})).outcome,'ok');
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_review_jobs').first()).n,0);
@@ -228,4 +230,13 @@ test('0006 console bundle and verification execute on local D1 while preserving 
   assert.deepEqual(await db.prepare(load('-verify')).first(),{migrations:7,migration_0006:1,app_tables:14,deletion_objects:4,stale_write_guards:20,deleted_accounts:0,archived_attempts:0,scheduler_objects:2});
   assert.deepEqual(await db.prepare(load('-counts')).first(),before);
  }finally{await upgrade.dispose();}
+});
+
+test('compiled Cron purges expired Trash with AI and email disabled and preserves the seven-day boundary',async t=>{
+ const local=new Miniflare({...config,bindings:env});t.after(()=>local.dispose());const db=await local.getD1Database('DB');
+ for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+ const now=Date.now(),old=new Date(now-7*86400000).toISOString(),recent=new Date(now-7*86400000+1).toISOString();
+ for(const [id,updated] of [['expired',old],['recent',recent]])await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,2,?6,NULL)').bind('google:synthetic-trash','cardio',id,'2026-09',JSON.stringify({date:'2026-09-14',deleted:true,note:'Disposable synthetic text'}),updated).run();
+ const worker=await local.getWorker();assert.equal((await worker.scheduled({scheduledTime:now,cron:'*/5 * * * *'})).outcome,'ok');
+ assert.equal((await db.prepare("SELECT COUNT(*) n FROM life_resources WHERE resource_id='expired'").first()).n,0);assert.equal((await db.prepare("SELECT COUNT(*) n FROM life_resources WHERE resource_id='recent'").first()).n,1);assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_ai_usage').first()).n,0);
 });

@@ -86,7 +86,7 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  try{
   const result=await settings.provider.generate(snapshot);
   const exceeded=result.costMicros>RESERVATION_MICROS,valid=result.text.trim().length>0&&result.finishReason==='STOP'&&!exceeded;
-  const row=await db.prepare(`UPDATE life_ai_reviews SET status=?3,report_text=?4,provider_id=?5,input_tokens=?6,output_tokens=?7,thought_tokens=?8,cost_micros=?9,finished_at=?10,error_code=?11,model=?12 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING *`).bind(userId,requestId,valid?'complete':'failed',result.text||null,result.providerId,result.inputTokens,result.outputTokens,result.thoughtTokens,result.costMicros,new Date().toISOString(),exceeded?'cost_bound_exceeded':valid?null:'incomplete_output',result.modelVersion).first<ReportRow>();
+  const row=await db.prepare(`UPDATE life_ai_reviews SET status=?3,report_text=CASE WHEN json_extract(input_snapshot,'$.purged')=1 THEN NULL ELSE ?4 END,provider_id=CASE WHEN json_extract(input_snapshot,'$.purged')=1 THEN NULL ELSE ?5 END,input_tokens=?6,output_tokens=?7,thought_tokens=?8,cost_micros=?9,finished_at=?10,error_code=?11,model=?12 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING *`).bind(userId,requestId,valid?'complete':'failed',result.text||null,result.providerId,result.inputTokens,result.outputTokens,result.thoughtTokens,result.costMicros,new Date().toISOString(),exceeded?'cost_bound_exceeded':valid?null:'incomplete_output',result.modelVersion).first<ReportRow>();
   if(!row){
    // Deletion can win while Gemini is running. Settle only accounting; never
    // restore the input, report, critique or provider response identifier.

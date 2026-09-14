@@ -63,11 +63,11 @@ test('actual private export validates losslessly with archived habits, workout s
 });
 test('preview distinguishes insert, exact replay, conflicts and destination-only data without authorizing import',async()=>{
  const source=await fixture(),empty=await fixture({populate:false});
- const initial=await previewMigration(source.text,empty.text);assert.deepEqual(initial.comparison,{insert:9,identical:0,conflicts:0,targetOnly:0});assert.equal(initial.canApply,false);
- const same=await previewMigration(source.text,source.text);assert.deepEqual(same.comparison,{insert:0,identical:9,conflicts:0,targetOnly:0});
+ const initial=await previewMigration(source.text,empty.text);assert.deepEqual(initial.comparison,{insert:10,identical:0,conflicts:0,targetOnly:0});assert.equal(initial.canApply,false);
+ const same=await previewMigration(source.text,source.text);assert.deepEqual(same.comparison,{insert:0,identical:10,conflicts:0,targetOnly:0});
  const changed=structuredClone(source.backup);changePayload(changed.entries[0],{journal:'Destination changed this entry'});changed.entries[0].version++;
  const extra=structuredClone(changed.entries[1]);extra.entry_date='2026-09-06';changePayload(extra,{date:extra.entry_date});changed.entries.push(extra);
- const conflict=await previewMigration(source.text,encode(changed));assert.deepEqual(conflict.comparison,{insert:0,identical:8,conflicts:1,targetOnly:1});assert.ok(conflict.blockers.includes('conflicting_records'));assert.equal(conflict.canApply,false);
+ const conflict=await previewMigration(source.text,encode(changed));assert.deepEqual(conflict.comparison,{insert:0,identical:9,conflicts:1,targetOnly:1});assert.ok(conflict.blockers.includes('conflicting_records'));assert.equal(conflict.canApply,false);
  source.raw.close();empty.raw.close();
 });
 test('duplicate records, damaged versions, invalid dates and mismatched row dates are rejected',async()=>{
@@ -112,7 +112,7 @@ test('cross-platform CLI reads actual exports, writes redacted previews, and ref
  const f=await fixture(),dir=mkdtempSync(join(tmpdir(),'lifeapp-migration-'));const source=join(dir,'source.json'),output=join(dir,'preview.json');writeFileSync(source,f.text);
  const run=args=>spawnSync(process.execPath,['scripts/migration-preview.mjs',...args],{encoding:'utf8'});
  try{
-  const result=run([source,'--target',source,'--out',output]);assert.equal(result.status,0,result.stderr);const preview=JSON.parse(readFileSync(output,'utf8'));assert.equal(preview.comparison.identical,9);assert.equal(preview.canApply,false);
+  const result=run([source,'--target',source,'--out',output]);assert.equal(result.status,0,result.stderr);const preview=JSON.parse(readFileSync(output,'utf8'));assert.equal(preview.comparison.identical,10);assert.equal(preview.canApply,false);
   assert.equal(run([source,'--out',output]).status,1);assert.equal(run([source,'--out',source]).status,1);assert.equal(readFileSync(source,'utf8'),f.text);
   assert.equal(run([source,'--apply','true']).status,1);assert.equal(run([source,'--target',source,'--target',source]).status,1);
   const bad=join(dir,'invalid.json');writeFileSync(bad,Buffer.from([0xff]));assert.equal(run([bad]).status,1);

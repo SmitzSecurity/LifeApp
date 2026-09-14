@@ -124,7 +124,7 @@ test('feedback saves without AI, is idempotent and account-scoped, and guides fu
  assert.equal(f.raw.prepare('SELECT report_text FROM life_ai_reviews WHERE request_id=?').get(original.id).report_text,original.text);
  }finally{f.raw.close();}
 });
-test('plain regeneration preserves originals and limits concurrent revisions to two per analysis per day',async()=>{
+test('plain regeneration preserves accounting identities and limits concurrent revisions to two per analysis per day',async()=>{
  const f=fixture();try{await f.setup();let last=(await (await f.call(ai())).json()).report;const original=last.id;
  for(let i=0;i<2;i++){const responses=await Promise.all([f.call(ai('daily','2026-09-13',{predecessorId:last.id})),f.call(ai('daily','2026-09-13',{predecessorId:last.id}))]);assert.equal(responses.filter(r=>r.status===200).length,1);last=(await (await f.call(undefined,'a','?ai=1&date=2026-09-13')).json()).reports[0];}
  assert.equal((await f.call(ai('daily','2026-09-13',{predecessorId:last.id}))).status,429);assert.equal(f.state.calls.length,3);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_ai_reviews WHERE request_id=?').get(original).n,1);

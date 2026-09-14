@@ -91,5 +91,5 @@ test('private export includes all saved account records without auth credentials
  const response=await call(db,'user-a',undefined,'?export=1');assert.equal(response.status,200);assert.match(response.headers.get('content-disposition'),/attachment/);
  const backup=await response.json();assert.equal(backup.format,'lifeapp-portable-v1');assert.equal(backup.entries.length,1);assert.equal(JSON.parse(backup.entries[0].payload).journal,input().journal);
  assert.doesNotMatch(JSON.stringify(backup),/OTHER ACCOUNT PRIVATE TEXT|user_id|life_auth/);assert.equal((await call(db,null,undefined,'?export=1')).status,401);
- raw.prepare('UPDATE life_entries SET payload=? WHERE user_id=?').run('x'.repeat(5*1024*1024),'user-a');assert.equal((await call(db,'user-a',undefined,'?export=1')).status,413);raw.close();
+ raw.prepare('UPDATE life_entries SET payload=? WHERE user_id=?').run(JSON.stringify({journal:'x'.repeat(5*1024*1024)}),'user-a');assert.equal((await call(db,'user-a',undefined,'?export=1')).status,413);raw.close();
 });

@@ -1,3 +1,4 @@
+import {buildRoutines} from '../lib/life/routine-builder.ts';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {DatabaseSync} from 'node:sqlite';
@@ -20,7 +21,8 @@ function fixture(t){
  const state={calls:[],result:providerResult,hook:null,beforeInsert:null};
  const db={prepare(sql){return {bind(...params){return {async first(){if(sql.startsWith('INSERT INTO life_routine_builds')&&state.beforeInsert){const fn=state.beforeInsert;state.beforeInsert=null;fn();}return raw.prepare(sql).get(...params)||null;},async all(){return {results:raw.prepare(sql).all(...params)};}};}};}};
  const ai={enabled:true,userCapMicros:1000000,globalCapMicros:5000000,provider:{generate:async(input,purpose)=>{state.calls.push({input:JSON.parse(input),purpose});if(state.hook)await state.hook();return purpose==='routine'||purpose==='workout'?state.result:{...providerResult,text:'Synthetic analysis'};}}};
- const call=(body,id='a',path='')=>handleLife(new Request('https://life.test/api/life'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Origin:'https://life.test'},body:body?JSON.stringify(body):undefined}),id,db,now,ai);
+ // Legacy organizer internals remain covered; the public route is disabled in trash tests.
+ const call=(body,id='a',path='')=>body?.action==='workout-build'?buildRoutines(db,id,body.build,ai,now,'workout'):handleLife(new Request('https://life.test/api/life'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',Origin:'https://life.test'},body:body?JSON.stringify(body):undefined}),id,db,now,ai);
  async function setup(id='a'){assert.equal((await call({action:'profile',profile:{goal:'Private overall goal',moduleGoals:{fitness:'Build muscle'},timezone:'UTC',modules:['reflection','fitness','money'],habits:[],version:0}},id)).status,200);assert.equal((await call({action:'entry',entry:{date:'2026-09-13',journal:'Private journal not for routine builder',context:{},statuses:[],complete:true,version:0}},id)).status,200);}
  const build=(extra={})=>({action:'routine-build',build:{requestId:randomUUID(),text:description,consent:true,...extra}});
  const analysis=(cadence='daily')=>({action:'ai',review:{cadence,date:'2026-09-13',sourceVersion:1,requestId:randomUUID(),predecessorId:null,critique:'',consent:true}});
@@ -112,7 +114,7 @@ test('deleted analyses keep usage and revision keys, stay out of future context,
  assert.equal((await f.call(remove('analysis',id),'b')).status,404);assert.equal((await f.call(remove('analysis',id))).status,200);
  const list=await (await f.call(null,'a','?ai=1&date=2026-09-13')).json();assert.equal(list.reports[0].deleted,true);assert.equal(list.usage.measuredMicros,500);
  const regen={...f.analysis(),review:{...f.analysis().review,predecessorId:id}};assert.equal((await f.call(regen)).status,200);assert.equal(f.state.calls.at(-1).input.previousReview,null);assert.equal(f.state.calls.at(-1).input.previousReviewExcluded,true);
- validateBackup(await (await f.call(null,'a','?export')).text());await f.call(remove('analysis',id,false));assert.equal((await (await f.call(null,'a','?ai=1&date=2026-09-13')).json()).reports.find(r=>r.id===id).deleted,false);
+ validateBackup(await (await f.call(null,'a','?export')).text());assert.equal((await f.call(remove('analysis',id,false))).status,410);assert.equal(f.raw.prepare('SELECT report_text FROM life_ai_reviews WHERE request_id=?').get(id).report_text,null);
 });
 
 test('deleted unconfirmed AI jobs retain reservations and cannot bypass daily limits or resend',async t=>{

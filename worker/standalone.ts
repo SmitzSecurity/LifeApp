@@ -1,3 +1,4 @@
+import {purgeExpiredTrash} from '../lib/life/trash';
 import worker from './index';
 import {withoutSitesIdentity,googleConfig} from '../lib/auth/config';
 import {scheduledDailyReviews} from '../lib/life/automatic-reviews';
@@ -8,7 +9,9 @@ import {savedDayQuery} from '../lib/life/saved-day-link';
 type Env=Parameters<typeof worker.fetch>[1]&AIEnvironment&EmailEnvironment;
 export default {
  async scheduled(controller:{scheduledTime:number},env:Env){
-  await scheduledDailyReviews(env,controller.scheduledTime);
+  try{await scheduledDailyReviews(env,controller.scheduledTime);}finally{
+   if(env.DB&&env.LIFEAPP_AUTH_MODE==='google')await purgeExpiredTrash(env.DB,new Date(controller.scheduledTime));
+  }
  },
  async fetch(request:Request,env:Env,ctx:Parameters<typeof worker.fetch>[2]){
   if(new URL(request.url).pathname==='/email/unsubscribe'&&env.DB)return unsubscribeReportEmails(request,env.DB);

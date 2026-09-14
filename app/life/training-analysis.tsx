@@ -17,7 +17,7 @@ export default function TrainingAnalysis({onBusy}:{onBusy:(v:boolean)=>void}){
  return <>
  <section className="analysis-card training-analysis" aria-label="Training analysis">
   <div className="section-heading"><h3>✦ Training analysis</h3><div className="action-row">
-   {builds.length>0&&<Button variant="ghost" disabled={busy} onClick={()=>setHistory(true)}>History & Trash</Button>}
+   {builds.length>0&&<Button variant="ghost" disabled={busy} onClick={()=>setHistory(true)}>Past weeks</Button>}
    <Button variant="secondary" disabled={busy||!available||(!pending&&unconfirmed)} onClick={()=>void generate()}>{busy?'Analyzing…':pending?'Check this analysis':'Analyze this week'}</Button>
   </div></div>
   {shown?.result?<div className="training-analysis-summary"><div className="training-analysis-preview"><AnalysisText text={preview}/></div><Button variant="ghost" onClick={()=>setReading(shown.id)}>Read analysis →</Button></div>:<p className="muted">A weekly perspective on your training, cardio and muscle coverage.</p>}
@@ -25,6 +25,6 @@ export default function TrainingAnalysis({onBusy}:{onBusy:(v:boolean)=>void}){
   {error&&<p className="error" role="alert">{error}</p>}{unconfirmed&&<p className="muted">An AI outcome is unconfirmed. <Button variant="ghost" disabled={busy} onClick={()=>void refresh()}>Refresh status</Button></p>}
  </section>
  <WorkoutPanel open={!!selected} title="Training analysis" onClose={()=>setReading(null)}>{selected?.result&&<div className="training-analysis-reading"><AnalysisText text={selected.result.text}/><Button variant="ghost" disabled={busy} onClick={()=>void remove(selected)}>Delete analysis</Button>{error&&<p role="alert" className="error">{error}</p>}</div>}</WorkoutPanel>
- <WorkoutPanel open={history} title="Training analysis history" onClose={()=>setHistory(false)}><div className="training-analysis-reading">{builds.map(b=><article key={b.id} className="routine-build-result"><div className="section-heading"><strong>{new Date(b.createdAt).toLocaleDateString()} · {b.deleted?'Trash':b.status}</strong><div className="action-row">{!b.deleted&&b.result&&<Button variant="ghost" onClick={()=>{setHistory(false);setReading(b.id);}}>Read analysis</Button>}<Button variant="ghost" disabled={busy} onClick={()=>void remove(b)}>{b.deleted?'Restore':'Delete'}</Button></div></div></article>)}{error&&<p role="alert" className="error">{error}</p>}</div></WorkoutPanel>
+ <WorkoutPanel open={history} title="Training analysis history" onClose={()=>setHistory(false)}><div className="training-analysis-reading">{builds.filter(b=>!b.deleted).map(b=><article key={b.id} className="routine-build-result"><div className="section-heading"><strong>{new Date(b.createdAt).toLocaleDateString()} · {b.deleted?'Trash':b.status}</strong><div className="action-row">{!b.deleted&&b.result&&<Button variant="ghost" onClick={()=>{setHistory(false);setReading(b.id);}}>Read analysis</Button>}<Button variant="ghost" disabled={busy} onClick={()=>void remove(b)}>{b.deleted?'Restore':'Delete'}</Button></div></div></article>)}{error&&<p role="alert" className="error">{error}</p>}</div></WorkoutPanel>
  </>;
 }
