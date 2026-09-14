@@ -2,6 +2,12 @@
 
 September 14, 2026. Responses opens today's form above saved history. An existing entry for today is continued rather than duplicated. The embedded editor scrolls within a bounded area so history remains reachable; Save and Cancel stay with that form. Historic entries retain their focused analysis-first editor. Saving there returns to today's form. Search/pagination and unsaved navigation protection remain. Per-row edit/trash icons are adjacent; Delete requires confirmation, preserves unrelated drafts, updates the open day when necessary, and uses the existing seven-day Trash mechanism.
 
+Saved responses now use a compact, independently scrollable panel around 20% of the viewport height (144–240px), with 60px rows and 44px edit/delete targets. Opening Search temporarily gives the panel more room for its filters; closing Search returns to the compact height. Pagination and confirmation dialogs remain available.
+
+Journal Dictate uses the browser's speech service, starts only on a button click, and appends final transcripts to the existing text. Stop ends recording before Save; the journal and date cannot change during recording. Cancel, navigation and unmount abort recording and ignore queued speech callbacks. Permission denial and the 6,000-character limit preserve existing text. Unsupported browsers show a disabled Dictate button and suggest the keyboard microphone. Speech availability and microphone permissions depend on the browser; this feature does not call Gemini or consume LifeApp AI credits.
+
+Repeatable browser verification: `node scripts/browser-smoke.mjs --calm --editing --analysis --history --dictation` serves a synthetic speech implementation and visible controls from the loopback-only fixture. No real microphone, production data or provider access is involved. Verify append/final-only handling, Save, Cancel/late results, switching entries, denial, length limits and unsupported fallback. Close the synthetic control panel before clicking underlying form buttons.
+
 Settings uses a native timezone dropdown populated from the browser's IANA timezone list, with UTC, common fallbacks and the exact saved zone retained. Device timezone remains the automatic default. Manual choices are versioned with the profile and Cancel restores the saved selection. No timezone, consent or schedule is changed by installing this release.
 
 ## Temporary owner allowance
