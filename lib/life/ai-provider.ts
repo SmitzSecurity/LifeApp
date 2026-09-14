@@ -1,4 +1,4 @@
-import {workoutInstruction,trainingInstruction} from './workout-ai-schema.ts';
+import {workoutInstruction,trainingInstruction,workoutOutputSchema} from './workout-ai-schema.ts';
 import { z } from 'zod/v3';
 import {routineInstruction} from './routine-build-schema.ts';
 export const AI_MODEL='gemini-3.8-flash';
@@ -16,7 +16,7 @@ export function geminiProvider(key:string,fetcher:typeof fetch=fetch):AIProvider
  const instruction=purpose==='routine'?routineInstruction:purpose==='workout'?workoutInstruction:purpose==='training'?trainingInstruction:systemInstruction;
  if(new TextEncoder().encode(input+instruction).length>MAX_INPUT_BYTES)throw new Error('This request has too much context for the initial AI limit.');
  // Fixed HTTPS destination; the API key is a server header, never a URL or client value.
- const response=await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:instruction}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{candidateCount:1,maxOutputTokens:purpose==='routine'||purpose==='workout'?8192:MAX_OUTPUT_TOKENS,thinkingConfig:{thinkingLevel:'low'}}}),signal:AbortSignal.timeout(55000)});
+ const response=await fetcher(`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:instruction}]},contents:[{role:'user',parts:[{text:input}]}],generationConfig:{candidateCount:1,maxOutputTokens:purpose==='routine'||purpose==='workout'?8192:MAX_OUTPUT_TOKENS,thinkingConfig:{thinkingLevel:'low'},...(purpose==='workout'?{responseFormat:{text:{mimeType:'application/json',schema:workoutOutputSchema}}}:{})}}),signal:AbortSignal.timeout(55000)});
  if(!response.ok)throw new Error(`AI provider could not complete the request (${response.status}).`);
  const raw=await response.text();if(raw.length>200000)throw new Error('AI response exceeded the response limit.');
  const data=responseSchema.parse(JSON.parse(raw)),usage=data.usageMetadata,candidate=data.candidates?.[0];

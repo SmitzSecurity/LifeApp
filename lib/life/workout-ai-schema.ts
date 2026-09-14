@@ -1,5 +1,5 @@
 import {z} from 'zod/v3';
-import {muscleTargetsSchema} from './muscle-groups.ts';
+import {muscleTargetsSchema,muscleIds} from './muscle-groups.ts';
 import {structuredWorkoutSchema} from './modules.ts';
 import {exerciseTargets} from './muscle-volume.ts';
 
@@ -7,8 +7,28 @@ const logged=z.object({reps:z.number().int().min(0).max(100),load:z.number().min
 export const suggestedWorkout=z.object({notes:z.string().max(2000),name:z.string().trim().min(1).max(100),exercises:z.array(z.object({name:z.string().trim().min(1).max(100),unit:z.enum(['lb','kg']),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100),restSeconds:z.number().int().min(0).max(900),muscles:muscleTargetsSchema,logged:z.array(logged).min(1).max(40)}).strict()).max(20)}).strict();
 export const workoutBuildResult=z.object({notes:z.string().max(2000),workout:structuredWorkoutSchema.nullable()}).strict();
 export type WorkoutBuildResult=z.infer<typeof workoutBuildResult>;
+// Gemini's structured-output contract constrains syntax; local validation still
+// checks relationships (rep bounds, distinct muscle roles and working-set caps).
+// https://ai.google.dev/gemini-api/docs/generate-content/structured-output
+const integer=(minimum:number,maximum:number)=>({type:'integer',minimum,maximum});
+const object=(properties:Record<string,unknown>)=>({type:'object',properties,required:Object.keys(properties),additionalProperties:false});
+const muscles={type:'array',items:{type:'string',enum:[...muscleIds]},maxItems:14};
+export const workoutOutputSchema=object({
+ notes:{type:'string',description:'Uncertainties and omissions, at most 2000 characters.'},name:{type:'string',description:'A short workout name, 1–100 characters.'},
+ exercises:{type:'array',maxItems:20,items:object({
+  name:{type:'string',description:'Exercise name, 1–100 characters.'},unit:{type:'string',enum:['lb','kg']},
+  reps:integer(1,100),repMax:integer(1,100),restSeconds:integer(0,900),
+  muscles:object({direct:muscles,indirect:muscles}),
+  logged:{type:'array',minItems:1,maxItems:40,items:object({reps:integer(0,100),load:{type:'number',minimum:0,maximum:2000},warmup:{type:'boolean'}})}
+ })}
+});
+export function workoutJSON(text:string):unknown{
+ const clean=text.trim(),fenced=/^```(?:json)?\s*\n([\s\S]*?)\n```$/i.exec(clean);
+ // Only unwrap an entire fenced JSON document. Never salvage embedded prose.
+ return JSON.parse(fenced?fenced[1]:clean);
+}
 export function parseWorkoutDraft(text:string,stamp:string):WorkoutBuildResult{
- const draft=suggestedWorkout.parse(JSON.parse(text));
+ const draft=suggestedWorkout.parse(workoutJSON(text));
  if(!draft.exercises.length)return {notes:draft.notes,workout:null};
  const exercises=draft.exercises.map(e=>({id:crypto.randomUUID(),name:e.name,unit:e.unit,reps:e.reps,repMax:e.repMax,restSeconds:e.restSeconds,load:0,sets:Math.max(1,e.logged.filter(s=>!s.warmup).length),muscles:exerciseTargets({name:e.name})||e.muscles}));
  return workoutBuildResult.parse({notes:draft.notes,workout:{name:draft.name,exercises,sets:draft.exercises.flatMap((e,i)=>e.logged.map((s,j)=>({...s,exerciseId:exercises[i].id,setNumber:j+1,completedAt:stamp})))}});

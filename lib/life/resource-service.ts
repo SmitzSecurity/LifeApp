@@ -8,7 +8,7 @@ const unpack=(r:Row)=>({id:r.resource_id,data:JSON.parse(r.payload),version:r.ve
 export async function readResource(db:Database,userId:string,kind:ResourceKind,id:string){const row=await db.prepare('SELECT resource_id, payload, version, updated_at FROM life_resources WHERE user_id=?1 AND kind=?2 AND resource_id=?3').bind(userId,kind,id).first<Row>();return row?unpack(row):null;}
 export async function listResources(request:Request,db:Database,userId:string){
  const params=new URL(request.url).searchParams,kind=resourceKind.safeParse(params.get('kind'));
- if(!kind.success)return json({error:'Unknown section.'},400);
+ if(!kind.success||kind.data==='ai-recovery')return json({error:'Unknown section.'},400);
  const month=params.get('month');
  if(month&&!monthSchema.safeParse(month).success)return json({error:'Choose a valid month.'},400);
  if(kind.data==='transaction'&&!month)return json({error:'Choose a month to read transactions.'},400);
@@ -22,7 +22,7 @@ const envelope=z.object({kind:resourceKind,id:z.string().max(90),version:z.numbe
 export async function saveResource(body:unknown,db:Database,userId:string,profile:Profile|null,now:Date){
  if(!profile)return json({error:'Complete your setup first.'},400);
  const parsed=envelope.safeParse(body);if(!parsed.success)return json({error:'Invalid section record.'},400);
- const {kind,id,version}=parsed.data;if(kind==='visibility')return json({error:'Use the record Delete or Restore action.'},400);
+ const {kind,id,version}=parsed.data;if(kind==='ai-recovery')return json({error:'Recovery grants cannot be edited.'},400);if(kind==='visibility')return json({error:'Use the record Delete or Restore action.'},400);
  if(!profile.modules.includes(kind==='budget'||kind==='transaction'?'money':'fitness'))return json({error:'Enable this section in Settings first.'},400);
  const validation=resourceSchemas[kind].safeParse(parsed.data.data);
  if(!validation.success)return json({error:validation.error.issues[0]?.message||'Check this form.'},400);

@@ -128,3 +128,69 @@ test('deleting an analysis cancels queued email and restoring it never reenqueue
  await f.call(remove('analysis',first.report.id));assert.equal(f.raw.prepare('SELECT state FROM life_email_outbox').get().state,'cancelled');
  await f.call(remove('analysis',first.report.id,false));assert.equal(f.raw.prepare('SELECT state FROM life_email_outbox').get().state,'cancelled');
 });
+
+import {parseWorkoutDraft,workoutOutputSchema} from '../lib/life/workout-ai-schema.ts';
+
+test('workout provider enforces JSON schema and fenced JSON keeps completed facts intact',async()=>{
+ let body;
+ const provider=geminiProvider('synthetic',async(url,options)=>{body=JSON.parse(options.body);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(written)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:10,totalTokenCount:110}});});
+ await provider.generate('Synthetic completed workout','workout');
+ assert.deepEqual(body.generationConfig.responseFormat.text,{mimeType:'application/json',schema:workoutOutputSchema});assert.equal(body.generationConfig.candidateCount,1);
+ const draft=parseWorkoutDraft('```json\n'+JSON.stringify(written)+'\n```',now.toISOString());assert.equal(draft.workout.sets.length,4);assert.equal(draft.workout.sets[0].warmup,true);assert.equal(draft.workout.sets[1].load,135);
+ assert.throws(()=>parseWorkoutDraft('Here is your workout:\n'+JSON.stringify(written),now.toISOString()));
+ assert.throws(()=>parseWorkoutDraft('```json\n'+JSON.stringify(written)+'\n``` trailing text',now.toISOString()));
+ assert.equal(parseWorkoutDraft(JSON.stringify({notes:'No explicit loads or reps.',name:'Unstructured',exercises:[]}),now.toISOString()).workout,null);
+ await provider.generate('Synthetic analysis','training');assert.equal(body.generationConfig.responseFormat,undefined);
+});
+
+test('workout failures distinguish invalid JSON, invalid structure and truncation without retaining raw output',async t=>{
+ for(const [text,finishReason,code] of [['broken','STOP','invalid_workout_json'],['{}','STOP','invalid_workout_schema'],[JSON.stringify(written),'MAX_TOKENS','workout_output_truncated']]){
+  const f=fixture(t);await f.setup();f.state.result={...providerResult,text,finishReason};const result=await (await f.call(write())).json();assert.equal(result.build.errorCode,code);assert.equal(result.build.result,null);assert.equal(f.state.calls.length,1);
+  const usage=f.raw.prepare('SELECT cost_micros,status FROM life_ai_usage').get();assert.equal(usage.cost_micros,500);assert.equal(usage.status,'failed');
+ }
+});
+async function recoveryFixture(t,exhaust=true){
+ const f=fixture(t);await f.setup();await f.setup('b');f.state.result={...providerResult,text:'invalid'};const failed=write();await f.call(failed);
+ if(exhaust){await f.call(write());f.state.result=providerResult;await f.call(f.build());await f.call(f.build());await f.call(f.analysis());}
+ const sourceId=failed.build.requestId,grant={sourceId,expiresAt:'2026-09-15T12:00:00.000Z'};
+ f.raw.prepare("INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at) VALUES('a','ai-recovery',?,'',?,1,?)").run(sourceId,JSON.stringify(grant),now.toISOString());
+ f.state.result={...providerResult,text:JSON.stringify(written)};
+ return {...f,sourceId,grant,retry:{action:'workout-build',build:{...failed.build,requestId:randomUUID(),recoveryOf:sourceId}}};
+}
+test('one recovery crosses only the two count limits, keeps costs, and is idempotent even after hiding the result',async t=>{
+ const f=await recoveryFixture(t);assert.equal(f.state.calls.length,5);assert.equal((await f.call(write())).status,429);
+ const available=await (await f.call(null,'a','?workout-builds')).json();assert.equal(available.recovery.sourceId,f.sourceId);assert.equal((await (await f.call(null,'b','?workout-builds')).json()).recovery,null);
+ const before=f.raw.prepare('SELECT SUM(cost_micros) n FROM life_ai_usage').get().n;
+ const [one,two]=await Promise.all([f.call(f.retry),f.call({...f.retry,build:{...f.retry.build,requestId:randomUUID()}})]);assert.equal(one.status,200);assert.equal(two.status,429);
+ const result=await one.json();assert.equal(result.build.status,'complete');assert.deepEqual(await (await f.call(f.retry)).json(),result);assert.equal(f.state.calls.length,6);
+ assert.equal(f.raw.prepare('SELECT SUM(cost_micros) n FROM life_ai_usage').get().n,before+500);assert.equal(f.raw.prepare("SELECT COUNT(*) n FROM life_routine_builds WHERE status='failed'").get().n,2);
+ assert.equal((await (await f.call(null,'a','?workout-builds')).json()).recovery,null);
+ await f.call(remove('build','workout:'+f.retry.build.requestId));
+ // Consumption persists across daily count resets and hiding records.
+ f.raw.prepare("UPDATE life_routine_builds SET created_at='2026-09-13T12:00:00.000Z'").run();
+ assert.equal((await f.call({...f.retry,build:{...f.retry.build,requestId:randomUUID()}})).status,429);
+ assert.equal((await f.call({...f.retry,build:{...f.retry.build,recoveryOf:randomUUID()}})).status,409);
+ validateBackup(await (await f.call(null,'a','?export')).text());
+});
+test('recovery requires operator grant, matching account and text, valid expiry, caps and circuit breaker',async t=>{
+ const f=await recoveryFixture(t,false);
+ assert.equal((await f.call({action:'resource',record:{kind:'ai-recovery',id:f.sourceId,version:0,data:f.grant}})).status,400);
+ assert.equal((await f.call(f.retry,'b')).status,429);
+ assert.equal((await f.call({...f.retry,build:{...f.retry.build,text:'A different completed workout.'}})).status,429);
+ assert.equal((await f.call({...f.retry,build:{...f.retry.build,recoveryOf:randomUUID()}})).status,429);
+ f.raw.prepare("UPDATE life_resources SET payload=json_set(payload,'$.expiresAt','2026-09-14T11:59:59.000Z') WHERE kind='ai-recovery'").run();assert.equal((await f.call(f.retry)).status,429);
+ f.raw.prepare("UPDATE life_resources SET payload=? WHERE kind='ai-recovery'").run(JSON.stringify(f.grant));
+ f.ai.userCapMicros=200000;assert.equal((await f.call(f.retry)).status,429);f.ai.userCapMicros=1000000;
+ f.ai.globalCapMicros=200000;assert.equal((await f.call(f.retry)).status,429);f.ai.globalCapMicros=5000000;
+ f.raw.prepare("UPDATE life_routine_builds SET error_code='cost_bound_exceeded' WHERE request_id=?").run('workout:'+f.sourceId);assert.equal((await f.call(f.retry)).status,429);
+ assert.equal(f.state.calls.length,1);
+});
+test('a failed or uncertain recovery is consumed and cannot be retried as a new paid request',async t=>{
+ for(const uncertain of [false,true]){
+  const f=await recoveryFixture(t,false);f.state.result={...providerResult,text:'invalid'};if(uncertain)f.state.hook=()=>{throw Error('Synthetic network uncertainty');};
+  assert.equal((await f.call(f.retry)).status,uncertain?502:200);assert.equal((await (await f.call(null,'a','?workout-builds')).json()).recovery,null);
+  assert.equal((await f.call({...f.retry,build:{...f.retry.build,requestId:randomUUID()}})).status,429);assert.equal(f.state.calls.length,2);
+  if(uncertain)assert.equal(f.raw.prepare("SELECT reserved_micros FROM life_ai_usage WHERE status='uncertain'").get().reserved_micros,RESERVATION_MICROS);
+  validateBackup(await (await f.call(null,'a','?export')).text());
+ }
+});

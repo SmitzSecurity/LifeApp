@@ -105,3 +105,16 @@
 .training-guidance p { margin-top: .75rem; }
 .training-guidance a { text-decoration: underline; }
 .module-card:has(> h3 + .compact-field) { scroll-margin-top: 5rem; }
+
+/* Training is a full-width overview; the complete report has a focused reader. */
+.analysis-card.training-analysis{max-width:none;margin:12px 0 16px;padding:16px 20px}
+.training-analysis>.section-heading{margin-bottom:8px;gap:12px}
+.training-analysis h3{margin:0}
+.training-analysis-summary{display:flex;align-items:center;gap:16px}
+.training-analysis-preview{flex:1;min-width:0;font-size:15px;line-height:1.5;max-height:4.5em;overflow:hidden}
+.training-analysis .action-row{margin:0}
+.training-analysis-preview .analysis-markdown{font-size:15px;line-height:1.5}
+.training-analysis-preview p{margin:0;line-height:1.5}
+.training-analysis-summary>button{flex-shrink:0}
+.training-analysis-reading{padding:8px 20px 20px}
+@media(max-width:600px){.analysis-card.training-analysis{padding:14px 16px}.training-analysis>.section-heading{align-items:flex-start;flex-wrap:wrap}.training-analysis-summary{align-items:flex-start;flex-direction:column;gap:4px}.training-analysis .action-row{gap:4px}}

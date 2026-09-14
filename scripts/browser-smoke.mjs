@@ -49,6 +49,18 @@ if(process.argv.includes('--training')){
   if(name==='Push day')await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'workout',crypto.randomUUID(),today.slice(0,7),JSON.stringify({date:today,routineId:rid,name,exercises,sets:[{exerciseId:exercises[0].id,setNumber:1,reps:8,load:100,completedAt:iso},{exerciseId:exercises[0].id,setNumber:2,reps:8,load:100,completedAt:iso},{exerciseId:exercises[0].id,setNumber:3,reps:8,load:40,warmup:true,completedAt:iso}],restUntil:null,finishedAt:iso}),iso).run();
  }
 }
+if(process.argv.includes('--workout-recovery')){
+ const iso=new Date(stamp).toISOString(),sourceId='88888888-8888-4888-8888-888888888888';
+ const description='Completed bench press: warm-up 100 lb x 8, then 135 lb x 8/7. Custom cable press 30 lb x 12.';
+ const snapshot=JSON.stringify({description,movementGoal:'Build muscle',defaultGoal:'Muscle growth',exerciseGuidance:[]});
+ const text='### A useful start\n\nYour logged working sets contribute to chest and triceps coverage, while warm-ups remain separate. Compare your next session against these completed reps and loads.\n\n### Next session\n\nKeep the planned working sets after warm-ups. Add only what fits your recovery and goals.';
+ for(const [purpose,n] of [['workout',0],['workout',1],['routine',2],['routine',3],['training',4]]){
+  const requestId=purpose+':'+(n===0?sourceId:crypto.randomUUID()),complete=purpose==='training';
+  await db.prepare("INSERT INTO life_routine_builds(user_id,request_id,status,input_snapshot,model,price_version,reserved_micros,created_at,finished_at,error_code,result_json,input_tokens,output_tokens,thought_tokens,cost_micros) VALUES(?1,?2,?3,?4,?5,'synthetic',200000,?6,?6,?7,?8,100,100,0,500)").bind(userId,requestId,complete?'complete':'failed',snapshot,AI_MODEL,iso,complete?null:'invalid_routine_output',complete?JSON.stringify({text}):null).run();
+ }
+ await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'ai-recovery',sourceId,'',JSON.stringify({sourceId,expiresAt:new Date(stamp+86400000).toISOString()}),iso).run();
+ await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'cardio',crypto.randomUUID(),iso.slice(0,7),JSON.stringify({date:iso.slice(0,10),activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'Synthetic saved cardio',voided:false}),iso).run();
+}
 const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-browser-token',secret,{secure:true,httpOnly:true,path:'/'})).split(';')[0];
 const server=createServer(async(req,res)=>{
  try{

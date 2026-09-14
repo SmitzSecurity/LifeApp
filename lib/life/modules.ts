@@ -1,3 +1,4 @@
+import {workoutRecoverySchema} from './workout-recovery.ts';
 import { z } from 'zod/v3';
 import {muscleTargetsSchema} from './muscle-groups.ts';
 import { dateSchema } from './domain.ts';
@@ -32,9 +33,9 @@ export const structuredWorkoutSchema=workoutSchema.innerType().pick({name:true,e
 export type StructuredWorkout=z.infer<typeof structuredWorkoutSchema>;
 export const workoutNoteSchema=z.object({date:dateSchema,text:z.string().trim().min(1).max(5000),minutes:z.number().int().min(1).max(1440).nullable(),voided:z.boolean(),deleted:z.boolean().optional(),structured:structuredWorkoutSchema.optional()}).strict();
 export type WorkoutNote=z.infer<typeof workoutNoteSchema>;
-export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note','visibility']);
+export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note','visibility','ai-recovery']);
 export type ResourceKind=z.infer<typeof resourceKind>;
-export const resourceSchemas={budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema,visibility:z.object({target:z.enum(['analysis','build']),id:z.string().min(1).max(80),deleted:z.boolean()}).strict()};
+export const resourceSchemas={'ai-recovery':workoutRecoverySchema,budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema,visibility:z.object({target:z.enum(['analysis','build']),id:z.string().min(1).max(80),deleted:z.boolean()}).strict()};
 export function parseMoney(value:string):number{
  if(!/^\d{1,7}(\.\d{1,2})?$/.test(value.trim()))throw new Error('Enter an amount with at most two decimal places.');
  const [whole,fraction='']=value.trim().split('.');const n=Number(whole)*100+Number(fraction.padEnd(2,'0'));

@@ -77,7 +77,7 @@ export function validateBackup(text:string):Backup{
   const at=`resources[${i}]`,raw=parseJSON(r.payload,at);
   const parsed=resourceSchemas[r.kind].safeParse(raw);requireThat(parsed.success,'invalid_payload',at);
   const data=parsed.data;
-  const expectedPeriod=r.kind==='budget'?r.resource_id:r.kind==='routine'||r.kind==='visibility'?'':(data as Transaction|Workout).date.slice(0,7);
+  const expectedPeriod=r.kind==='budget'?r.resource_id:r.kind==='routine'||r.kind==='visibility'||r.kind==='ai-recovery'?'':(data as Transaction|Workout).date.slice(0,7);
   requireThat(r.period===expectedPeriod,'period_mismatch',at);
   requireThat(r.active_slot===(r.kind==='workout'&&!(data as Workout).finishedAt&&!(data as Workout).deleted?'active':null),'active_workout_mismatch',at);
   if(r.kind==='budget')requireThat(monthSchema.safeParse(r.resource_id).success,'invalid_id',at);
@@ -90,6 +90,8 @@ export function validateBackup(text:string):Backup{
     if(t.kind==='expense')requireThat(budget.data.categories.some(c=>c.id===t.categoryId),'missing_category',at);
     if(t.recurringId)requireThat(budget.data.recurring.some(x=>x.id===t.recurringId),'missing_recurring_item',at);
    }
+  }else if(r.kind==='ai-recovery'){
+   const grant=resourceSchemas['ai-recovery'].parse(data);requireThat(r.resource_id===grant.sourceId,'invalid_id',at);requireThat((b.routineBuilds||[]).some(job=>job.request_id==='workout:'+grant.sourceId&&job.status==='failed'),'missing_recovery_source',at);
   }else if(r.kind==='visibility'){
    const v=resourceSchemas.visibility.parse(data);requireThat(r.resource_id===v.target+':'+v.id,'invalid_id',at);requireThat(v.target==='analysis'?b.reviews.some(r=>r.request_id===v.id):(b.routineBuilds||[]).some(r=>r.request_id===v.id),'missing_visibility_target',at);
   }else{
@@ -127,7 +129,7 @@ export function validateBackup(text:string):Backup{
  unique((b.routineBuilds||[]).map(r=>r.request_id),'routineBuilds');
  for(const [i,r] of (b.routineBuilds||[]).entries()){
   const at=`routineBuilds[${i}]`;
-  validate(z.object({description:z.string().min(10).max(5000),movementGoal:z.string(),defaultGoal:z.string(),exerciseGuidance:z.array(z.unknown()),training:z.unknown().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
+  validate(z.object({description:z.string().min(10).max(5000),movementGoal:z.string(),defaultGoal:z.string(),exerciseGuidance:z.array(z.unknown()),training:z.unknown().optional(),recoveryOf:z.string().uuid().optional()}).strict(),parseJSON(r.input_snapshot,at),at);
   if(r.status==='complete'||r.status==='failed'){
    requireThat(r.finished_at&&r.cost_micros!==null&&r.input_tokens!==null&&r.output_tokens!==null&&r.thought_tokens!==null,'missing_usage',at);
    requireThat(r.thought_tokens<=r.output_tokens,'invalid_usage',at);
