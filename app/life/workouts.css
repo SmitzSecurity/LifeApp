@@ -7,3 +7,15 @@
 .written-set-head,.written-set-row{display:grid;grid-template-columns:minmax(60px,1fr) minmax(60px,1fr) 68px 36px;gap:8px;align-items:center;margin:8px 0}.written-set-row input{min-width:0;width:100%}.written-set-row input[type=checkbox]{width:20px;justify-self:center}.structured-workout{border-top:1px solid var(--border);margin-top:16px;padding-top:16px}
 
 .workout-notes .written-save{position:sticky;bottom:-16px;background:var(--popover);padding:12px 0;z-index:2;border-top:1px solid var(--border)}
+
+/* The coverage overview keeps all fourteen groups visible without a nested scroller. */
+.muscle-overview{min-width:0}.muscle-overview h4{font-size:.85rem;font-weight:600;margin:0}.muscle-overview>small{font-size:.72rem;margin:2px 0 6px}
+.muscle-overview ul{list-style:none;margin:0;padding:0}.muscle-overview li+li{border-top:1px solid var(--border)}
+.muscle-overview button{display:flex;align-items:center;gap:7px;width:100%;min-height:25px;padding:3px 4px;text-align:left;font-size:.75rem;line-height:1.4;border-radius:3px}
+.muscle-overview button:hover{background:var(--accent);color:var(--accent-foreground)}.muscle-overview button:focus-visible,.coverage-back:focus-visible{outline:2px solid var(--ring);outline-offset:1px}
+.muscle-overview button i{width:5px;height:12px;flex-shrink:0;border-radius:2px}.muscle-overview button span{flex:1;min-width:0}.muscle-overview button strong{font-weight:600;font-variant-numeric:tabular-nums}
+.coverage-back{display:block;text-align:left;font-size:.75rem;min-height:32px;margin:0 0 5px;color:var(--primary)}.coverage-reference{font-size:.71rem;margin:12px 0 4px;color:var(--muted-foreground)}
+.coverage-visual:has(.muscle-overview){align-items:center}.training-workspace .coverage-visual:has(.muscle-overview) .muscle-map{max-height:300px}
+@media(max-width:760px){.coverage-visual:has(.muscle-overview){grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:9px}.muscle-overview button{font-size:.73rem;min-height:25px;gap:5px}.muscle-overview h4{font-size:.8rem}}
+
+@media(min-width:761px){.muscle-overview ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px}.muscle-overview li+li{border-top:0}.muscle-overview li{border-bottom:1px solid var(--border)}.training-workspace .coverage-visual:has(.muscle-overview) .muscle-map{max-height:240px}}

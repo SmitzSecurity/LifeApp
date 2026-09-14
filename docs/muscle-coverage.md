@@ -2,6 +2,10 @@
 
 September 14, 2026. Programs and Start are the primary actions. Desktop pairs the launcher with muscle coverage; phones switch between Programs & session and Muscle map. Written logs, cardio, history, AI drafting and program editing open focused dialogs. X, Escape and Cancel discard unsaved tool edits, stop dictation and restore focus. In-flight or unconfirmed saves retain their exact retry payload. Training-only AI is available on explicit request (see docs/workout-logging.md). Finance analysis remains future work; no automatic training requests or new opt-ins are added.
 
+## Overview and selection
+
+Muscle coverage starts with all fourteen muscle groups, their estimated set counts and the full map. Selecting a muscle on the map or the overview opens its direct/indirect breakdown and exercise contributors. Selecting the same map region again, clicking outside the detail pane or on empty map space, Escape, or All muscle groups restores the overview. Detail controls remain usable without dismissing themselves. Reopening Workouts/the mobile muscle view and changing program or volume scope also clears the selection. This is local display state only; coverage math, programs and saved logs are unchanged.
+
 ## Volume and evidence
 
 - **Program:** saved planned sets for one session. It is not compared with a weekly reference.
