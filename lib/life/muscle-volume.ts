@@ -1,9 +1,10 @@
 import type {Exercise,Routine,Workout,Saved} from './modules.ts';
 import {muscleIds,type MuscleId,type MuscleTargets} from './muscle-groups.ts';
+import {exerciseNameKey,resolveExerciseName} from './exercise-names.ts';
 // Curated movement-based defaults, not individualized measurements. Stabilization
 // alone is not automatically credited. Explicit user mappings take precedence.
-const mapping:Record<string,MuscleTargets>={};
-function assign(names:string[],direct:MuscleId[],indirect:MuscleId[]=[]){for(const name of names)mapping[name.toLowerCase()]={direct,indirect};}
+const mapping:Record<string,MuscleTargets>=Object.create(null);
+function assign(names:string[],direct:MuscleId[],indirect:MuscleId[]=[]){for(const name of names)mapping[exerciseNameKey(name)]={direct,indirect};}
 assign(['Squat','Front squat','Leg press','Hack squat','Goblet squat','Lunge','Reverse lunge','Bulgarian split squat','Step-up'],['quads','glutes'],['adductors']);
 assign(['Deadlift','Trap-bar deadlift'],['glutes'],['quads','hamstrings','lower-back']);
 assign(['Romanian deadlift','Dumbbell Romanian deadlift'],['hamstrings','glutes'],['lower-back']);
@@ -11,10 +12,16 @@ assign(['Hip thrust','Glute bridge'],['glutes']);
 assign(['Bench press','Incline bench press','Dumbbell bench press','Incline dumbbell press','Machine chest press','Push-up'],['chest'],['triceps','shoulders']);
 assign(['Overhead press','Seated dumbbell press','Machine shoulder press'],['shoulders'],['triceps']);
 assign(['Dip','Assisted dip'],['chest','triceps'],['shoulders']);
+assign(['Seated dip machine'],['triceps'],['chest','shoulders']);
 assign(['Pull-up','Chin-up','Assisted pull-up','Lat pulldown'],['lats'],['biceps','upper-back']);
+assign(['Medium-grip lat pulldown','Neutral-grip lat pulldown','Assisted neutral-grip chin-up','Neutral-grip chin-up'],['lats'],['biceps','upper-back']);
 assign(['Barbell row','Pendlay row','Cable row','Dumbbell row','Chest-supported row','Machine row','Inverted row'],['upper-back','lats'],['biceps','shoulders']);
+// A high, elbows-out row emphasizes scapular retraction and rear deltoids.
+assign(['Chest-supported high row'],['upper-back','shoulders'],['lats','biceps']);
 assign(['Biceps curl','Dumbbell curl','Preacher curl','Cable curl'],['biceps']);
 assign(['Hammer curl'],['biceps'],['forearms']);
+assign(['Reverse curl'],['forearms'],['biceps']);
+assign(['Wrist curl','Reverse wrist curl'],['forearms']);
 assign(['Triceps extension','Triceps pushdown','Overhead triceps extension','Skull crusher'],['triceps']);
 assign(['Leg curl','Seated leg curl'],['hamstrings']);assign(['Leg extension'],['quads']);
 assign(['Standing calf raise','Calf raise','Seated calf raise'],['calves']);
@@ -25,7 +32,7 @@ assign(['Cable fly','Pec deck','Dumbbell fly'],['chest']);
 assign(['Cable crunch','Crunch','Reverse crunch','Hanging knee raise','Dead bug','Pallof press'],['abs']);
 assign(['Bird dog'],['abs'],['lower-back','glutes']);
 export function exerciseTargets(exercise:Pick<Exercise,'name'|'muscles'>):MuscleTargets|null{
- const targets=exercise.muscles||mapping[exercise.name.trim().toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ')];
+ const targets=exercise.muscles||mapping[resolveExerciseName(exercise.name)];
  return targets?{direct:[...targets.direct],indirect:[...targets.indirect]}:null;
 }
 export type MuscleVolume={direct:number;indirect:number;estimated:number};

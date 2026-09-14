@@ -8,7 +8,26 @@ import {exercisePresets,presetExercise} from '../lib/life/exercise-presets.ts';
 import {muscleTargetsSchema} from '../lib/life/muscle-groups.ts';
 import {exerciseSchema,routineSchema,workoutSchema} from '../lib/life/modules.ts';
 import {handleLife} from '../lib/life/service.ts';
+import {exerciseAliases,exerciseNameKey,resolveExerciseName} from '../lib/life/exercise-names.ts';
 const routine=(weeklySessions=undefined,name='Bench press')=>({id:randomUUID(),version:0,data:{name:'Push',preferences:'',archived:false,exercises:[presetExercise(name)],...(weeklySessions===undefined?{}:{weeklySessions})}});
+
+test('supplied exercise spellings and equipment variants all have predefined coverage',()=>{
+ const examples=[['Incline Dumbbell Press','chest'],['Lat Pulldown (Mag/Medium Grip)','lats'],['Leg Press','quads'],['Cable Lateral Raises','shoulders'],['Standing Calf Raises','calves'],['Cable Crunches','abs'],['Romanian Deadlift','hamstrings'],['Seated Leg Curl (Machine)','hamstrings'],['Chest-Supported High Row','upper-back'],['Assisted Dip / Dip Machine','triceps'],['Hammer Curls','biceps'],['Seated Calf Raises','calves'],['Assisted Neutral-Grip Chin-Up','lats'],['Leg Extensions (Machine)','quads'],['Dumbbell Bicep Curls','biceps']];
+ const r=routine(1);r.data.exercises=examples.map(([name,muscle])=>{const e=presetExercise(name);assert.ok(e.muscles.direct.includes(muscle),name);delete e.muscles;return {...e,sets:2,load:17};});const original=JSON.stringify(r);
+ const volume=plannedVolume([r]);assert.deepEqual(volume.unmapped,[]);assert.equal(volume.sets,30);assert.equal(volume.muscles.forearms.indirect,2);assert.equal(volume.muscles.forearms.estimated,1);assert.equal(JSON.stringify(r),original);
+});
+test('alias keys resolve to real presets with shared targets, case/punctuation tolerance and no duplicates',()=>{
+ assert.equal(new Set(exercisePresets.map(e=>exerciseNameKey(e.name))).size,exercisePresets.length);
+ for(const [alias,canonical] of exerciseAliases){const preset=exercisePresets.find(e=>exerciseNameKey(e.name)===canonical);assert.ok(preset,alias);const e=presetExercise(alias);assert.equal(e.reps,preset.reps);assert.equal(e.repMax,preset.repMax);assert.equal(e.restSeconds,preset.restSeconds);assert.deepEqual(e.muscles,exerciseTargets({name:preset.name}));assert.equal(e.load,0);}
+ assert.equal(resolveExerciseName('  ASSISTED Neutral‑Grip Chin–Up  '),exerciseNameKey('Assisted neutral-grip chin-up'));
+ assert.equal(presetExercise('Cable Lateral Raises').repMax,20);assert.equal(presetExercise('Standing Calf Raises').restSeconds,90);
+});
+test('new variants distinguish high rows and machine dips; explicit assignments always win',()=>{
+ assert.deepEqual(exerciseTargets({name:'Chest-Supported High Row'}),{direct:['upper-back','shoulders'],indirect:['lats','biceps']});
+ assert.deepEqual(exerciseTargets({name:'Dip machine'}),{direct:['triceps'],indirect:['chest','shoulders']});
+ const custom={direct:['forearms'],indirect:[]};assert.deepEqual(exerciseTargets({name:'Hammer Curls',muscles:custom}),custom);assert.deepEqual(exerciseTargets({name:'Hammer Curls',muscles:{direct:[],indirect:[]}}),{direct:[],indirect:[]});
+ for(const name of ['My hammer curl rehab variation','Cable lateral raises (experimental)','Incline bench press with unknown movement','constructor','__proto__'])assert.equal(exerciseTargets({name}),null,name);
+});
 function workout(r,date='2026-09-14',sets=3){return {id:randomUUID(),version:0,data:{date,routineId:r.id,name:r.data.name,exercises:structuredClone(r.data.exercises),sets:Array.from({length:sets},(_,i)=>({exerciseId:r.data.exercises[0].id,setNumber:i+1,reps:8,load:100,completedAt:date+'T12:00:00.000Z'})),finishedAt:null,restUntil:null}};}
 function fixture(t,now=new Date('2026-09-14T12:00:00Z')){const raw=new DatabaseSync(':memory:');t.after(()=>raw.close());for(const file of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+file,'utf8'));const db={prepare(sql){return {bind(...p){return {async first(){return raw.prepare(sql).get(...p)||null;},async all(){return {results:raw.prepare(sql).all(...p)};}};}};}};const call=(body=null,path='',id='a')=>handleLife(new Request('https://life.test/api/life'+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined}),id,db,now);const setup=(id='a')=>call({action:'profile',profile:{goal:'',timezone:'America/New_York',modules:['fitness'],habits:[],version:0}},'',id);const insert=(kind,r,user='a')=>raw.prepare('INSERT INTO life_resources VALUES(?,?,?,?,?,1,?,NULL)').run(user,kind,r.id,r.data.date?.slice(0,7)||'',JSON.stringify(r.data),now.toISOString());return {raw,call,setup,insert};}
 test('all standard exercises have valid, nonoverlapping muscle assignments; unknown names remain unknown',()=>{for(const p of exercisePresets){const targets=exerciseTargets({name:p.name});assert.ok(targets,p.name);assert.ok(muscleTargetsSchema.safeParse(targets).success,p.name);assert.deepEqual(presetExercise(p.name).muscles,targets);}assert.equal(exerciseTargets({name:'My special movement'}),null);assert.equal(muscleTargetsSchema.safeParse({direct:['chest'],indirect:['chest']}).success,false);assert.equal(muscleTargetsSchema.safeParse({direct:['chest','chest'],indirect:[]}).success,false);});
