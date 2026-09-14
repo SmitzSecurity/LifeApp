@@ -1,4 +1,5 @@
 import {visibleAnalysisSQL} from './record-deletion.ts';
+import {limitsForAI} from './ai-limits.ts';
 import { z } from 'zod/v3';
 import { profileSchema,dateSchema,todayIn,type Entry } from './domain.ts';
 import { completionIssues,cadenceSchema,type Cadence,type ReviewRecord } from './reviews.ts';
@@ -12,7 +13,7 @@ import { buildReviewContext } from './review-context.ts';
 import { readResource } from './resource-service.ts';
 import type { Database } from './service.ts';
 import { AI_MODEL,PRICE_VERSION,PRICE_EXPIRES,RESERVATION_MICROS,MAX_INPUT_BYTES,systemInstruction,type AIProvider } from './ai-provider.ts';
-export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number;automaticEnabled?:boolean};
+export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number;automaticEnabled?:boolean;ownerPrototype?:{userId:string;expiresAt:string}};
 export type ReportRow={deleted?:boolean;user_id:string;request_id:string;entry_date:string;cadence:Cadence;window_start:string|null;revision:number;source_version:number;predecessor_id:string|null;critique:string;status:string;input_snapshot:string;report_text:string|null;model:string;price_version:string;provider_id:string|null;input_tokens:number|null;output_tokens:number|null;thought_tokens:number|null;reserved_micros:number;cost_micros:number|null;created_at:string;finished_at:string|null;error_code:string|null};
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
 export const publicReport=(r:ReportRow)=>({id:r.request_id,deleted:!!r.deleted,date:r.entry_date,cadence:r.cadence||'daily',from:r.window_start||r.entry_date,revision:r.revision,sourceVersion:r.source_version,predecessorId:r.predecessor_id,critique:r.critique,status:r.status,text:r.report_text,inputTokens:r.input_tokens,outputTokens:r.output_tokens,thoughtTokens:r.thought_tokens,costMicros:r.cost_micros,reservedMicros:r.reserved_micros,model:r.model,createdAt:r.created_at,errorCode:r.error_code});
@@ -20,13 +21,15 @@ const requestSchema=z.object({date:dateSchema,cadence:cadenceSchema.default('dai
 async function getReport(db:Database,userId:string,id:string){return db.prepare('SELECT * FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2').bind(userId,id).first<ReportRow>();}
 const inMonth=(now:Date)=>now.toISOString().slice(0,7)+'-01T00:00:00.000Z';
 export async function listAI(db:Database,userId:string,date:string|null,settings:AISettings,now:Date,cadence:Cadence='daily'){
+ const limits=limitsForAI(settings,userId,now);
  if(date&&!dateSchema.safeParse(date).success)return json({error:'Choose a valid review date.'},400);
  const result=await db.prepare(`SELECT *, NOT (${visibleAnalysisSQL()}) AS deleted FROM life_ai_reviews WHERE user_id=?1 AND cadence=?2${date?' AND entry_date=?3':''} ORDER BY revision DESC,created_at DESC LIMIT 100`).bind(...(date?[userId,cadence,date]:[userId,cadence])).all<ReportRow>();
  const usage=await db.prepare("SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) AS allocated, COALESCE(SUM(cost_micros),0) AS measured FROM life_ai_usage WHERE user_id=?1 AND created_at>=?2").bind(userId,inMonth(now)).first<{allocated:number;measured:number}>();
- return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date&&cadence==='daily'?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),regenerationsRemaining:Math.max(0,2-result.results.filter(r=>r.revision>1&&r.created_at>=now.toISOString().slice(0,10)+'T00:00:00.000Z').length),usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:settings.userCapMicros},customerBilling:false});
+ return json({available:!!settings.provider&&settings.enabled&&now.valueOf()<Date.parse(PRICE_EXPIRES),model:AI_MODEL,reports:result.results.map(publicReport),schedule:date&&cadence==='daily'?await dailyJobStatus(db,userId,date):null,automaticExecutionEnabled:automaticAvailable(settings,now),regenerationsRemaining:Math.max(0,limits.regenerations-result.results.filter(r=>r.revision>1&&r.created_at>=now.toISOString().slice(0,10)+'T00:00:00.000Z').length),usage:{allocatedMicros:usage?.allocated||0,measuredMicros:usage?.measured||0,capMicros:limits.userCapMicros},customerBilling:false});
 }
 // The final argument is server-only. HTTP callers can never supply automatic consent.
 export async function generateAI(db:Database,userId:string,body:unknown,settings:AISettings,now:Date,automatic?:{consentVersion:number;cadence?:Cadence}){
+ const limits=limitsForAI(settings,userId,now);
  const parsed=requestSchema.safeParse(body);if(!parsed.success)return json({error:'Choose a saved day and confirm using its data for AI analysis.'},400);
  const input=parsed.data;
  const cadence=input.cadence,periodic=cadence!=='daily';
@@ -71,17 +74,17 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  SELECT ?1,?2,?3,?4,?5,?6,?7,'generating',?8,?9,?10,?11,?12,?18,?19
  WHERE (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?13)+?11<=?14
  AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE created_at>=?13)+?11<=?15
- AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?16)<5
+ AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?16)<${limits.dailyAttempts}
  AND NOT EXISTS(SELECT 1 FROM life_ai_usage WHERE error_code='cost_bound_exceeded')
  AND EXISTS(SELECT 1 FROM life_profiles WHERE user_id=?1 AND version=?17)
- AND (SELECT COUNT(*) FROM life_ai_reviews WHERE user_id=?1 AND cadence=?18 AND entry_date=?3 AND revision>1 AND created_at>=?16)<2
+ AND (SELECT COUNT(*) FROM life_ai_reviews WHERE user_id=?1 AND cadence=?18 AND entry_date=?3 AND revision>1 AND created_at>=?16)<${limits.regenerations}
  AND (SELECT COALESCE(SUM(version),0) FROM life_entries WHERE user_id=?1 AND entry_date>=?19 AND entry_date<=?3)=?20
  AND (SELECT COUNT(*) FROM life_entries WHERE user_id=?1 AND entry_date>=?19 AND entry_date<=?3)=?21
  ${automatic?(periodic?`AND EXISTS(SELECT 1 FROM life_period_consent WHERE user_id=?1 AND enabled=1 AND version=?22 AND policy_version=?23 AND start_date<=?3)`:`AND (
   EXISTS(SELECT 1 FROM life_automatic_consent WHERE user_id=?1 AND enabled=1 AND version=?22 AND policy_version=?23 AND start_date<=?3)
   AND EXISTS(SELECT 1 FROM life_daily_job_status WHERE user_id=?1 AND entry_date=?3 AND state='ready' AND source_version=?5)
  )`):''}
- ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,periodic?profile.version:entry.version,previous?.request_id||null,critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),settings.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,cadence,window.from,entries.reduce((n,e)=>n+e.version,0),entries.length,...(automatic?[automatic.consentVersion,periodic?PERIOD_POLICY:AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
+ ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,periodic?profile.version:entry.version,previous?.request_id||null,critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),limits.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,cadence,window.from,entries.reduce((n,e)=>n+e.version,0),entries.length,...(automatic?[automatic.consentVersion,periodic?PERIOD_POLICY:AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
  if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return json({report:publicReport(duplicate)},202);return json({error:'The analysis limit has been reached, or the saved context changed. Refresh first; if the limit remains, try again tomorrow.'},429);}
  try{
   const result=await settings.provider.generate(snapshot);

@@ -33,6 +33,15 @@ test('report Markdown renders headings, emphasis, lists and tables identically i
  const mail=reportEmail({date:'2026-09-13',cadence:'weekly',revision:1,text:source,recipient:'synthetic@example.test',unsubscribeToken:'synthetic'},{from:'reports@lifeapp.smitzgroup.com',origin:'https://life.test'});
  assert.ok(mail.html.includes(html));assert.ok(mail.text.includes(source));
 });
+test('owner builder allowance remains bounded, identity-scoped and subordinate to shared accounting',async t=>{
+ const f=fixture(t),owner='google:synthetic-owner';f.ai.ownerPrototype={userId:owner,expiresAt:'2026-10-14T23:59:59.000Z'};await f.setup(owner);await f.setup('b');
+ for(let i=0;i<2;i++)assert.equal((await f.call(f.build(),'b')).status,200);
+ assert.equal((await f.call(f.build(),'b')).status,429);
+ for(let i=0;i<10;i++)assert.equal((await f.call(f.build(),owner)).status,200);
+ assert.equal((await f.call(f.build(),owner)).status,429);
+ f.ai.ownerPrototype.expiresAt=now.toISOString();assert.equal((await f.call(f.analysis(),owner)).status,429);
+ assert.equal(f.state.calls.length,12);
+});
 test('untrusted report Markdown cannot run HTML, scripts or load images',()=>{
  const html=renderReportMarkdown('<script>alert(1)</script>\n<img src=x onerror=alert(1)>\n\n[bad](javascript:alert%281%29) [data](data:text/html,hello) ![tracking](https://evil.test/pixel) [good](https://example.test)');
  assert.doesNotMatch(html,/<(?:script|img|iframe)\b/i);assert.doesNotMatch(html,/href="(?:javascript|data):/i);assert.match(html,/&lt;script&gt;/);assert.match(html,/href="https:\/\/example.test" rel="noopener noreferrer"/);

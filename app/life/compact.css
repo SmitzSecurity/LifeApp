@@ -19,6 +19,12 @@
 .compact-app .history-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 16px;padding:18px 4px 12px;border-top:0;border-bottom:1px solid var(--border);background:transparent;min-height:112px}
 .compact-app .history-row:hover{background:var(--accent)}
 .compact-app .history-row:focus-visible{outline:2px solid var(--primary);outline-offset:-2px}
+.compact-app .history-entry{border-bottom:1px solid var(--border)}
+.compact-app .history-entry .history-row{min-height:76px;border:0;padding-bottom:0;width:100%;text-align:left}
+.history-entry .response-row-footer{padding:0 4px 4px}
+.response-row-actions{display:flex;gap:4px}
+.response-row-actions button[data-slot=button]{width:44px;height:44px;color:var(--muted-foreground)}
+.response-row-actions button:hover{color:var(--foreground)}
 .compact-app .history-date{font-size:1rem;font-weight:650;min-width:0}
 .compact-app .history-score{font-size:.9rem;font-weight:500;color:var(--foreground)}
 .compact-app .history-text{grid-column:1/-1;order:initial;font-size:.95rem;font-weight:400;min-height:24px;line-height:1.5;color:var(--foreground)}
@@ -38,6 +44,24 @@
 .bottom-nav button[aria-current=page]:after{content:'';position:absolute;bottom:0;width:42px;height:4px;background:var(--primary);border-radius:3px 3px 0 0}
 .bottom-nav button:focus-visible,.clear-choice:focus-visible{outline:2px solid var(--ring);outline-offset:-3px}
 .response-editor{max-width:680px;margin:auto;padding:26px 0 0}
+.responses-hub{padding-top:18px}
+.response-composer{border:1px solid var(--border);border-radius:8px;background:var(--card);overflow:hidden}
+.response-composer-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 18px;border-bottom:1px solid var(--border);min-height:54px}
+.response-composer-heading h2,.response-history-heading{font-size:1rem;font-weight:600}
+.response-composer-heading button{font-size:.8rem;min-height:36px}
+.response-history-heading{margin:22px 4px 6px}
+.compact-app .embedded-response{max-width:none;padding:0}
+.embedded-response .response-fields{max-height:min(42dvh,420px);overflow-y:auto;overscroll-behavior:contain;padding:16px 18px 6px;scrollbar-gutter:stable}
+.embedded-response .response-field{margin-bottom:14px;gap:6px;font-size:.9rem}
+.embedded-response .response-field:first-child{max-width:200px}
+.embedded-response .response-field input{min-height:44px}
+.embedded-response .response-field textarea{min-height:90px}
+.embedded-response .response-habit{margin:14px 0}
+.embedded-response .response-habit-label{margin-bottom:6px}
+.embedded-response .response-choice{min-height:44px}
+.compact-app .embedded-response .response-actions{position:static;padding:10px 18px;gap:10px;background:var(--card)}
+.embedded-response .response-actions button[data-slot=button]{min-width:78px;font-size:.9rem}
+.organized-settings .compact-field select{width:100%;padding:10px;border:1px solid var(--input)}
 .response-field{display:flex;flex-direction:column;gap:10px;margin:0 0 24px;font-size:1rem;font-weight:500}
 .response-field>span{display:flex;justify-content:space-between;align-items:center}
 .response-field small{font-size:.75rem}

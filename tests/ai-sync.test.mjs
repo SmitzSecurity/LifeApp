@@ -5,6 +5,8 @@ import { readFileSync,readdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { handleLife } from '../lib/life/service.ts';
 import { DraftSync } from '../lib/life/draft-sync.ts';
+import {settingsForAI} from '../lib/life/ai-configuration.ts';
+import {limitsForAI} from '../lib/life/ai-limits.ts';
 import { geminiProvider,tokenCostMicros,AI_MODEL,MAX_OUTPUT_TOKENS,RESERVATION_MICROS } from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-09T12:00:00Z');
 const profile={goal:'Synthetic goal: read consistently',timezone:'UTC',modules:['reflection'],habits:[],version:0};
@@ -20,6 +22,43 @@ function fixture(provider={generate:async()=>result},caps={}){
 }
 const review=(overrides={})=>({action:'ai',review:{date:'2026-09-08',requestId:randomUUID(),sourceVersion:1,predecessorId:null,critique:'',consent:true,...overrides}});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
+
+const ownerPrototype={userId:'google:synthetic-owner',expiresAt:'2026-10-14T23:59:59.000Z'};
+function archivedUsage(f,id,n,{cost=100,at=now.toISOString(),error=null}={}){for(let i=0;i<n;i++)f.raw.prepare("INSERT INTO life_deleted_ai_usage(user_id,request_id,status,model,price_version,reserved_micros,cost_micros,created_at,error_code) VALUES(?,?,'failed','synthetic','synthetic',200000,?,?,?)").run(id,randomUUID(),cost,at,error);}
+test('prototype limits require the exact server-configured identity and expire without changing global settings',()=>{
+ const env={LIFEAPP_AUTH_MODE:'google',LIFEAPP_AI_OWNER_USER_ID:ownerPrototype.userId,LIFEAPP_AI_OWNER_LIMITS_UNTIL:ownerPrototype.expiresAt};
+ const settings=settingsForAI(env);
+ assert.deepEqual(limitsForAI(settings,ownerPrototype.userId,now),{userCapMicros:5000000,dailyAttempts:25,builderAttempts:10,regenerations:5});
+ for(const id of ['google:other','synthetic-owner','owner@example.test'])assert.equal(limitsForAI(settings,id,now).dailyAttempts,5);
+ for(const override of [{LIFEAPP_AUTH_MODE:'sites'},{LIFEAPP_AI_OWNER_USER_ID:''},{LIFEAPP_AI_OWNER_LIMITS_UNTIL:'invalid'}])assert.equal(limitsForAI(settingsForAI({...env,...override}),ownerPrototype.userId,now).dailyAttempts,5);
+ assert.equal(limitsForAI(settings,ownerPrototype.userId,new Date(ownerPrototype.expiresAt)).dailyAttempts,5);
+ assert.equal(settings.globalCapMicros,5000000);assert.equal(settings.userCapMicros,1000000);assert.equal(settings.enabled,false);
+});
+test('owner daily analysis admission includes archived attempts and keeps other accounts at five',async()=>{
+ const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);await f.setup('google:other');
+ archivedUsage(f,ownerPrototype.userId,24);archivedUsage(f,'google:other',5);
+ assert.equal((await f.call(review(),'google:other')).status,429);
+ assert.equal((await f.call(review(),ownerPrototype.userId)).status,200);
+ const original=(await (await f.call(undefined,ownerPrototype.userId,'?ai=1&date=2026-09-08')).json()).reports[0];
+ assert.equal((await f.call(review({predecessorId:original.id}),ownerPrototype.userId)).status,429);
+ assert.equal(f.raw.prepare('SELECT count(*) n FROM life_ai_usage WHERE user_id=?').get(ownerPrototype.userId).n,25);
+ }finally{f.raw.close();}
+});
+test('owner regeneration allowance is five, expires, and cannot bypass the shared spending cap or breaker',async()=>{
+ const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+ let response=await (await f.call(review(),ownerPrototype.userId)).json();
+ for(let i=0;i<5;i++){const r=await f.call(review({predecessorId:response.report.id}),ownerPrototype.userId);assert.equal(r.status,200);response=await r.json();}
+ assert.equal((await f.call(review({predecessorId:response.report.id}),ownerPrototype.userId)).status,429);
+ const status=await (await f.call(undefined,ownerPrototype.userId,'?ai=1&date=2026-09-08')).json();assert.equal(status.regenerationsRemaining,0);assert.equal(status.usage.capMicros,5000000);assert.equal(status.ownerPrototype,undefined);
+ }finally{f.raw.close();}
+ const g=fixture(undefined,{ownerPrototype});try{await g.setup(ownerPrototype.userId);
+ archivedUsage(g,ownerPrototype.userId,1,{cost:1100000,at:'2026-09-01T00:00:00.000Z'});
+ assert.equal((await g.call(review(),ownerPrototype.userId)).status,200);
+ assert.equal((await g.call({action:'entry',entry:entry('2026-09-07')},ownerPrototype.userId)).status,200);
+ g.settings.globalCapMicros=1200000;assert.equal((await g.call(review({date:'2026-09-07'}),ownerPrototype.userId)).status,429);
+ g.settings.globalCapMicros=5000000;archivedUsage(g,'google:retired',1,{error:'cost_bound_exceeded'});assert.equal((await g.call(review({date:'2026-09-07'}),ownerPrototype.userId)).status,429);
+ }finally{g.raw.close();}
+});
 
 test('draft writer serializes saves and keeps typing that arrives during a request',async()=>{
  const first=deferred(),second=deferred(),sent=[];

@@ -1,7 +1,8 @@
 "use client";
 import {useEffect,useRef,useState,type FormEvent} from 'react';
-import {SquarePen,BookOpen,Search} from 'lucide-react';
+import {SquarePen,BookOpen,Search,Trash2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
+import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogCancel} from '@/components/ui/alert-dialog';
 import {score,type Entry} from '@/lib/life/domain';
 import type {HistoryFilters,HistoryPage} from '@/lib/life/history';
 import {request} from './shared';
@@ -10,10 +11,11 @@ type Filters=Omit<HistoryFilters,'before'>;
 const blank:Filters={query:'',from:'',through:'',status:'all',deleted:false};
 const niceDate=(date:string)=>new Date(date+'T12:00:00').toLocaleDateString(undefined,{year:'numeric',month:'numeric',day:'numeric'});
 
-export default function History({disabled,onOpen,onToday,searchOpen=false,refreshKey=0}:{disabled:boolean;onOpen:(date:string)=>void;onToday:()=>void;searchOpen?:boolean;refreshKey?:number}){
+export default function History({disabled,onOpen,onDeleted,onBusy,searchOpen=false,refreshKey=0}:{disabled:boolean;onOpen:(date:string)=>void;onDeleted:(date:string)=>void;onBusy:(busy:boolean)=>void;searchOpen?:boolean;refreshKey?:number}){
  const [filters,setFilters]=useState<Filters>(blank),[applied,setApplied]=useState<Filters>(blank);
  const [entries,setEntries]=useState<Entry[]>([]),[cursor,setCursor]=useState<string|null>(null);
  const [loading,setLoading]=useState(false),[loaded,setLoaded]=useState(false),[error,setError]=useState('');
+ const [removing,setRemoving]=useState<Entry|null>(null),[deleting,setDeleting]=useState(false),[deleteError,setDeleteError]=useState('');
  const sequence=useRef(0);
  async function load(next:Filters,before:string|null=null){
   const token=++sequence.current;
@@ -32,7 +34,7 @@ export default function History({disabled,onOpen,onToday,searchOpen=false,refres
  const filtersChanged=JSON.stringify(filters)!==JSON.stringify(applied);
  function search(event:FormEvent){event.preventDefault();void load(filters);}
  function clear(){setFilters(blank);void load(blank);}
- async function remove(entry:Entry){setLoading(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'entry',id:entry.date,version:entry.version,deleted:!entry.deleted}});await load(applied);}catch(e){setError((e as Error).message);}finally{setLoading(false);}}
+ async function remove(){if(!removing||deleting)return;setDeleting(true);onBusy(true);setDeleteError('');try{await request('',{action:'record-deletion',change:{kind:'entry',id:removing.date,version:removing.version,deleted:true}});onDeleted(removing.date);setRemoving(null);await load(applied);}catch(e){setDeleteError((e as Error).message);}finally{setDeleting(false);onBusy(false);}}
  return <section className="history-panel" aria-label="Saved responses">
   <form className="history-filters" onSubmit={search} hidden={!searchOpen}>
    <label className="history-search">Search journal text<input type="search" maxLength={200} value={filters.query} onChange={e=>setFilters({...filters,query:e.target.value})} placeholder="Find a word or phrase"/></label>
@@ -45,8 +47,9 @@ export default function History({disabled,onOpen,onToday,searchOpen=false,refres
   {filtered&&<div className="filter-summary"><span role="status">{entries.length}{cursor?'+':''} matches · Filters applied</span>{!searchOpen&&<Button variant="ghost" onClick={clear} disabled={disabled}>Clear filters</Button>}</div>}
   {error&&<div className="error" role="alert">{error} <Button variant="outline" onClick={()=>load(applied,cursor)} disabled={loading}>Retry</Button></div>}
   {loading&&<p className="muted" role="status">{entries.length?'Loading older responses…':'Loading your saved responses…'}</p>}
-  {loaded&&!entries.length&&!loading&&<div className="empty-history"><BookOpen/><h3>{filtered?'No responses found.':'No responses yet.'}</h3><p>{filtered?'Try another phrase or date range.':'Add your first response to get started.'}</p>{filtered?<Button variant="outline" onClick={clear}>Show all responses</Button>:<Button onClick={onToday}>Add response</Button>}</div>}
-  {entries.map(entry=>{const s=score(entry.habits);return <div key={entry.date}><button className="history-row" aria-label={`Edit response for ${niceDate(entry.date)}`} disabled={disabled||loading||entry.deleted} onClick={()=>onOpen(entry.date)}><span className="history-date">{niceDate(entry.date)}</span><span className="history-score" aria-label={s.percent===null?'No habit score':`Habit score ${s.percent}%`}>{s.percent===null?'—':s.percent+'%'}</span><span className="history-text">{entry.journal||'No journal text'}</span><span className="response-row-footer"><small>{entry.complete?'':'Draft'}</small><SquarePen aria-hidden="true"/></span></button><Button variant="ghost" disabled={disabled||loading} onClick={()=>void remove(entry)} aria-label={(entry.deleted?'Restore response for ':'Delete response for ')+niceDate(entry.date)}>{entry.deleted?'Restore':'Delete'}</Button></div>;})}
+  {loaded&&!entries.length&&!loading&&<div className="empty-history"><BookOpen/><h3>{filtered?'No responses found.':'No responses yet.'}</h3><p>{filtered?'Try another phrase or date range.':'Your saved responses will appear here.'}</p>{filtered&&<Button variant="outline" onClick={clear}>Show all responses</Button>}</div>}
+  {entries.map(entry=>{const s=score(entry.habits);return <article className="history-entry" key={entry.date}><button className="history-row" aria-label={`Open response for ${niceDate(entry.date)}`} disabled={disabled||loading} onClick={()=>onOpen(entry.date)}><span className="history-date">{niceDate(entry.date)}</span><span className="history-score" aria-label={s.percent===null?'No habit score':`Habit score ${s.percent}%`}>{s.percent===null?'—':s.percent+'%'}</span><span className="history-text">{entry.journal||'No journal text'}</span></button><div className="response-row-footer"><small>{entry.complete?'':'Draft'}</small><div className="response-row-actions"><Button variant="ghost" size="icon" disabled={disabled||loading} onClick={()=>onOpen(entry.date)} aria-label={`Edit response for ${niceDate(entry.date)}`} title="Edit response"><SquarePen aria-hidden="true"/></Button><Button variant="ghost" size="icon" disabled={disabled||loading} onClick={()=>{setDeleteError('');setRemoving(entry);}} aria-label={`Delete response for ${niceDate(entry.date)}`} title="Delete response"><Trash2 aria-hidden="true"/></Button></div></div></article>;})}
   {cursor&&!error&&<div className="history-more"><Button variant="outline" disabled={loading||disabled} onClick={()=>load(applied,cursor)}>Load older responses</Button></div>}
+ <AlertDialog open={!!removing} onOpenChange={open=>{if(!open&&!deleting)setRemoving(null);}}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Delete this response?</AlertDialogTitle><AlertDialogDescription>Are you sure you want to delete the response for {removing?niceDate(removing.date):''}? It will move to Trash for seven days. Any unsaved edits to this day will also be discarded.</AlertDialogDescription></AlertDialogHeader>{deleteError&&<p className="error" role="alert">{deleteError}</p>}<AlertDialogFooter><AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel><Button variant="destructive" disabled={deleting} onClick={()=>void remove()}>{deleting?'Deleting…':'Delete response'}</Button></AlertDialogFooter></AlertDialogContent></AlertDialog>
  </section>;
 }

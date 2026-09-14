@@ -27,6 +27,8 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 
 ## Implemented
 
+- [Responses and prototype limits](docs/responses-and-owner-limits.md): today's form above saved history, confirmed trash icons, timezone dropdown, and a private expiring owner allowance with unchanged customer/default safeguards.
+
 - [Workout logging and training analysis](docs/workout-logging.md): warm-ups preserve working-set targets, written AI drafts confirm structured sets and personal presets, and logs/analyses have recoverable Delete actions.
 
 - Two-step onboarding with Journal, Movement and Money included, three optional focus areas, explicit habit adoption, custom habit names, renaming and archiving.

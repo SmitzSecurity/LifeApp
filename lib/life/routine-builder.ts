@@ -1,4 +1,5 @@
 import {budgetBuildInput,budgetBuildResult,budgetInstruction,parseBudgetDraft} from './budget-build-schema.ts';
+import {limitsForAI} from './ai-limits.ts';
 import {z} from 'zod/v3';
 import {availableWorkoutRecovery,recoverySQL} from './workout-recovery.ts';
 import {visibleBuildSQL} from './record-deletion.ts';
@@ -17,6 +18,7 @@ export async function listRoutineBuilds(db:Database,userId:string,settings:AISet
  return json({available:purpose!=='workout'&&settings.enabled&&!!settings.provider&&now.valueOf()<Date.parse(PRICE_EXPIRES),builds:rows.results.map(publicBuild),...(purpose==='workout'?{recovery:await availableWorkoutRecovery(db,userId,now)}:{})});
 }
 export async function buildRoutines(db:Database,userId:string,body:unknown,settings:AISettings,now:Date,purpose:'routine'|'workout'|'training'|'budget'='routine',evidence?:unknown){
+ const limits=limitsForAI(settings,userId,now);
  const parsed=(purpose==='budget'?budgetBuildInput:routineBuildInput.extend({recoveryOf:z.string().uuid().optional()})).safeParse(body);if(!parsed.success)return json({error:'Check the description and attachment, then choose Build with AI.'},400);
  if('recoveryOf' in parsed.data&&parsed.data.recoveryOf&&purpose!=='workout')return json({error:'Recovery applies only to the original written workout.'},400);
  const input={...parsed.data,recoveryOf:'recoveryOf' in parsed.data?parsed.data.recoveryOf:undefined},budget=purpose==='budget'?budgetBuildInput.parse(body):null,id=purpose+':'+input.requestId,existing=await read(db,userId,id);
@@ -33,14 +35,14 @@ export async function buildRoutines(db:Database,userId:string,body:unknown,setti
  SELECT ?1,?2,'generating',?3,?4,?5,?6,?7
  WHERE (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?8)+?6<=?9
  AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE created_at>=?8)+?6<=?10
- AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?11)<(5+?14)
- AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND request_id LIKE ?13 AND created_at>=?11)<(2+?14)
+ AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?11)<(${limits.dailyAttempts}+?14)
+ AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND request_id LIKE ?13 AND created_at>=?11)<(${limits.builderAttempts}+?14)
  AND (?14=0 OR ${recoverySQL('?1','?15','?7','?16')})
  AND NOT EXISTS(SELECT 1 FROM life_ai_usage WHERE error_code='cost_bound_exceeded')
  AND NOT EXISTS(SELECT 1 FROM life_routine_builds WHERE user_id=?1 AND status IN ('generating','uncertain'))
  AND EXISTS(SELECT 1 FROM life_profiles WHERE user_id=?1 AND version=?12)
  AND NOT EXISTS(SELECT 1 FROM life_account_deletions WHERE user_id=?1)
- ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,id,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,stamp,month,settings.userCapMicros,settings.globalCapMicros,day,profile.version,purpose+':%',input.recoveryOf?1:0,input.recoveryOf||'',input.text).first();
+ ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,id,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,stamp,month,limits.userCapMicros,settings.globalCapMicros,day,profile.version,purpose+':%',input.recoveryOf?1:0,input.recoveryOf||'',input.text).first();
  if(!admitted){const duplicate=await read(db,userId,id);if(duplicate)return matches(duplicate)?json({build:publicBuild(duplicate)},duplicate.status==='generating'?202:200):json({error:'This request belongs to another description.'},409);return json({error:'The AI limit was reached, another build is unconfirmed, or your settings changed. Refresh the builder before trying again.'},429);}
  try{
   const result=await settings.provider.generate(snapshot,purpose,budget?.image),exceeded=result.costMicros>RESERVATION_MICROS;
