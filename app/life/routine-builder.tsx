@@ -10,7 +10,7 @@ type Build={id:string;status:string;createdAt:string;result:RoutineBuildResult|n
 type Input={requestId:string;text:string;consent:true};
 export default function RoutineBuilder({onDirty,onReview,reviewDisabled}:{onDirty:(v:boolean)=>void;onReview:(routine:Saved<Routine>)=>void;reviewDisabled:boolean}){
  const [text,setText]=useState(''),[listening,setListening]=useState(false),[busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[available,setAvailable]=useState(false),[error,setError]=useState(''),[builds,setBuilds]=useState<Build[]>([]),[pending,setPending]=useState<Input|null>(null);
- useUnsaved(!!text||listening||busy||!!pending,onDirty);
+ useUnsaved(!!text||listening||!!pending,onDirty);
  async function refresh(){setBusy(true);setError('');try{const data=await request('?routine-builds');setBuilds(data.builds);setAvailable(data.available);setLoaded(true);if(pending&&data.builds.some((b:Build)=>b.id===pending.requestId)){setPending(null);setText('');}}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
  useEffect(()=>{void refresh();},[]);
  async function generate(){const input=pending||{requestId:crypto.randomUUID(),text:text.trim(),consent:true as const};setPending(input);setBusy(true);setError('');try{const data=await request('',{action:'routine-build',build:input});setBuilds(old=>[data.build,...old.filter(b=>b.id!==data.build.id)]);setPending(null);setText('');}catch(e){setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500))setPending(null);}finally{setBusy(false);}}
