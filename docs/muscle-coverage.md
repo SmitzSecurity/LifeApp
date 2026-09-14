@@ -1,6 +1,6 @@
 # Muscle coverage and the compact training workspace
 
-September 14, 2026. Programs and Start are the primary actions. Desktop pairs the launcher with muscle coverage; phones switch between Programs & session and Muscle map. Written logs, cardio, history, AI drafting and program editing open focused dialogs. Hiding a tool preserves its draft, stops dictation and restores focus; explicit Cancel discards a program edit. Training-only AI is a labeled placeholder. The owner plans separate training and finance analyses later; this release adds neither automatic requests nor new opt-ins.
+September 14, 2026. Programs and Start are the primary actions. Desktop pairs the launcher with muscle coverage; phones switch between Programs & session and Muscle map. Written logs, cardio, history, AI drafting and program editing open focused dialogs. X, Escape and Cancel discard unsaved tool edits, stop dictation and restore focus. In-flight or unconfirmed saves retain their exact retry payload. Training-only AI is available on explicit request (see docs/workout-logging.md). Finance analysis remains future work; no automatic training requests or new opt-ins are added.
 
 ## Volume and evidence
 

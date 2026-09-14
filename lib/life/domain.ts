@@ -1,3 +1,4 @@
+import {appearanceSchema} from './appearance.ts';
 import { reviewPreferencesSchema, defaultReviewPreferences } from './reviews.ts';
 import { z } from "zod/v3";
 export const modules = [
@@ -16,6 +17,7 @@ export type HabitStatus=z.infer<typeof statusSchema>;
 export const habitSchema=z.object({id:z.string().uuid(),title:z.string().trim().min(1).max(100),module:moduleId,archived:z.boolean()}).strict();
 export const profileSchema=z.object({
 goal:z.string().trim().max(300),
+appearance:appearanceSchema.optional(),
 budgetGoals:z.object({spending:z.string().max(1000),saving:z.string().max(1000),investing:z.string().max(1000)}).strict().nullable().default(null),
 analysisGuidance:z.array(z.object({id:z.string().uuid(),text:z.string().trim().min(1).max(500),createdAt:z.string().datetime(),sourceDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),cadence:z.enum(['daily','weekly','monthly','annual'])}).strict()).max(12).default([]),
 reviewPreferences:reviewPreferencesSchema.default(defaultReviewPreferences),

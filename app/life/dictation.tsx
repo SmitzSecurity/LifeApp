@@ -10,7 +10,7 @@ export default function Dictation({value,onChange,onListening,disabled=false,max
  const [supported,setSupported]=useState(false),[listening,setListening]=useState(false),[error,setError]=useState('');const recognition=useRef<Recognition|null>(null),callback=useRef(onChange);callback.current=onChange;
  useEffect(()=>{const w=window as SpeechWindow;setSupported(!!(w.SpeechRecognition||w.webkitSpeechRecognition));return()=>{const r=recognition.current;if(r){r.onresult=null;r.onend=null;r.onerror=null;r.abort();}};},[]);
  useEffect(()=>{onListening(listening);return()=>onListening(false);},[listening,onListening]);
- useEffect(()=>{if(!visible){recognition.current?.stop();setListening(false);}},[visible]);
+ useEffect(()=>{if(!visible){const r=recognition.current;if(r){r.onresult=null;r.onend=null;r.onerror=null;r.abort();recognition.current=null;}setListening(false);setError('');}},[visible]);
  function start(){setError('');const w=window as SpeechWindow,Ctor=w.SpeechRecognition||w.webkitSpeechRecognition;if(!Ctor)return;const r=new Ctor(),prefix=value.trim()?value.trim()+'\n':'';recognition.current=r;r.lang=navigator.language||'en-US';r.continuous=true;r.interimResults=false;
   r.onresult=event=>{const text=prefix+Array.from(event.results).filter(x=>x.isFinal).map(x=>x[0].transcript).join(' ');if(text.length>maxLength){setError('The text limit was reached. Shorten the text before continuing dictation.');r.stop();return;}callback.current(text);};
   r.onerror=e=>{setError(e.error==='not-allowed'?'Microphone access was not allowed. You can type or use keyboard dictation.':'Dictation stopped. Your text is still here.');setListening(false);};r.onend=()=>setListening(false);

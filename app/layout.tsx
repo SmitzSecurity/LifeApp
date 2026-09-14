@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import {appearanceBootstrap} from "@/lib/life/appearance";
 
 export const metadata: Metadata = {
   title: "LifeApp — Your daily check-in",
@@ -16,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning><head><script dangerouslySetInnerHTML={{__html:appearanceBootstrap()}} /></head>
       <body className="antialiased">{children}</body>
     </html>
   );

@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {todayIn,type Profile} from '@/lib/life/domain';
 import type {WorkoutNote,Saved} from '@/lib/life/modules';
-import {request,saveRecord,useUnsaved} from './shared';
+import {request,saveRecord,useUnsaved,useWorkoutCancel} from './shared';
 import {useItemSave} from './budget-fields';
 import StructuredWorkoutEditor from './structured-workout-editor';
 import Dictation from './dictation';
@@ -12,6 +12,7 @@ export default function WorkoutNotes({profile,onDirty,onSaved}:{profile:Profile;
  const today=todayIn(profile.timezone),[records,setRecords]=useState<Saved<WorkoutNote>[]>([]),[form,setForm]=useState(()=>fresh(today)),[listening,setListening]=useState(false),[notice,setNotice]=useState(''),[loadError,setLoadError]=useState('');
  const operation=useItemSave((record:Saved<WorkoutNote>)=>saveRecord('workout-note',record)),locked=listening||operation.busy||!!operation.pending;
  useUnsaved(!!form.data.text||form.data.minutes!==null||form.data.date!==today||form.version>0||locked,onDirty);
+ const cancel=useWorkoutCancel(()=>{setForm(fresh(today));setNotice('');operation.setError('');},operation.busy||!!operation.pending);
  async function load(){try{const result=await request('?kind=workout-note');setRecords(result.records);setLoadError('');}catch{setLoadError('Workout notes could not be loaded.');}}
  useEffect(()=>{void load();},[]);
  function edit(patch:Partial<WorkoutNote>){setForm({...form,data:{...form.data,...patch}});setNotice('');operation.setError('');}
@@ -21,7 +22,7 @@ export default function WorkoutNotes({profile,onDirty,onSaved}:{profile:Profile;
  <Dictation value={form.data.text} onChange={text=>edit({text})} onListening={setListening} disabled={operation.busy||!!operation.pending}/>
  {form.data.structured&&<fieldset disabled={locked}><StructuredWorkoutEditor value={form.data.structured} onChange={structured=>edit({structured})}/><p className="muted">Your saved structured sets remain editable and count toward muscle coverage.</p></fieldset>}
  {operation.error&&<p className="error" role="alert">{operation.error}</p>}{notice&&<p role="status" className="analysis-note">{notice}</p>}
- <div className="action-row written-save"><Button disabled={listening||operation.busy||!form.data.text.trim()} onClick={()=>void save()}>{operation.busy?'Saving…':operation.pending?'Retry save':form.data.structured?'Save workout':'Save workout note'}</Button><Button variant="ghost" disabled={locked} onClick={()=>{setForm(fresh(today));operation.setError('');}}>Cancel</Button></div>
+ <div className="action-row written-save"><Button disabled={listening||operation.busy||!form.data.text.trim()} onClick={()=>void save()}>{operation.busy?'Saving…':operation.pending?'Retry save':form.data.structured?'Save workout':'Save workout note'}</Button><Button variant="ghost" disabled={operation.busy||!!operation.pending} onClick={cancel}>Cancel</Button></div>
  {loadError&&<p role="alert">{loadError}<Button variant="ghost" onClick={()=>void load()}>Retry notes</Button></p>}
  <details className="workout-note-history"><summary>Recent workout notes ({records.filter(r=>!r.data.deleted).length})</summary>{records.filter(n=>!n.data.deleted).map(n=><article key={n.id} className={n.data.voided?'note-excluded':''}><div className="section-heading"><strong>{n.data.date}{n.data.minutes!==null?` · ${n.data.minutes} min`:''}{n.data.deleted?' · Trash':n.data.voided?' · Excluded':''}</strong><Button variant="ghost" disabled={locked||n.data.deleted||!!form.data.text||form.version>0} onClick={()=>{setForm(structuredClone(n));setNotice('');}}>Edit note</Button><Button variant="ghost" disabled={locked||!!form.data.text||form.version>0} onClick={()=>void save({...n,data:{...n.data,deleted:!n.data.deleted}})}>{n.data.deleted?'Restore':'Delete'}</Button></div><p>{n.data.text}</p></article>)}</details></section>;
 }

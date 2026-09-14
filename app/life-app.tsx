@@ -1,4 +1,5 @@
 "use client";
+import {useAppearance} from "./life/use-appearance";
 import { useEffect, useState } from "react";
 import { Check, ArrowRight, ArrowLeft, Plus, Archive, LoaderCircle, SquarePen, SlidersHorizontal, ShieldCheck, Menu, Search, RefreshCw, Wallet, Dumbbell, House, Download, LogOut, Trash2 } from "lucide-react";
 import { useDraftSync } from "./life/use-draft-sync";
@@ -39,6 +40,7 @@ export default function LifeApp({signOutHref="/signout-with-chatgpt?return_to=%2
  const [period,setPeriod]=useState<{cadence:PeriodCadence;date:string}|null>(null);
  const [aiBusy,setAiBusy]=useState(false);
  const [budgetDirty,setBudgetDirty]=useState(false),[gymDirty,setGymDirty]=useState(false);
+ useAppearance(profile?.appearance,tab==='settings'?config?.appearance:undefined,loaded);
  const setupDirty=!!config&&!!(profile||initialConfig)&&JSON.stringify(config)!==JSON.stringify(profile||initialConfig);
  const anyDirty=dirty||setupDirty||budgetDirty||gymDirty||aiBusy;
  async function load(){setError("");try{const data=await api();let p=data.profile as Profile|null;const detected=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";if(p&&p.timezoneMode==="automatic"&&p.timezone!==detected)p=(await api({action:"profile",profile:{...p,timezone:detected}})).profile;setProfile(p);const initial=p||freshProfile();setConfig(initial);setInitialConfig(initial);setEntries(data.entries);if(p){const requested=dateSchema.safeParse(new URLSearchParams(window.location.search).get('date'));const date=requested.success?requested.data:todayIn(p.timezone);let entry=data.entries.find((e:Entry)=>e.date===date);if(!entry){const response=await fetch('/api/life?date='+encodeURIComponent(date),{cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error||'Unable to open the saved day.');entry=result.entry;}sync.open(entry||emptyEntry(p,date));if(requested.success){const cadence=new URLSearchParams(window.location.search).get("analysis");if(cadence&&["weekly","monthly","annual"].includes(cadence)){setPeriod({cadence:cadence as PeriodCadence,date});setTab("analysis");}else setTab("today");}}setLoaded(true);}catch(e){setError((e as Error).message);}}
