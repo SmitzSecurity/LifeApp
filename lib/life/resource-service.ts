@@ -1,3 +1,4 @@
+import {scheduledInMonth} from './budget-schedule.ts';
 import {trashState,retentionMs} from './trash.ts';
 import { z } from 'zod/v3';
 import { todayIn, type Profile } from './domain.ts';
@@ -54,10 +55,12 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    if(id!==occurrenceId(period,t.recurringId))return json({error:'Invalid scheduled occurrence.'},400);
    const recurring=plan?.recurring.find(r=>r.id===t.recurringId);
    if(!recurring||recurring.kind!==t.kind||recurring.categoryId!==t.categoryId)return json({error:'This scheduled payment changed. Reload the monthly plan.'},409);
+   if(!previous&&!scheduledInMonth(period,recurring))return json({error:'This payment is outside the saved schedule. Edit its schedule first.'},409);
    if(recurring.deleted&&!previous)return json({error:'This monthly item was deleted. Restore it in the monthly plan first.'},409);
   }else if(id.startsWith('due:'))return json({error:'Missing scheduled occurrence.'},400);
   data={...t,categoryId:t.kind==='expense'?t.categoryId:'',categoryName:t.kind==='expense'?category!.name:''};
  }
+ if(kind==='budget'&&(data as Budget).recurring.some(r=>r.debt&&(r.debt.balanceDate>todayIn(profile.timezone,now)||r.debt.balanceDate<'1900-01-01')))return json({error:'Use a statement balance date between 1900 and today.'},400);
  if(kind==='budget'&&previous){
   const p=data as Budget,old=previous.data as Budget;
   if(old.recurring.some(r=>r.purged&&JSON.stringify(r)!==JSON.stringify(p.recurring.find(n=>n.id===r.id))))return json({error:'Permanently deleted monthly items cannot be changed.'},410);

@@ -1,3 +1,4 @@
+import {readDebtPayments} from './debt-service.ts';
 import {listTrash,changeTrash,trashState} from './trash.ts';
 import {setRecordDeleted} from './record-deletion.ts';
 import {generateTraining,personalExercises} from './training-ai.ts';
@@ -33,6 +34,8 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
    if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout');
    if(new URL(request.url).searchParams.has('training-analyses'))return await listRoutineBuilds(db,userId,ai,now,'training');
+   if(new URL(request.url).searchParams.has('debt-payments'))return await readDebtPayments(request,db,userId);
+   if(new URL(request.url).searchParams.has('budget-builds'))return await listRoutineBuilds(db,userId,ai,now,'budget');
    if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);
    if(new URL(request.url).searchParams.has('periodic'))return await periodConsentStatus(db,userId,ai,now);
@@ -50,12 +53,16 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   const origin=request.headers.get('origin');
   if(request.headers.get('sec-fetch-site')==='cross-site'||(origin&&origin!==new URL(request.url).origin))return json({error:'Open LifeApp directly to save changes.'},403);
   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Expected JSON.'},415);
-  if(Number(request.headers.get('content-length')||0)>65536)return json({error:'This entry is too large.'},413);
-  const bodyText=await request.text();
-  if(new TextEncoder().encode(bodyText).length>65536)return json({error:'This entry is too large.'},413);
+  const budgetUpload=new URL(request.url).searchParams.has('budget-build'),limit=budgetUpload?1_500_000:65536;
+  if(Number(request.headers.get('content-length')||0)>limit)return json({error:'This entry or image is too large.'},413);
+  const reader=request.body?.getReader(),chunks:Uint8Array[]=[];let size=0;
+  if(reader)for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>limit){await reader.cancel();return json({error:'This entry or image is too large.'},413);}chunks.push(part.value);}
+  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}const bodyText=new TextDecoder().decode(bytes);
   let body:unknown;try{body=JSON.parse(bodyText)}catch{return json({error:'Invalid request.'},400);}
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);
   const b=body as Record<string,unknown>;
+  if(budgetUpload&&b.action!=='budget-build')return json({error:'Use this endpoint only for budget building.'},400);
+  if(b.action==='budget-build')return await buildRoutines(db,userId,b.build,ai,now,'budget');
   if(b.action==='trash')return await changeTrash(db,userId,b.change,now);
   if(b.action==='record-deletion')return await setRecordDeleted(db,userId,b.change,now);
   if(b.action==='history')return await readHistory(db,userId,b.filters);

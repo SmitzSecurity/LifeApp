@@ -5,6 +5,10 @@ import {Pencil,Plus} from 'lucide-react';
 import {todayIn,type Profile} from '@/lib/life/domain';
 import {budgetSchema,transactionSchema,budgetSummary,occurrenceId,money,type Budget,type Transaction,type Saved} from '@/lib/life/modules';
 import type {BudgetItemChange} from '@/lib/life/budget-items';
+import BudgetBuilder from './budget-builder';
+import BudgetDebts from './budget-debts';
+import {scheduledInMonth} from '@/lib/life/budget-schedule';
+import './budget-builder.css';
 import BudgetGoals from './budget-goals';
 import CategoryAllowance from './budget-category';
 import BudgetSection from './budget-section';
@@ -19,7 +23,7 @@ const blankPlan=():Budget=>budgetSchema.parse({currency:'USD',categories:['Housi
 export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Profile;onDirty:(v:boolean)=>void;onProfileSaved:(p:Profile)=>void}){
  const today=todayIn(profile.timezone),[month,setMonth]=useState(today.slice(0,7)),[plan,setPlan]=useState<Saved<Budget>|null>(null),[transactions,setTransactions]=useState<Saved<Transaction>[]>([]);
  const [quick,setQuick]=useState<Saved<Transaction>|null>(null),[newCategory,setNewCategory]=useState<Budget['categories'][number]|null>(null),[recurring,setRecurring]=useState<{item:Recurring;previous:Recurring|null}|null>(null);
- const [ordering,setOrdering]=useState(false);
+ const [ordering,setOrdering]=useState(false),[building,setBuilding]=useState(false);
  const [loading,setLoading]=useState(false),[ready,setReady]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[dirtyItems,setDirtyItems]=useState<Record<string,boolean>>({}),[goalsDirty,setGoalsDirty]=useState(false);
  const planRef=useRef<Saved<Budget>|null>(null),loadSequence=useRef(0);
  const reportDirty:DirtyReporter=useCallback((id,dirty)=>setDirtyItems(previous=>!!previous[id]===dirty?previous:{...previous,[id]:dirty}),[]);
@@ -43,10 +47,10 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
   // prerequisite button or a reason to commit another editor's draft.
   const current=planRef.current;if(!current)throw Error('Reopen the budget and try again.');
   if(!current.version)await saveItem({kind:'initialize',month,initial:current.data});
-  try{const saved=await saveRecord('transaction',record);setTransactions(previous=>{const newer=previous.find(t=>t.id===saved.id);return newer&&newer.version>saved.version?previous:[saved,...previous.filter(t=>t.id!==saved.id)];});setNotice(saved.data.deleted?'Transaction deleted. You can restore it below.':saved.data.voided?'Transaction voided.':'Transaction saved.');return saved;}
+  try{const saved=await saveRecord('transaction',record);setTransactions(previous=>{const newer=previous.find(t=>t.id===saved.id);return newer&&newer.version>saved.version?previous:[saved,...previous.filter(t=>t.id!==saved.id)];});setNotice(saved.data.deleted?'Transaction deleted. You can restore it in Trash.':saved.data.voided?'Transaction voided.':'Transaction saved.');return saved;}
   catch(e){if((e as {status?:number}).status===409){try{const latest=await request('?kind=transaction&month='+month);setTransactions(latest.records.map((t:Saved<Transaction>)=>({...t,data:transactionSchema.parse(t.data)})));}catch{}throw Object.assign(Error('This transaction changed in another session. Cancel to load its saved values, then edit again.'),{status:409});}throw e;}
  }
- function addRecurring(){setRecurring({previous:null,item:{id:crypto.randomUUID(),title:'',kind:'expense',categoryId:plan?.data.categories.find(c=>!c.archived)?.id||'',amountCents:0,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,active:true,deleted:false}});}
+ function addRecurring(loan=false){setRecurring({previous:null,item:{id:crypto.randomUUID(),title:'',kind:'expense',categoryId:plan?.data.categories.find(c=>!c.archived)?.id||'',amountCents:0,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,active:true,deleted:false,...(loan?{startDate:month+'-01',debt:{originalBalanceCents:0,balanceCents:0,balanceDate:today,annualRatePercent:0,interestMethod:'monthly' as const,otherPaymentCents:0}}:{})}});}
  function editRecurring(item:Recurring){setRecurring({previous:structuredClone(item),item:structuredClone(item)});}
  const hasTransactionDraft=(scope:string)=>!!dirtyItems['transaction-editor:'+scope];
  const hasDirtyPrefix=(prefix:string)=>Object.entries(dirtyItems).some(([key,value])=>value&&key.startsWith(prefix));
@@ -54,9 +58,9 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
  const summary=plan?budgetSummary(plan.data,transactions,month):null;
  // Keep an editor mounted if another item action archives its category or
  // removes its recurrence. Its draft stays available to finish or cancel.
- const displayedDue=plan?budgetSummary({...plan.data,recurring:plan.data.recurring.map(r=>hasTransactionDraft('due:'+occurrenceId(month,r.id))?{...r,active:true,deleted:false}:r)},transactions,month).due:[];
+ const displayedDue=plan?budgetSummary({...plan.data,recurring:plan.data.recurring.map(r=>hasTransactionDraft('due:'+occurrenceId(month,r.id))?{...r,active:true,deleted:false,startDate:undefined,endDate:undefined,installments:undefined,debt:undefined}:r)},transactions,month).due:[];
  const txProps=plan?{plan,today,onSave:saveTransaction,onDirty:reportDirty}:null;
- return <section className="budget-workspace"><div className="budget-toolbar"><h2>Your month</h2><label className="compact-field">Month<input aria-label="Budget month" type="month" value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onInput={e=>{if(e.currentTarget.value)setMonth(e.currentTarget.value);}} onChange={e=>{if(e.target.value)setMonth(e.target.value);}}/></label></div>
+ return <section className="budget-workspace"><div className="budget-toolbar"><h2>Your month</h2><Button variant="secondary" disabled={!ready} onClick={()=>setBuilding(true)}>Build with AI</Button><label className="compact-field">Month<input aria-label="Budget month" type="month" value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onInput={e=>{if(e.currentTarget.value)setMonth(e.currentTarget.value);}} onChange={e=>{if(e.target.value)setMonth(e.target.value);}}/></label></div>
  {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="budget-notice">{notice}</p>}
  {!ready?<Button disabled={loading} onClick={()=>void load()}>{loading?'Opening budget…':'Retry budget'}</Button>:plan&&summary&&txProps&&<div key={month}>
  <div className="metric-grid budget-metrics">{[['Income',summary.income],['Spent',summary.expenses],['Saved / invested',summary.saving+summary.investing],['Cash flow',summary.cashFlow]].map(([label,value])=><div key={label}><small>{label}</small><strong>{money(value as number)}</strong></div>)}</div>
@@ -66,16 +70,18 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
  {newCategory&&<CategoryAllowance key={newCategory.id} category={newCategory} plan={plan} isNew onSave={saveItem} onDirty={reportDirty} onDone={()=>setNewCategory(null)}/>}
  {!newCategory&&<Button variant="ghost" disabled={plan.data.categories.length>=30} onClick={()=>setNewCategory({id:crypto.randomUUID(),name:'',limitCents:0,archived:false})}><Plus/>Category</Button>}
  {plan.data.categories.some(c=>c.archived)&&<details className="deleted-items"><summary>Archived categories</summary>{plan.data.categories.filter(c=>c.archived).map(c=><SaveItemButton key={c.id} id={'restore-category:'+c.id} label={'Restore '+c.name} item={{kind:'category',month,previous:c,item:{...c,archived:false},...(!plan.version?{initial:plan.data}:{})} as BudgetItemChange} save={saveItem} onDirty={reportDirty}/>)}</details>}
- <BudgetSection id="recurring" title="Recurring income & expenses" className="recurring-list" dirty={hasDirtyPrefix('restore-recurring:')} actions={<Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={addRecurring}><Plus/>Add recurring item</Button>}>
- {!plan.data.recurring.some(r=>!r.deleted)&&<p className="muted">Add the bills and income you expect each month.</p>}
- {plan.data.recurring.filter(r=>!r.deleted).map(r=><button className="recurring-summary" key={r.id} onClick={()=>editRecurring(r)}><span><strong>{r.title}</strong><small>{r.kind==='income'?'Income':plan.data.categories.find(c=>c.id===r.categoryId)?.name||'Expense'} · {recurringDescription(r)}</small>{(r.variable||!r.active)&&<small className="recurring-label">{r.variable?'Variable · Estimated amount':''}{!r.active?(r.variable?' · Paused':'Paused'):''}</small>}</span><strong>{money(r.amountCents)}</strong><Pencil aria-hidden="true"/></button>)}
+ <BudgetSection id="recurring" title="Recurring income & expenses" className="recurring-list" dirty={hasDirtyPrefix('restore-recurring:')} actions={<Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={()=>addRecurring()}><Plus/>Add recurring item</Button>}>
+ {!plan.data.recurring.some(r=>!r.deleted&&!r.debt)&&<p className="muted">Add the bills and income you expect each month.</p>}
+ {plan.data.recurring.filter(r=>!r.deleted&&!r.debt).map(r=><button className="recurring-summary" key={r.id} onClick={()=>editRecurring(r)}><span><strong>{r.title}</strong><small>{r.kind==='income'?'Income':plan.data.categories.find(c=>c.id===r.categoryId)?.name||'Expense'} · {recurringDescription(r)}</small>{!scheduledInMonth(month,r)&&<small className="recurring-label">Outside schedule</small>}{(r.variable||!r.active)&&<small className="recurring-label">{r.variable?'Variable · Estimated amount':''}{!r.active?(r.variable?' · Paused':'Paused'):''}</small>}</span><strong>{money(r.amountCents)}</strong><Pencil aria-hidden="true"/></button>)}
  </BudgetSection>
  </BudgetSection></div>
+ <BudgetDebts dirtyItems={dirtyItems} plan={plan} today={today} transactions={transactions} onEdit={editRecurring} onAdd={()=>addRecurring(true)} onSave={saveTransaction} onDirty={reportDirty}/>
  <div className="budget-columns budget-history"><BudgetSection id="history" title="Transaction history" className="module-card" dirty={hasDirtyPrefix('transaction-editor:history:')||hasDirtyPrefix('transaction-editor:deleted:')||hasDirtyPrefix('transaction-action:history:')||hasDirtyPrefix('transaction-action:deleted:')}>{!transactions.some(t=>!t.data.deleted)&&<p className="muted">Your recorded transactions appear here.</p>}{transactions.filter(t=>!t.data.deleted||hasTransactionDraft('history:'+t.id)).sort((a,b)=>b.data.date.localeCompare(a.data.date)).map(t=><TransactionTile key={t.id} {...txProps} record={t} scope={'history:'+t.id}/>)}
  </BudgetSection>
  <BudgetSection id="expected" title="Expected income & expenses" className="module-card" dirty={hasDirtyPrefix('transaction-editor:due:')}><div className="forecast-totals"><span>Income <strong>{money(summary.due.filter(r=>!r.recorded&&r.kind==='income').reduce((n,r)=>n+r.amountCents,0))}</strong></span><span>Expenses <strong>{money(summary.due.filter(r=>!r.recorded&&r.kind==='expense').reduce((n,r)=>n+r.amountCents,0))}</strong></span></div>
  {!summary.due.length&&<p className="muted">Add a recurring item to see expected payments.</p>}{[...displayedDue].sort((a,b)=>a.date.localeCompare(b.date)).map(r=><ExpectedItem key={r.id} {...txProps} due={r} source={plan.data.recurring.find(x=>occurrenceId(month,x.id)===r.id)!} transaction={transactions.find(t=>t.id===r.id)} onEditRecurring={editRecurring}/>)}</BudgetSection></div>
  <footer className="budget-footer"><span>Recorded totals exclude estimates.</span><BudgetGoals profile={profile} fallback={plan.data.goals} onProfileSaved={onProfileSaved} onDirty={setGoalsDirty} disabled={false}/></footer>
+ {building&&<BudgetBuilder plan={plan} onSave={saveItem} onClose={()=>setBuilding(false)} onDirty={reportDirty}/>}
  {recurring&&<RecurringDialog key={recurring.item.id} {...recurring} plan={plan} onSave={saveItem} onClose={()=>setRecurring(null)} onDirty={reportDirty}/>} {ordering&&<BudgetOrder plan={plan} onSave={saveItem} onClose={()=>setOrdering(false)} onDirty={reportDirty}/>}</div>}
  </section>;
 }

@@ -47,6 +47,8 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 
 This is a private web beta, not an app-store release. On September 9, 2026, the owner confirmed Google sign-in and check-in persistence on the deployed Cloudflare app, then supplied a screenshot of a completed Gemini review for a synthetic check-in with measured usage and no remaining reservation. Independent provider invoice reconciliation and live cross-account isolation checks remain outstanding. The old Sites app and its records remain separate until verified account/data cutover. See `docs/architecture.md` for the migration boundary and remaining capabilities.
 
+See [Budget builder and loans](docs/budget-builder-and-loans.md) for pasted-text/image drafts, finite recurring schedules, payoff estimates and their verification boundaries.
+
 ## Validation
 
 For independent development, use Node 24 and `npm ci`, then:

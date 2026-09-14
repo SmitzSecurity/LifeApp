@@ -10,6 +10,7 @@ export const budgetItemSchema=z.discriminatedUnion('kind',[
  z.object({...base,kind:z.literal('initialize'),initial:budgetSchema}).strict(),
  z.object({...base,kind:z.literal('category'),previous:categorySchema.nullable(),item:categorySchema}).strict(),
  z.object({...base,kind:z.literal('recurring'),previous:recurringSchema.nullable(),item:recurringSchema}).strict(),
+ z.object({...base,kind:z.literal('import'),categories:z.array(z.object({previous:categorySchema.nullable(),item:categorySchema}).strict()).max(20),recurring:z.array(z.object({previous:recurringSchema.nullable(),item:recurringSchema}).strict()).max(30)}).strict(),
  z.object({...base,kind:z.literal('category-order'),previous:categoryOrder,order:categoryOrder}).strict(),
 ]);
 export type BudgetItemChange=z.infer<typeof budgetItemSchema>;
@@ -39,17 +40,24 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
    if(!same(ids,change.previous))return json({error:'The category list changed in another session. Cancel and reopen Reorder to use its saved order.',record:latest},409);
    data={...current,categories:change.order.map(id=>current.categories.find(c=>c.id===id)!)};
   }else if(change.kind!=='initialize'){
-   const list=change.kind==='category'?current.categories:current.recurring;
-   const existing=list.find(item=>item.id===change.item.id)||null;
-   if(latest&&same(existing,change.item))return json({record:latest});
-   if(!same(existing,change.previous))return json({error:'This item changed in another session. Cancel to load its saved values, then edit again.',record:latest},409);
-   if(change.kind==='recurring'&&change.previous&&(change.previous.kind!==change.item.kind||change.previous.categoryId!==change.item.categoryId)){
-    const payment=await readResource(db,userId,'transaction',occurrenceId(change.month,change.item.id));
-    if(payment)return json({error:'This item has a recorded payment. Keep its type and category, or add a new recurring item.'},400);
+   const edits=change.kind==='import'?[...change.categories.map(c=>({...c,kind:'category' as const})),...change.recurring.map(r=>({...r,kind:'recurring' as const}))]:[change];
+   if(edits.some(e=>e.previous&&e.previous.id!==e.item.id)||new Set(edits.map(e=>e.kind+e.item.id)).size!==edits.length)return json({error:'Each draft item must have its own unchanged ID.'},400);
+   let changed=false;
+   for(const edit of edits){
+    const items=edit.kind==='category'?data.categories:data.recurring;
+    const existing=items.find(item=>item.id===edit.item.id)||null;
+    if(same(existing,edit.item))continue;
+    if(!same(existing,edit.previous))return json({error:'This item changed in another session. Cancel and reopen it to use the latest values.',record:latest},409);
+    if(change.kind==='import'&&!existing&&items.some(item=>edit.kind==='category'?'name' in item&&item.name.toLowerCase()===edit.item.name.toLowerCase():'title' in item&&item.title.toLowerCase()===edit.item.title.toLowerCase()))return json({error:'An item with this name already exists. Review the draft against the latest budget.',record:latest},409);
+    if(edit.kind==='recurring'&&edit.previous&&(edit.previous.kind!==edit.item.kind||edit.previous.categoryId!==edit.item.categoryId)){
+     const payment=await readResource(db,userId,'transaction',occurrenceId(change.month,edit.item.id));
+     if(payment)return json({error:'This item has a recorded payment. Keep its type and category, or add a new recurring item.'},400);
+    }
+    if(edit.kind==='category')data={...data,categories:existing?data.categories.map(c=>c.id===edit.item.id?edit.item:c):[...data.categories,edit.item]};
+    else data={...data,recurring:existing?data.recurring.map(r=>r.id===edit.item.id?edit.item:r):[...data.recurring,edit.item]};
+    changed=true;
    }
-   data=change.kind==='category'?{...current,categories:[...current.categories.filter(x=>x.id!==change.item.id),change.item]}:{...current,recurring:[...current.recurring.filter(x=>x.id!==change.item.id),change.item]};
-   // Preserve the user's list order when editing an existing item.
-   if(existing)data=change.kind==='category'?{...data,categories:current.categories.map(x=>x.id===change.item.id?change.item as Budget['categories'][number]:x)}:{...data,recurring:current.recurring.map(x=>x.id===change.item.id?change.item as Budget['recurring'][number]:x)};
+   if(!changed&&latest)return json({record:latest});
   }
   const saved=await saveResource({kind:'budget',id:change.month,version:latest?.version||0,data},db,userId,profile,now);
   if(saved.status!==409)return saved;
