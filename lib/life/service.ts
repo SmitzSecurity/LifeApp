@@ -1,6 +1,7 @@
 import { listAI, generateAI, type AISettings } from './ai-service.ts';
 import { automaticConsentStatus, saveAutomaticConsent } from './automatic-consent.ts';
 import {exportAccount} from './export.ts';
+import {buildRoutines,listRoutineBuilds} from './routine-builder.ts';
 import {readHistory} from './history.ts';
 import {saveAnalysisFeedback} from './analysis-feedback.ts';
 import {periodConsentStatus,savePeriodConsent} from './period-consent.ts';
@@ -23,6 +24,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
  if(!userId)return json({error:'Sign in to open your journal.'},401);
  try{
   if(request.method==='GET'){
+   if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);
    if(new URL(request.url).searchParams.has('periodic'))return await periodConsentStatus(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('automatic'))return await automaticConsentStatus(db,userId,ai,now);
@@ -47,6 +49,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   const b=body as Record<string,unknown>;
   if(b.action==='history')return await readHistory(db,userId,b.filters);
   const updated=now.toISOString();
+  if(b.action==='routine-build')return await buildRoutines(db,userId,b.build,ai,now);
   if(b.action==='analysis-feedback')return await saveAnalysisFeedback(db,userId,b.feedback,now);
   if(b.action==='period-consent')return await savePeriodConsent(db,userId,b.consent,ai,now);
   if(b.action==='automatic-consent')return await saveAutomaticConsent(db,userId,b.consent,ai,now);

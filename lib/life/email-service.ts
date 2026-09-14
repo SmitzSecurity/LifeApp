@@ -1,3 +1,4 @@
+import {renderReportMarkdown} from './report-markdown.ts';
 import {z} from 'zod/v3';
 import type {Database} from './service.ts';
 import {savedDayQuery} from './saved-day-link.ts';
@@ -60,7 +61,7 @@ export function reportEmail(input:{date:string;cadence?:Cadence;revision:number;
  const footer='This is the saved AI report. It can be mistaken; your own judgment matters. You chose full-report emails in LifeApp.';
  return {from:settings.from,to:input.recipient,subject:title,
   text:`${title}\n\n${input.text}\n\nOpen your saved day: ${url}\n\n${footer}\nStop report emails: ${unsubscribe}`,
-  html:`<!doctype html><html><body style="margin:0;padding:32px 16px;background:#f6f7f3;color:#203a35;font-family:Arial,sans-serif"><main style="max-width:620px;margin:auto;background:#fff;padding:32px;border:1px solid #e2e8de;border-radius:12px"><p style="font-size:12px;letter-spacing:2px;color:#6c7e70">LIFEAPP · ONE DAY AT A TIME</p><h1 style="font-family:Georgia,serif;font-weight:400;font-size:26px">${escape(title)}</h1><div style="white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.8">${escape(input.text)}</div><p style="margin-top:28px"><a href="${escape(url)}" style="color:#286349">Open your saved day</a></p><p style="font-size:12px;line-height:1.6;color:#6c7e70">${footer}</p><p style="font-size:12px"><a href="${escape(unsubscribe)}" style="color:#6c7e70">Stop report emails</a></p></main></body></html>`,
+  html:`<!doctype html><html><body style="margin:0;padding:32px 16px;background:#f6f7f3;color:#203a35;font-family:Arial,sans-serif"><main style="max-width:620px;margin:auto;background:#fff;padding:32px;border:1px solid #e2e8de;border-radius:12px"><p style="font-size:12px;letter-spacing:2px;color:#6c7e70">LIFEAPP · ONE DAY AT A TIME</p><h1 style="font-family:Georgia,serif;font-weight:400;font-size:26px">${escape(title)}</h1><div style="overflow-wrap:anywhere;line-height:1.8">${renderReportMarkdown(input.text)}</div><p style="margin-top:28px"><a href="${escape(url)}" style="color:#286349">Open your saved day</a></p><p style="font-size:12px;line-height:1.6;color:#6c7e70">${footer}</p><p style="font-size:12px"><a href="${escape(unsubscribe)}" style="color:#6c7e70">Stop report emails</a></p></main></body></html>`,
   headers:{'List-Unsubscribe':`<${unsubscribe}>`,'List-Unsubscribe-Post':'List-Unsubscribe=One-Click'}
  };
 }

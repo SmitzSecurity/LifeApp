@@ -1,4 +1,4 @@
-import {buildReviewContext} from './review-context.ts';
+import {buildReviewContext,workoutNoteContext} from './review-context.ts';
 import {activityTotals,type ActivityRecords} from './activity.ts';
 import {type Entry,type Profile,score} from './domain.ts';
 import {completionIssues,type Cadence,type ReviewRecord} from './reviews.ts';
@@ -14,6 +14,6 @@ export function buildPeriodContext(profile:Profile,cadence:Cadence,from:string,t
  return {...base,entries:sample.map(e=>({date:e.date,journalExcerpt:e.journal.slice(0,cadence==='weekly'?1200:400),contextExcerpts:Object.fromEntries(Object.entries(e.context).map(([k,v])=>[k,v?.slice(0,120)])),score:score(e.habits)})),
   sampling:{completedSourceDays:complete.length,excerptDays:sample.length,journalTextMayBeTruncated:true,method:complete.length>24?'24 evenly spaced completed days':'Every completed day',instruction:'Use totals for overall patterns. Excerpts are partial evidence; do not claim to have read omitted text.'},
   habitTotals:[...habits.values()].slice(0,50),omittedHabitGroups:Math.max(0,habits.size-50),activity:activityTotals(activity,from,through),
-  priorReviews:earlier.map(r=>({...r,content:r.content.slice(0,800),excerpt:true})),workouts:[],cardio:[],
+  priorReviews:earlier.map(r=>({...r,content:r.content.slice(0,800),excerpt:true})),workouts:[],cardio:[],...workoutNoteContext(activity.workoutNotes||[],from,through,12,500),
  };
 }

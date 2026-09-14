@@ -10,7 +10,7 @@ export const budgetSchema=z.object({currency:z.literal('USD'),categories:z.array
  if(p.recurring.some(r=>r.kind==='expense'&&!p.categories.some(x=>x.id===r.categoryId)))c.addIssue({code:'custom',message:'Choose a category for every scheduled payment.'});
 });
 export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),voided:z.boolean(),deleted:z.boolean().default(false)}).strict();
-export const exerciseSchema=z.object({id:uuid,name:title,sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict();
+export const exerciseSchema=z.object({id:uuid,name:title,sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
 export const routineSchema=z.object({name:title,preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
 export const setSchema=z.object({exerciseId:uuid,setNumber:z.number().int().min(1).max(20),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
 export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(600),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable()}).strict().superRefine((w,c)=>{
@@ -26,9 +26,11 @@ export type Exercise=z.infer<typeof exerciseSchema>;
 export const cardioSchema=z.object({date:dateSchema,activity:z.enum(['walk','run','cycle','swim','row','elliptical','other']),minutes:z.number().min(1).max(1440),distance:z.number().min(0).max(2000).nullable(),unit:z.enum(['km','mi','m']),intensity:z.enum(['easy','moderate','hard']),note:z.string().trim().max(500),voided:z.boolean()}).strict();
 export type Cardio=z.infer<typeof cardioSchema>;
 export type Saved<T>={id:string;data:T;version:number;updatedAt?:string};
-export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio']);
+export const workoutNoteSchema=z.object({date:dateSchema,text:z.string().trim().min(1).max(5000),minutes:z.number().int().min(1).max(1440).nullable(),voided:z.boolean()}).strict();
+export type WorkoutNote=z.infer<typeof workoutNoteSchema>;
+export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note']);
 export type ResourceKind=z.infer<typeof resourceKind>;
-export const resourceSchemas={budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema};
+export const resourceSchemas={budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema};
 export function parseMoney(value:string):number{
  if(!/^\d{1,7}(\.\d{1,2})?$/.test(value.trim()))throw new Error('Enter an amount with at most two decimal places.');
  const [whole,fraction='']=value.trim().split('.');const n=Number(whole)*100+Number(fraction.padEnd(2,'0'));

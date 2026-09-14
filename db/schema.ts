@@ -54,3 +54,9 @@ export const emailOutbox=sqliteTable('life_email_outbox',{
  check('email_outbox_state',sql`${t.state} IN ('pending','sending','sent','retry','failed','uncertain','cancelled')`)]);
 
 export const periodConsent=sqliteTable('life_period_consent',{userId:text('user_id').primaryKey(),enabled:integer('enabled').notNull(),version:integer('version').notNull(),policyVersion:text('policy_version').notNull(),startDate:text('start_date').notNull(),acceptedAt:text('accepted_at').notNull(),updatedAt:text('updated_at').notNull(),lastConsideredAt:text('last_considered_at')});
+
+export const routineBuilds=sqliteTable('life_routine_builds',{
+ userId:text('user_id').notNull(),requestId:text('request_id').notNull(),status:text('status').notNull(),
+ inputSnapshot:text('input_snapshot').notNull(),resultJson:text('result_json'),model:text('model').notNull(),priceVersion:text('price_version').notNull(),providerId:text('provider_id'),
+ inputTokens:integer('input_tokens'),outputTokens:integer('output_tokens'),thoughtTokens:integer('thought_tokens'),reservedMicros:integer('reserved_micros').notNull(),costMicros:integer('cost_micros'),createdAt:text('created_at').notNull(),finishedAt:text('finished_at'),errorCode:text('error_code')
+},t=>[primaryKey({columns:[t.userId,t.requestId]}),index('idx_life_routine_build_time').on(t.userId,t.createdAt)]);

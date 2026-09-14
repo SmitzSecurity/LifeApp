@@ -89,3 +89,19 @@
 .category-position{font-size:.7rem;color:var(--muted-foreground);width:18px;flex-shrink:0;text-align:center}
 .category-order-name{flex:1;min-width:0;overflow-wrap:anywhere;font-size:.85rem}.category-order-list [data-slot=button]{width:40px;height:40px;flex-shrink:0}
 .category-order-dialog>[data-slot=dialog-footer]{display:flex;flex-direction:row;justify-content:flex-end;border-top:1px solid var(--border);padding-top:12px}
+.analysis-markdown{white-space:normal;overflow-wrap:anywhere;overflow-x:auto}.analysis-markdown>:first-child{margin-top:0!important}.analysis-markdown>:last-child{margin-bottom:0!important}.analysis-markdown ul{list-style:disc}.analysis-markdown ol{list-style:decimal}.analysis-markdown li>p{margin-bottom:6px!important}.analysis-markdown a{color:var(--primary);text-decoration:underline}.analysis-markdown pre{overflow-x:auto;background:var(--muted);padding:12px;border-radius:6px}.analysis-markdown code{font-size:.9em}
+.workout-note-history { margin-top: 1.1rem; }
+.workout-note-history article, .routine-build-result { border-top: 1px solid var(--line, #454545); margin-top: 1rem; padding-top: 1rem; }
+.workout-note-history p, .builder-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
+.note-excluded > p { text-decoration: line-through; opacity: .65; }
+.dictation-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .5rem 0; }
+.routine-builder summary, .training-guidance summary, .workout-note-history summary { cursor: pointer; font-weight: 650; }
+.routine-builder details > p { margin-top: 1rem; }
+.routine-builder .builder-consent { font-size: .85rem; }
+.routine-draft { padding: 1rem 0; }
+.routine-draft ul { list-style: none; padding: 0; margin: .5rem 0; }
+.routine-draft li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .25rem 1rem; padding: .35rem 0; border-bottom: 1px solid var(--line, #454545); }
+.routine-draft li small { color: var(--muted, #bbb); }
+.training-guidance p { margin-top: .75rem; }
+.training-guidance a { text-decoration: underline; }
+.module-card:has(> h3 + .compact-field) { scroll-margin-top: 5rem; }

@@ -6,6 +6,7 @@ import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertD
 import type {Entry,Profile} from '@/lib/life/domain';
 import type {Cadence} from '@/lib/life/reviews';
 import {request} from './shared';
+import AnalysisText from './analysis-text';
 export type AnalysisReport={id:string;date:string;cadence:Cadence;from:string;revision:number;sourceVersion:number;status:string;text:string|null};
 type State={available:boolean;reports:AnalysisReport[];regenerationsRemaining:number};
 type Props={entry?:Entry|null;date?:string;cadence?:Cadence;profile:Profile;synced:boolean;heading?:string;onBusy:(busy:boolean)=>void;onProfileSaved:(profile:Profile)=>void;onSettings:()=>void;onGenerated?:()=>void};
@@ -37,7 +38,7 @@ export default function AIReview({entry,date,cadence='daily',profile,synced,head
  return <section className="analysis-card" aria-label={heading}>
   <div className="analysis-heading"><h2>{heading}</h2><Button variant="ghost" size="icon" aria-label="Refresh analysis" disabled={busy} onClick={()=>{setError('');void refresh();}}><RotateCw/></Button></div>
   {!data&&!error&&<p className="muted">Opening analysis…</p>}
-  {shown?.text?<div className="analysis-copy">{shown.text}</div>:data&&<p className="analysis-empty">{unconfirmed?'The analysis is not ready yet.':cadence==='daily'?ready?'Your analysis is ready to generate.':`Your next analysis appears here after a complete journal entry is saved. Daily analysis runs around ${profile.reviewPreferences.daily.time}.`:'No analysis has been generated for this period yet.'}</p>}
+  {shown?.text?<AnalysisText text={shown.text}/>:data&&<p className="analysis-empty">{unconfirmed?'The analysis is not ready yet.':cadence==='daily'?ready?'Your analysis is ready to generate.':`Your next analysis appears here after a complete journal entry is saved. Daily analysis runs around ${profile.reviewPreferences.daily.time}.`:'No analysis has been generated for this period yet.'}</p>}
   {busy&&<p className="analysis-progress" role="status"><LoaderCircle className="spin"/>Preparing your analysis…</p>}
   {unconfirmed&&!busy&&<p className="analysis-note">{latest.status==='generating'?'Analysis is in progress. Check its status in a moment.':'This analysis could not be confirmed. Your journal and earlier analyses are safe.'}</p>}
   {error&&!feedbackOpen&&<p className="error" role="alert">{error}</p>}
@@ -50,7 +51,7 @@ export default function AIReview({entry,date,cadence='daily',profile,synced,head
   {data&&!latest&&ready&&<p className="analysis-note">Uses your saved journal and preferences with Google Gemini.</p>}
   {shown&&!ready&&<p className="analysis-note">Save a complete entry to regenerate its analysis.</p>}
   {!!latest&&data?.regenerationsRemaining===0&&<p className="analysis-note">Regeneration limit reached for today. You can still save feedback.</p>}
-  {historyOpen&&<div className="analysis-versions">{reports.filter(r=>r.status==='complete'&&r.id!==shown?.id).map(r=><article key={r.id}><h3>Earlier version {r.revision}</h3><div className="analysis-copy">{r.text}</div></article>)}</div>}
+  {historyOpen&&<div className="analysis-versions">{reports.filter(r=>r.status==='complete'&&r.id!==shown?.id).map(r=><article key={r.id}><h3>Earlier version {r.revision}</h3><AnalysisText text={r.text||''}/></article>)}</div>}
   <AlertDialog open={feedbackOpen} onOpenChange={open=>{if(!busy&&(open||!feedback.trim()))setFeedbackOpen(open);}}><AlertDialogContent className="feedback-dialog"><AlertDialogHeader><AlertDialogTitle>Guide your analysis</AlertDialogTitle><AlertDialogDescription>What should LifeApp understand or do differently? Your feedback is saved for future analyses.</AlertDialogDescription></AlertDialogHeader>
    <label className="compact-field" htmlFor="analysis-feedback">Your feedback<textarea id="analysis-feedback" rows={4} maxLength={500} value={feedback} disabled={busy} onChange={e=>{setFeedback(e.target.value);setFeedbackId(crypto.randomUUID());}} placeholder="For example: focus on consistency, and keep suggestions practical."/></label>
    <button className="guidance-link" disabled={busy} onClick={()=>{setFeedback('');setFeedbackOpen(false);onSettings();}}>Manage saved guidance in Settings <ArrowUpRight/></button>

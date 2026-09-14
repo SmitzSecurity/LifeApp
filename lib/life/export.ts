@@ -3,11 +3,11 @@ import type {Database} from './service.ts';
 // account's rows are intentionally never part of this portable data format.
 export async function exportAccount(db:Database,userId:string,now:Date){
  const profile=await db.prepare('SELECT payload,version,updated_at FROM life_profiles WHERE user_id=?1').bind(userId).first();
- const tables=[['entries','life_entries'],['resources','life_resources'],['reviews','life_ai_reviews']] as const;
+ const tables=[['entries','life_entries'],['resources','life_resources'],['reviews','life_ai_reviews'],['routineBuilds','life_routine_builds']] as const;
  const data:Record<string,unknown>={profile};
  let estimatedBytes=65536;
  for(const [name,table] of tables){
-  const content=table==='life_ai_reviews'?"COALESCE(input_snapshot,'')||COALESCE(report_text,'')":"payload";
+  const content=table==='life_ai_reviews'?"COALESCE(input_snapshot,'')||COALESCE(report_text,'')":table==='life_routine_builds'?"COALESCE(input_snapshot,'')||COALESCE(result_json,'')":"payload";
   const size=await db.prepare(`SELECT COUNT(*) AS n,COALESCE(SUM(LENGTH(CAST(${content} AS BLOB))),0) AS bytes FROM ${table} WHERE user_id=?1`).bind(userId).first<{n:number;bytes:number}>();
   estimatedBytes+=(size?.bytes||0)*2+(size?.n||0)*1024;
   if(estimatedBytes>8*1024*1024)return Response.json({error:'Your history needs a paginated export. No partial backup was produced.'},{status:413});

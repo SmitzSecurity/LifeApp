@@ -32,6 +32,10 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  const previous=await readResource(db,userId,kind,id);
  const conflict=()=>json({error:'This record changed in another session. Your changes are still here. Reload the section before trying again.'},409);
  let period=kind==='budget'?id:'';
+ if(kind==='workout-note'){
+  const note=data as {date:string};period=note.date.slice(0,7);
+  if(note.date>todayIn(profile.timezone,now))return json({error:'Choose today or an earlier workout date.'},400);
+ }
  if(kind==='cardio'){
   const c=data as Cardio;period=c.date.slice(0,7);
   if(c.date>todayIn(profile.timezone,now))return json({error:'Choose today or an earlier cardio date.'},400);
