@@ -8,7 +8,12 @@ export const monthSchema=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const uuid=z.string().uuid(), title=z.string().trim().min(1).max(100);
 const cents=z.number().int().min(0).max(100_000_000);
 export const categorySchema=z.object({id:uuid,name:title,limitCents:cents,archived:z.boolean().default(false)}).strict();
-export const recurringSchema=z.object({id:uuid,title,kind:z.enum(['expense','income']),amountCents:cents.refine(n=>n>0),categoryId:z.string(),day:z.number().int().min(1).max(31),frequency:z.enum(['monthly-day','monthly-weekday']).default('monthly-day'),week:z.enum(['first','second','third','fourth','last']).default('first'),weekday:z.number().int().min(0).max(6).default(1),startDate:dateSchema.optional(),endDate:dateSchema.optional(),installments:z.number().int().min(1).max(600).optional(),debt:debtSchema.optional(),purged:z.boolean().optional(),variable:z.boolean().default(false),active:z.boolean().default(true),deleted:z.boolean().default(false)}).strict().superRefine((r,c)=>{
+export function refineRecurringSchedule(r:{frequency:string;month?:number|null;debt?:unknown},c:z.RefinementCtx){
+ if(r.frequency==='annual'&&r.month==null)c.addIssue({code:'custom',path:['month'],message:'Choose a month for the yearly payment.'});
+ if(r.frequency==='annual'&&r.debt)c.addIssue({code:'custom',path:['debt'],message:'Loan payoff tracking requires monthly payments. Use a monthly schedule or remove loan tracking first.'});
+}
+export const recurringSchema=z.object({id:uuid,title,kind:z.enum(['expense','income']),amountCents:cents.refine(n=>n>0),categoryId:z.string(),day:z.number().int().min(1).max(31),frequency:z.enum(['monthly-day','monthly-weekday','annual']).default('monthly-day'),month:z.number().int().min(1).max(12).optional(),week:z.enum(['first','second','third','fourth','last']).default('first'),weekday:z.number().int().min(0).max(6).default(1),startDate:dateSchema.optional(),endDate:dateSchema.optional(),installments:z.number().int().min(1).max(600).optional(),debt:debtSchema.optional(),purged:z.boolean().optional(),variable:z.boolean().default(false),active:z.boolean().default(true),deleted:z.boolean().default(false)}).strict().superRefine((r,c)=>{
+ refineRecurringSchedule(r,c);
  if(r.endDate&&r.startDate&&r.endDate<r.startDate)c.addIssue({code:'custom',message:'The end date must follow the start date.'});
  if(r.installments&&!r.startDate)c.addIssue({code:'custom',message:'Choose a start date for the installment count.'});
  if(r.debt&&(r.kind!=='expense'||r.debt.otherPaymentCents>=r.amountCents))c.addIssue({code:'custom',message:'A loan needs an expense payment larger than its taxes, insurance and fees.'});

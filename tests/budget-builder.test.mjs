@@ -7,7 +7,7 @@ import {handleLife} from '../lib/life/service.ts';
 import {budgetSchema,recurringSchema,transactionSchema,budgetSummary,occurrenceId} from '../lib/life/modules.ts';
 import {scheduledInMonth,firstScheduledMonth,scheduleDate} from '../lib/life/budget-schedule.ts';
 import {debtEstimate} from '../lib/life/debt.ts';
-import {budgetBuildInput,parseBudgetDraft,budgetImageSchema} from '../lib/life/budget-build-schema.ts';
+import {budgetBuildInput,parseBudgetDraft,budgetImageSchema,budgetBuildResult,budgetOutputSchema,budgetInstruction} from '../lib/life/budget-build-schema.ts';
 import {geminiProvider,AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 const now=new Date('2026-09-14T12:00:00.000Z'),month='2026-09';
@@ -36,6 +36,60 @@ test('finite monthly schedules respect inclusive dates, last weekdays, month end
  const nth=loan({frequency:'monthly-weekday',week:'last',weekday:5,startDate:'2026-09-26',installments:2});assert.equal(firstScheduledMonth(nth),'2026-10');assert.equal(scheduleDate('2026-10',nth),'2026-10-30');assert.equal(scheduledInMonth('2026-09',nth),false);assert.equal(scheduledInMonth('2026-11',nth),true);assert.equal(scheduledInMonth('2026-12',nth),false);
  assert.equal(scheduledInMonth('2026-10',{...nth,endDate:'2026-10-30'}),true);assert.equal(scheduledInMonth('2026-10',{...nth,endDate:'2026-10-29'}),false);
  assert.equal(recurringSchema.safeParse({...r,startDate:undefined}).success,false);assert.equal(recurringSchema.safeParse({...r,endDate:'2025-01-01'}).success,false);
+});
+test('annual schedules retain the full charge, require a renewal month and leave old monthly items unchanged',()=>{
+ const annual=loan({debt:undefined,frequency:'annual',month:9,day:10,installments:undefined,amountCents:11999});
+ for(const month of ['2026-08','2026-10','2027-01'])assert.equal(scheduledInMonth(month,annual),false);
+ for(const month of ['2026-09','2027-09','2030-09'])assert.equal(scheduledInMonth(month,annual),true);
+ for(const month of [undefined,null,0,13,9.5])assert.equal(recurringSchema.safeParse({...annual,month}).success,false);
+ const invalid=recurringSchema.safeParse({...annual,debt});assert.equal(invalid.success,false);assert.match(invalid.error.issues[0].message,/monthly payments/);
+ const old=loan(),normalized=recurringSchema.parse(old);assert.deepEqual(normalized,old);assert.equal(Object.hasOwn(normalized,'month'),false);
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:annual.categoryId,name:'Subscriptions',limitCents:20000}],recurring:[annual],goals:{spending:'',saving:'',investing:''}});
+ assert.equal(budgetSummary(plan,[],'2026-08').categories[0].scheduled,0);
+ const due=budgetSummary(plan,[],'2026-09');assert.equal(due.categories[0].scheduled,11999);assert.equal(due.due[0].date,'2026-09-10');assert.equal(due.expenses,0);
+});
+test('annual start/end dates and installment counts follow yearly occurrences including leap-day clamping',()=>{
+ const annual=loan({debt:undefined,frequency:'annual',month:2,day:29,startDate:'2026-03-01',installments:2});
+ assert.equal(firstScheduledMonth(annual),'2027-02');assert.equal(scheduleDate('2027-02',annual),'2027-02-28');assert.equal(scheduleDate('2028-02',annual),'2028-02-29');
+ assert.equal(scheduledInMonth('2026-02',annual),false);assert.equal(scheduledInMonth('2027-02',annual),true);assert.equal(scheduledInMonth('2028-02',annual),true);assert.equal(scheduledInMonth('2029-02',annual),false);
+ assert.equal(firstScheduledMonth({...annual,startDate:'2026-02-28'}),'2026-02');assert.equal(firstScheduledMonth({...annual,startDate:'2028-02-29'}),'2028-02');
+ assert.equal(scheduledInMonth('2028-02',{...annual,endDate:'2028-02-29'}),true);assert.equal(scheduledInMonth('2028-02',{...annual,endDate:'2028-02-28'}),false);
+ assert.equal(firstScheduledMonth({...annual,month:1,startDate:'2026-12-31'}),'2027-01');
+ assert.equal(scheduledInMonth('2027-02',{...annual,active:false}),true); // eligibility is independent of the caller's active/Trash filter
+});
+test('annual actual payments keep deterministic monthly occurrence IDs, reject off-month charges and preserve history',async t=>{
+ const f=fixture(t);await f.setup();const annual=loan({categoryId:f.initial.categories[0].id,debt:undefined,frequency:'annual',month:9,day:10,installments:2,amountCents:11999});
+ await f.change({kind:'recurring',previous:null,item:annual,initial:f.initial});const plan=(await f.plan()).data;
+ const first={action:'resource',record:{kind:'transaction',...tx(annual,'2026-09-10',11999),version:0}};
+ for(let i=0;i<2;i++){const response=await f.call(first);assert.equal(response.status,200);assert.equal((await response.json()).record.version,1);}
+ let records=(await (await f.call(null,'a','?kind=transaction&month=2026-09')).json()).records;
+ assert.equal(records.length,1);let totals=budgetSummary(plan,records,'2026-09');assert.equal(totals.expenses,11999);assert.equal(totals.categories[0].scheduled,0);
+ for(const target of ['2026-10','2027-09','2028-09']){
+  assert.equal((await f.call({action:'budget-item',change:{kind:'initialize',month:target,initial:plan}})).status,200);
+  const response=await f.call({action:'resource',record:{kind:'transaction',...tx(annual,target+'-10',11999),version:0}},'a','',new Date('2029-01-01T12:00:00Z'));
+  assert.equal(response.status,target==='2027-09'?200:409);
+ }
+ const changed={...annual,endDate:'2026-09-01'};assert.equal((await f.change({kind:'recurring',previous:annual,item:changed})).status,200);
+ assert.equal((await f.call(first)).status,200);records=(await (await f.call(null,'a','?kind=transaction&month=2026-09')).json()).records;
+ totals=budgetSummary((await f.plan()).data,records,'2026-09');assert.equal(totals.expenses,11999);assert.equal(totals.due.length,0);assert.equal(records[0].id,occurrenceId('2026-09',annual.id));
+ assert.ok(validateBackup(await (await f.call(null,'a','?export',new Date('2029-01-01T12:00:00Z'))).text()));
+});
+test('annual AI drafts round-trip, adopt without division and preserve exact generation and item retries',async t=>{
+ const f=fixture(t);await f.setup();const annual={...rawItem,title:'Annual subscription',frequency:'annual',month:9,day:10,amountCents:11999,startDate:null,installments:null,debt:null};
+ f.state.result={...providerResult,text:JSON.stringify({...output,recurring:[annual]})};
+ const request=f.build({text:'Subscription is $119.99 each year on September 10. Bills monthly allowance $600.'});
+ const response=await f.call(request);assert.equal(response.status,200);const result=await response.json(),draft=result.build.result;
+ assert.equal(result.build.status,'complete');assert.equal(draft.recurring[0].frequency,'annual');assert.equal(draft.recurring[0].month,9);assert.equal(draft.recurring[0].amountCents,11999);
+ assert.deepEqual(await (await f.call(request)).json(),result);assert.equal(f.state.calls.length,1);
+ const change={kind:'import',initial:f.initial,categories:draft.categories.map(item=>({previous:null,item})),recurring:draft.recurring.map(item=>({previous:null,item}))};
+ for(let i=0;i<2;i++){const saved=await f.change(change);assert.equal(saved.status,200);assert.equal((await saved.json()).record.version,1);}
+ assert.equal((await f.plan()).data.recurring.length,1);assert.equal(budgetSummary((await f.plan()).data,[],'2026-09').due[0].amountCents,11999);assert.equal(budgetSummary((await f.plan()).data,[],'2026-10').due.length,0);
+ assert.ok(validateBackup(await (await f.call(null,'a','?export')).text()));
+ assert.throws(()=>parseBudgetDraft(JSON.stringify({...output,recurring:[{...annual,month:null}]})));
+ assert.throws(()=>parseBudgetDraft(JSON.stringify({...output,recurring:[{...annual,debt}]})));
+ assert.equal(budgetBuildResult.safeParse({...draft,recurring:[{...draft.recurring[0],month:undefined}]}).success,false);
+ assert.equal(Object.hasOwn(parseBudgetDraft(JSON.stringify({...output,recurring:[{...rawItem,month:null}]})).recurring[0],'month'),false);
+ assert.ok(budgetOutputSchema.properties.recurring.items.properties.frequency.enum.includes('annual'));assert.match(budgetInstruction,/never divide it by 12/);
 });
 test('expired forecasts disappear while confirmed actual spending survives unchanged',()=>{
  const r=loan({installments:1}),plan=budgetSchema.parse({currency:'USD',categories:[{id:r.categoryId,name:'Bills',limitCents:10000}],recurring:[r],goals:{spending:'',saving:'',investing:''}});

@@ -2,6 +2,7 @@
 import {formatTimestampDate} from '@/lib/life/date-display';
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
+import {ArrowUpRight,History} from 'lucide-react';
 import {request} from './shared';
 import AnalysisText from './analysis-text';
 import WorkoutPanel from './workout-panel';
@@ -17,12 +18,12 @@ export default function TrainingAnalysis({onBusy}:{onBusy:(v:boolean)=>void}){
  const selected=builds.find(b=>b.id===reading&&!b.deleted),preview=shown?.result?.text.split(/\n\s*\n/).find(part=>!part.trim().startsWith('#'))||shown?.result?.text||'';
  return <>
  <section className="analysis-card training-analysis" aria-label="Training analysis">
-  <div className="section-heading"><h3>✦ Training analysis</h3><div className="action-row">
-   {builds.length>0&&<Button variant="ghost" disabled={busy} onClick={()=>setHistory(true)}>Past weeks</Button>}
-   <Button variant="secondary" disabled={busy||!available||(!pending&&unconfirmed)} onClick={()=>void generate()}>{busy?'Analyzing…':pending?'Check this analysis':'Analyze this week'}</Button>
+  <div className="section-heading"><h3>Training analysis</h3><div className="training-analysis-actions">
+   <Button variant="ghost" aria-label={pending?'Check this analysis':'Analyze this week'} disabled={busy||!available||(!pending&&unconfirmed)} onClick={()=>void generate()}>{busy?'Analyzing…':pending?'Check status':'Analyze'}</Button>
+   {builds.length>0&&<Button variant="ghost" size="icon" aria-label="Past training analyses" title="Past weeks" disabled={busy} onClick={()=>setHistory(true)}><History aria-hidden="true"/></Button>}
   </div></div>
-  {shown?.result?<div className="training-analysis-summary"><div className="training-analysis-preview"><AnalysisText text={preview}/></div><Button variant="ghost" onClick={()=>setReading(shown.id)}>Read analysis →</Button></div>:<p className="muted">A weekly perspective on your training, cardio and muscle coverage.</p>}
-  {!shown&&<small className="muted">Analyze with Google Gemini using your training records and Movement goal.</small>}
+  {shown?.result&&<div className="training-analysis-summary"><div className="training-analysis-preview"><AnalysisText text={preview}/></div><Button variant="ghost" size="icon" aria-label="Read latest training analysis" title="Read analysis" onClick={()=>setReading(shown.id)}><ArrowUpRight aria-hidden="true"/></Button></div>}
+  <small className="training-analysis-disclosure">Uses your training records and Movement goal with Google Gemini.</small>
   {error&&<p className="error" role="alert">{error}</p>}{unconfirmed&&<p className="muted">An AI outcome is unconfirmed. <Button variant="ghost" disabled={busy} onClick={()=>void refresh()}>Refresh status</Button></p>}
  </section>
  <WorkoutPanel open={!!selected} title="Training analysis" onClose={()=>setReading(null)}>{selected?.result&&<div className="training-analysis-reading"><AnalysisText text={selected.result.text}/><Button variant="ghost" disabled={busy} onClick={()=>void remove(selected)}>Delete analysis</Button>{error&&<p role="alert" className="error">{error}</p>}</div>}</WorkoutPanel>

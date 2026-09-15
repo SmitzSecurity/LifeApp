@@ -19,3 +19,70 @@
 @media(max-width:760px){.coverage-visual:has(.muscle-overview){grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:9px}.muscle-overview button{font-size:.73rem;min-height:25px;gap:5px}.muscle-overview h4{font-size:.8rem}}
 
 @media(min-width:761px){.muscle-overview ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px}.muscle-overview li+li{border-top:0}.muscle-overview li{border-bottom:1px solid var(--border)}.training-workspace .coverage-visual:has(.muscle-overview) .muscle-map{max-height:240px}}
+
+/* A single quiet overview leaves the first screen for starting a program. */
+.training-overview{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.training-overview>.training-week{display:flex;padding:10px 14px;margin:0;border:0;border-radius:0;background:transparent;min-width:0}
+.training-overview>.training-week strong{font-size:.9rem;font-weight:600;line-height:1.4;margin:0}
+.training-overview>.training-week small{display:block;font-size:.72rem;line-height:1.4;margin:4px 0 0}
+.training-overview>.training-analysis{padding:6px 14px 10px;margin:0;border:0;border-left:1px solid var(--border);border-radius:0;background:transparent;min-width:0}
+.training-overview>.training-analysis>.section-heading{display:flex;align-items:center;flex-wrap:nowrap;gap:6px;margin:0}
+.training-overview>.training-analysis h3{font-size:.87rem;line-height:1.3;font-weight:600;margin:0;min-width:0}
+.training-analysis-actions{display:flex;align-items:center;gap:0;flex-shrink:0}
+.training-overview .training-analysis-actions button{height:44px;min-height:44px;padding-inline:10px;font-size:.78rem;font-weight:500}
+.training-overview .training-analysis-actions button[data-size=icon],.training-overview .training-analysis-summary>button{width:44px;height:44px;min-height:44px;padding:10px;flex-shrink:0}
+.training-overview .training-analysis-actions svg,.training-overview .training-analysis-summary>button svg{width:17px;height:17px}
+.training-overview .training-analysis-disclosure{display:block;font-size:.72rem;line-height:1.4;color:var(--muted-foreground);margin:0}
+.training-overview .training-analysis-summary{display:flex;flex-direction:row;align-items:center;gap:4px;margin:0 0 5px}
+.training-overview .training-analysis-preview{max-height:2.8em;font-size:.8rem;line-height:1.4}
+.training-overview .training-analysis-preview .analysis-markdown{font-size:.8rem;line-height:1.4}
+.training-overview .training-analysis-preview p{line-height:1.4;margin:0}
+.training-overview .training-analysis>.error,.training-overview .training-analysis>p{font-size:.78rem;line-height:1.4;margin:6px 0 0}
+.training-workspace .training-toolbar{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 44px 44px;gap:6px;margin:8px 0}
+.training-workspace .training-toolbar>button{min-width:0;height:44px;min-height:44px;padding:6px 8px;font-size:.8rem;font-weight:500;white-space:normal;line-height:1.2}
+.training-workspace .training-toolbar>button[data-size=icon]{width:44px;padding:10px}
+.training-workspace .training-toolbar svg{width:18px;height:18px}
+.training-workspace .training-card>.section-heading button{height:44px;min-height:44px;font-size:.8rem}
+.training-workspace .program-actions{flex-direction:row;gap:2px;flex-shrink:0}
+.training-workspace .program-actions>button{height:44px;min-height:44px;font-size:.8rem;padding:6px 10px}
+.training-workspace .program-actions>button[data-size=icon]{width:44px;padding:11px}
+.training-workspace .program-actions svg{width:17px;height:17px}
+.training-workspace .program-select{min-height:44px}
+
+/* Program fields scroll; Cancel and Save stay in their own bottom row. */
+.workout-panel[open]:has(>.workout-panel-footer){display:flex;flex-direction:column;overflow:hidden}
+.workout-panel[open]:has(>.workout-panel-footer)>header{flex-shrink:0;margin-bottom:8px}
+.workout-panel[open]:has(>.workout-panel-footer)>.routine-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+.workout-panel[open]>.workout-panel-footer{position:static;bottom:auto;flex-shrink:0;margin-top:8px;padding:8px 0 0}
+
+@media(max-width:760px){
+ .training-workspace{padding-top:8px}
+ .training-overview{grid-template-columns:minmax(0,1fr)}
+ .training-overview>.training-week{padding:9px 12px 8px;gap:0}
+ .training-overview>.training-week strong{font-size:.86rem}
+ .training-overview>.training-week small{font-size:.68rem;margin-top:2px}
+ .training-overview>.training-analysis{padding:2px 12px 9px;border-left:0;border-top:1px solid var(--border)}
+ .training-overview>.training-analysis h3{font-size:.84rem}
+ .training-overview .training-analysis-disclosure{font-size:.7rem}
+ .training-workspace .training-toolbar{gap:4px}
+ .training-workspace .training-toolbar>button{font-size:.76rem;padding-inline:5px}
+ .training-workspace .training-view-switch{margin:0 0 8px;padding:2px}
+ .training-workspace .training-view-switch>button{height:44px;min-height:44px;padding:5px;font-size:.77rem;font-weight:500}
+ .training-workspace .training-card{padding:8px 10px;border-radius:9px}
+ .training-workspace .training-card>.section-heading{margin-bottom:5px;gap:4px}
+ .training-workspace .training-card h3{font-size:.93rem;font-weight:600}
+ .training-workspace .program-row{min-height:64px;padding:7px 8px;gap:4px;margin-bottom:6px;border-radius:6px}
+ .training-workspace .program-select strong{font-size:.84rem;line-height:1.35;font-weight:600}
+ .training-workspace .program-select small{font-size:.68rem;line-height:1.4;margin-top:2px}
+ .training-workspace .program-actions{flex-direction:row}
+ .training-workspace .program-actions>button{font-size:.77rem;padding-inline:8px}
+ .training-workspace .program-list{max-height:330px}
+ .training-workspace .training-card .empty-inline{font-size:.8rem;padding:12px 0}
+ .training-workspace .gym-active{padding:10px;margin-bottom:10px;border-radius:9px}
+ .training-workspace .gym-active>.section-heading{margin-bottom:8px}
+ .training-workspace .current-set{padding:10px}
+ .training-workspace .current-set h2{font-size:1rem;line-height:1.35;font-weight:600}
+ .training-workspace .current-set .compact-field{margin-block:6px}
+ .training-workspace .current-set .compact-field input{font-size:1rem}
+ .workout-panel>header>button{width:44px;height:44px}
+}

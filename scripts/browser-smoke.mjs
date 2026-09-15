@@ -27,7 +27,7 @@ const stamp=Date.now(),id='browser-smoke',userId='google:'+id;
 await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic browser fixture','smoke@example.test',stamp).run();
 await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('smoke-session',stamp+3600000,'synthetic-browser-token',stamp,id).run();
 await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('smoke-account','smoke-google-sub','google',id,stamp).run();
-await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
+await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(process.argv.includes('--light')?{appearance:{mode:'light',custom:{oled:{},light:{}}}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
 const historyFixture=process.argv.includes('--history');
 for(let days=1;days<=(historyFixture?400:2);days++){
  const date=new Date(stamp-days*86400000).toISOString().slice(0,10);
