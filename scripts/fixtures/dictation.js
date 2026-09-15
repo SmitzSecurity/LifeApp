@@ -14,10 +14,14 @@ document.addEventListener('DOMContentLoaded',()=>{
  const button=(title,run)=>{const b=document.createElement('button');b.textContent=title;b.style.cssText='display:block;padding:6px;color:#111;background:#eee';b.onclick=run;panel.append(b);};
  button('Emit final speech',()=>{if(active){active.results.push({isFinal:true,0:{transcript:text.value}});active.onresult?.({results:active.results});}});
  button('Emit interim speech',()=>active?.onresult?.({results:[...active.results,{isFinal:false,0:{transcript:text.value}}]}));
+ button('Speech detected',()=>active?.onspeechstart?.());
+ button('Speech paused',()=>active?.onspeechend?.());
  button('Emit late speech',()=>lateResult?.({results:[{isFinal:true,0:{transcript:'This cancelled speech must never be saved.'}}]}));
  button('Deny microphone',()=>active?.onerror?.({error:'not-allowed'}));
  button('Unsupported browser on reload',()=>{sessionStorage.setItem('synthetic-speech-unsupported','true');location.reload();});
  document.body.append(panel);
+ // Keep synthetic controls accessible inside the journal's modal focus scope.
+ new MutationObserver(()=>{const target=document.querySelector('[role=dialog][data-state=open]')||document.body;if(panel.parentElement!==target){target.append(panel);panel.removeAttribute('aria-hidden');panel.removeAttribute('data-aria-hidden');}}).observe(document.body,{childList:true,subtree:true});
 });
 if(sessionStorage.getItem('synthetic-speech-unsupported')){
  Object.defineProperty(window,'SpeechRecognition',{value:undefined});Object.defineProperty(window,'webkitSpeechRecognition',{value:undefined});

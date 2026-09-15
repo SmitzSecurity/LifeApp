@@ -63,6 +63,7 @@ if(process.argv.includes('--workout-recovery')){
  await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'cardio',crypto.randomUUID(),iso.slice(0,7),JSON.stringify({date:iso.slice(0,10),activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'Synthetic saved cardio',voided:false}),iso).run();
 }
 const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-browser-token',secret,{secure:true,httpOnly:true,path:'/'})).split(';')[0];
+let loseEntryResponse=process.argv.includes('--unconfirmed-entry');
 const server=createServer(async(req,res)=>{
  try{
   const pathname=new URL(req.url,'http://localhost').pathname;
@@ -74,12 +75,13 @@ const server=createServer(async(req,res)=>{
    const count=await db.prepare('SELECT count(*) n FROM life_entries').first();
    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({count:count.n,entries:entries.results}));return;
   }
-  let body;
+  let body,entryWrite=false;
   if(req.method==='POST'&&(pathname==='/api/life'||calmFixture&&pathname==='/api/life/email')){
    const chunks=[];let size=0;
    for await(const chunk of req){size+=chunk.length;if(size>(req.url.includes('budget-build')?1_500_000:65536)){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
+   entryWrite=parsed?.action==='entry';
    if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource','budget-item','record-deletion','trash',...(analysisFixture?['ai','budget-build','routine-build','workout-build','training-analysis','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
@@ -95,6 +97,7 @@ const server=createServer(async(req,res)=>{
   // Only explicitly allowed fixture actions can reach this POST path.
   if(body!==undefined){headers.set('Origin','https://life.test');headers.set('Content-Type','application/json');}
   const response=await mf.dispatchFetch('https://life.test'+req.url,{method:req.method,body,headers,redirect:'manual'});
+  if(loseEntryResponse&&entryWrite&&response.ok){loseEntryResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost acknowledgement. Retry the same save.'}));return;}
   res.writeHead(response.status,Object.fromEntries([...response.headers].filter(([key])=>key!=='set-cookie')));
   if(dictationFixture&&response.headers.get('content-type')?.includes('text/html'))res.end((await response.text()).replace('<head>','<head><script src="/__fixture/dictation.js"></script>'));
   else res.end(Buffer.from(await response.arrayBuffer()));
