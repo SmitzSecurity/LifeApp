@@ -1,15 +1,20 @@
 /* The signed-in app uses a compact, touch-friendly response list and editor. */
 html:has(.life-compact-theme),body.life-compact-theme{overscroll-behavior-y:none}
-body.life-compact-theme:has([data-page=today]){overflow:hidden}
-.compact-app:has([data-page=today]){position:fixed;left:0;right:0;top:var(--response-viewport-top,0px);height:var(--response-viewport-height,100dvh);min-height:0;overflow:hidden}
+body.life-compact-theme:has(.signed-in-app){overflow:hidden}
+.compact-app.signed-in-app{position:fixed;left:0;right:0;top:var(--app-viewport-top,0px);height:var(--app-viewport-height,100dvh);min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.signed-in-app>.compact-topbar{position:relative;flex-shrink:0}
+.signed-in-app .workspace{flex:1;min-height:0;width:100%;overflow-y:auto;overscroll-behavior-y:contain;scrollbar-gutter:stable}
+.signed-in-app .workspace:has(>[data-page=today]){overflow:hidden}
+.signed-in-app .workspace:has(>[data-page=today])>[data-page],.signed-in-app [data-page=today]>[data-state=active]{height:100%;min-height:0}
+.signed-in-app .settings-save{bottom:0}
 .compact-app{min-height:100dvh;background:var(--background);color:var(--foreground)}
 .compact-app [hidden]{display:none!important}
 .life-compact-theme input,.life-compact-theme textarea,.life-compact-theme select{background:var(--input-background);color:var(--foreground);border-color:var(--input);border-radius:4px}
 .life-compact-theme input,.life-compact-theme select{min-height:46px}
 .life-compact-theme a:not([data-slot]){color:var(--primary)}
 .life-compact-theme [data-slot=alert-dialog-content]{max-height:90dvh;overflow-y:auto}
-.compact-app .workspace{max-width:1000px;padding:0 24px calc(100px + env(safe-area-inset-bottom))}
-.compact-app .workspace:has(>[data-page=history]){padding-bottom:calc(160px + env(safe-area-inset-bottom))}
+.compact-app .workspace{max-width:1000px;padding:0 24px 24px}
+.compact-app .workspace:has(>[data-page=history]){padding-bottom:96px}
 .compact-app .workspace:has(>[data-page=today]){padding-bottom:0}
 .compact-topbar h1:focus{outline:none}
 .compact-topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:60px;padding:0 max(18px,calc((100vw - 952px)/2));background:var(--nav);border-bottom:1px solid var(--border)}
@@ -41,9 +46,9 @@ body.life-compact-theme:has([data-page=today]){overflow:hidden}
 .compact-app .history-filters input,.compact-app .history-filters select{background:var(--card);color:var(--foreground);border-color:var(--input);border-radius:4px}
 .filter-summary{display:flex;align-items:center;justify-content:space-between;font-size:.8rem;color:var(--muted-foreground);gap:12px;min-height:44px;border-bottom:1px solid var(--border)}
 .compact-app .history-more{padding:8px 0}
-.compact-app .add-response{position:fixed;z-index:25;right:22px;bottom:calc(88px + env(safe-area-inset-bottom));width:60px;height:60px;min-height:60px;border-radius:50%;box-shadow:0 5px 20px #0006;background:var(--primary);color:var(--primary-foreground)}
+.compact-app .add-response{position:absolute;z-index:25;right:22px;bottom:calc(88px + env(safe-area-inset-bottom));width:60px;height:60px;min-height:60px;border-radius:50%;box-shadow:0 5px 20px #0006;background:var(--primary);color:var(--primary-foreground)}
 .compact-app .add-response svg{width:30px;height:30px}
-.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:30;display:flex;justify-content:center;padding:0 12px env(safe-area-inset-bottom);background:var(--nav);border-top:1px solid var(--border);height:calc(72px + env(safe-area-inset-bottom))}
+.bottom-nav{position:relative;flex-shrink:0;width:100%;z-index:30;display:flex;justify-content:center;padding:0 12px env(safe-area-inset-bottom);background:var(--nav);border-top:1px solid var(--border);height:calc(72px + env(safe-area-inset-bottom))}
 .bottom-nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;flex:1;max-width:200px;color:var(--muted-foreground);font-size:.8rem;min-height:64px}
 .bottom-nav svg{width:23px;height:23px}
 .bottom-nav button[aria-current=page]{color:var(--primary)}
@@ -58,7 +63,7 @@ body.life-compact-theme:has([data-page=today]){overflow:hidden}
 .response-history-heading button{font-size:.8rem;min-height:40px;white-space:normal}
 .response-history .history-panel:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .response-history .empty-history{padding:20px 0}
-.response-page{overscroll-behavior:none;display:flex;flex-direction:column;height:calc(var(--response-viewport-height,100dvh) - 60px);min-height:0;padding:0;border:0;margin:0}
+.response-page{overscroll-behavior:none;display:flex;flex-direction:column;height:100%;min-height:0;padding:0;border:0;margin:0}
 .response-page>.error{flex-shrink:0;margin:10px 0;font-size:.8rem}
 .response-page .response-editor{flex:1;display:flex;flex-direction:column;min-height:0;max-width:none;width:100%;padding:0;margin:0;overflow:hidden}
 .response-page .response-fields{flex:1;padding:20px 4px 8px;overflow-y:auto;overscroll-behavior:contain;min-height:0;scrollbar-gutter:stable}
@@ -74,12 +79,12 @@ body.life-compact-theme:has([data-page=today]){overflow:hidden}
 .response-page .response-actions>span{grid-column:auto;align-self:center;font-size:.7rem;color:var(--muted-foreground);max-width:none}
 .response-save-buttons{display:flex;gap:8px;align-items:center}
 .response-page .response-save-buttons button{min-width:74px;min-height:40px;font-size:.9rem}
-.journal-input .compact-dictation{position:relative;display:flex;align-items:center;justify-content:flex-start;gap:4px;margin:0;padding:0 4px 4px;min-height:48px}
+.journal-input .compact-dictation{position:relative;display:flex;flex-direction:row-reverse;align-items:center;justify-content:flex-start;gap:4px;margin:0;padding:0 4px 4px;min-height:48px}
 .response-page .journal-input .compact-dictation button{position:relative;min-width:44px;width:44px;height:44px;min-height:44px;padding:0;background:transparent;border:0;border-radius:50%;color:var(--secondary-foreground)}
 .response-page .compact-dictation button::before{content:'';position:absolute;inset:11px;border-radius:50%;background:var(--secondary);border:1px solid var(--input)}
 .response-page .compact-dictation button[aria-pressed=true]::before{background:var(--primary);border-color:var(--ring);box-shadow:none}
 .response-page .compact-dictation button[aria-pressed=true]{color:var(--primary-foreground)}
-.response-page .compact-dictation.receiving-voice button::before{box-shadow:0 0 12px 5px color-mix(in srgb,var(--ring) 30%,transparent);transition:box-shadow .2s ease-out}
+.response-page .compact-dictation.receiving-voice button::before{box-shadow:0 0 14px 6px color-mix(in srgb,var(--ring) 60%,transparent);transition:box-shadow .2s ease-out}
 .response-page .compact-dictation button::before{transition:box-shadow .35s ease-out}
 .response-page .compact-dictation .dictation-error{position:static;max-width:calc(100% - 52px);background:transparent;border:0;padding:0 4px}
 .response-page .compact-dictation button svg{width:12px;height:12px;position:relative}
@@ -91,7 +96,7 @@ body.life-compact-theme:has([data-page=today]){overflow:hidden}
 .receiving-voice .voice-activity i:nth-child(2){animation-delay:-.3s}.receiving-voice .voice-activity i:nth-child(3){animation-delay:-.5s}
 @keyframes voice-wave{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
 @media(prefers-reduced-motion:reduce){.receiving-voice .voice-activity i{animation:none}.receiving-voice .voice-activity i:nth-child(2){height:20px}}
-@media(max-width:600px){.responses-hub{gap:18px;padding-top:16px}.responses-hub .analysis-card{padding:16px}.response-history-heading{align-items:center}.response-history-heading h2{font-size:.9rem}.response-page{height:calc(var(--response-viewport-height,100dvh) - 56px)}.response-page .response-fields{padding:16px 2px 6px}}
+@media(max-width:600px){.responses-hub{gap:18px;padding-top:16px}.responses-hub .analysis-card{padding:16px}.response-history-heading{align-items:center}.response-history-heading h2{font-size:.9rem}.response-page .response-fields{padding:16px 2px 6px}}
 .organized-settings .compact-field select{width:100%;padding:10px;border:1px solid var(--input)}
 .response-field{display:flex;flex-direction:column;gap:10px;margin:0 0 24px;font-size:1rem;font-weight:500}
 .response-field>span{display:flex;justify-content:space-between;align-items:center}
@@ -144,4 +149,4 @@ body.life-compact-theme:has([data-page=today]){overflow:hidden}
 .compact-app .email-destination{margin:18px 0;font-size:.875rem;overflow-wrap:anywhere}
 .compact-app .email-help{margin-top:16px}
 .compact-app .email-delivery{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid var(--border);font-size:.8rem}
-@media(max-width:600px){.compact-app .workspace{padding:0 18px calc(104px + env(safe-area-inset-bottom))}.compact-topbar{height:56px;padding-inline:8px;gap:8px}.compact-topbar h1{font-size:1rem}.compact-app .history-row{padding:16px 2px 10px;min-height:112px}.compact-app .module-card{padding:16px}.response-editor{padding-top:22px}.response-actions{padding:10px 18px calc(10px + env(safe-area-inset-bottom));gap:8px}.response-actions>div{gap:6px}.response-actions button[data-slot=button]{min-width:78px}.response-actions>span{max-width:125px}.compact-app .add-response{right:20px}.compact-app .history-filters .action-row{margin-bottom:0}.response-choice{font-size:.95rem}.compact-app .settings-panel{padding-top:20px}}
+@media(max-width:600px){.compact-app .workspace{padding:0 18px 20px}.compact-topbar{height:56px;padding-inline:8px;gap:8px}.compact-topbar h1{font-size:1rem}.compact-app .history-row{padding:16px 2px 10px;min-height:112px}.compact-app .module-card{padding:16px}.response-editor{padding-top:22px}.response-actions{padding:10px 18px calc(10px + env(safe-area-inset-bottom));gap:8px}.response-actions>div{gap:6px}.response-actions button[data-slot=button]{min-width:78px}.response-actions>span{max-width:125px}.compact-app .add-response{right:20px}.compact-app .history-filters .action-row{margin-bottom:0}.response-choice{font-size:.95rem}.compact-app .settings-panel{padding-top:20px}}
