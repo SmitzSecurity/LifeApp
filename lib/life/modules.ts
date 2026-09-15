@@ -22,7 +22,11 @@ export const budgetSchema=z.object({currency:z.literal('USD'),categories:z.array
  for(const list of [p.categories,p.recurring])if(new Set(list.map(x=>x.id)).size!==list.length)c.addIssue({code:'custom',message:'Each item needs its own ID.'});
  if(p.recurring.some(r=>r.kind==='expense'&&!p.categories.some(x=>x.id===r.categoryId)))c.addIssue({code:'custom',message:'Choose a category for every scheduled payment.'});
 });
-export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),voided:z.boolean(),deleted:z.boolean().default(false)}).strict();
+export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),voided:z.boolean(),deleted:z.boolean().default(false),planned:z.boolean().optional(),expectedDate:dateSchema.optional()}).strict().superRefine((t,c)=>{
+ if(t.recurringId&&(t.planned||t.expectedDate))c.addIssue({code:'custom',message:'Use the recurring schedule for expected payments; planned transactions are one-off items.'});
+ if(t.expectedDate&&t.expectedDate.slice(0,7)!==t.date.slice(0,7))c.addIssue({code:'custom',message:'Keep the expected and actual payment dates in the same month.'});
+ if(t.planned&&t.expectedDate&&t.expectedDate!==t.date)c.addIssue({code:'custom',message:'A planned item’s date must match its expected payment date.'});
+});
 export const exerciseSchema=z.object({id:uuid,name:title,muscles:muscleTargetsSchema.optional(),sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
 export const routineSchema=z.object({name:title,weeklySessions:z.number().int().min(0).max(7).optional(),preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
 export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(40),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
@@ -57,10 +61,11 @@ export function dueDate(month:string,day:number){monthSchema.parse(month);const 
 export const occurrenceId=(month:string,id:string)=>`due:${month}:${id}`;
 export function recurringDate(month:string,r:Budget['recurring'][number]){return scheduleDate(month,r);}
 export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],month:string){
- const live=transactions.filter(t=>!t.data.voided&&!t.data.deleted&&t.data.date.startsWith(month+'-'));
+ const visible=transactions.filter(t=>!t.data.voided&&!t.data.deleted&&t.data.date.startsWith(month+'-'));
+ const live=visible.filter(t=>!t.data.planned),planned=visible.filter(t=>t.data.planned);
  const total=(kind:Transaction['kind'])=>live.filter(t=>t.data.kind===kind).reduce((n,t)=>n+t.data.amountCents,0);
  const due=plan.recurring.filter(r=>r.active&&!r.deleted&&scheduledInMonth(month,r)&&(!r.debt||r.debt.balanceCents>0)).map(r=>({...r,date:recurringDate(month,r),id:occurrenceId(month,r.id),recorded:live.some(t=>t.data.recurringId===r.id),actualCents:live.filter(t=>t.data.recurringId===r.id).reduce((n,t)=>n+t.data.amountCents,0)}));
- return {income:total('income'),expenses:total('expense'),saving:total('saving'),investing:total('investing'),cashFlow:total('income')-total('expense')-total('saving')-total('investing'),due,categories:plan.categories.map(c=>{const spent=live.filter(t=>t.data.kind==='expense'&&t.data.categoryId===c.id).reduce((n,t)=>n+t.data.amountCents,0);const scheduled=due.filter(r=>r.kind==='expense'&&r.categoryId===c.id&&!r.recorded).reduce((n,r)=>n+r.amountCents,0);return {...c,spent,remaining:c.limitCents-spent,scheduled,afterScheduled:c.limitCents-spent-scheduled};})};
+ return {income:total('income'),expenses:total('expense'),saving:total('saving'),investing:total('investing'),cashFlow:total('income')-total('expense')-total('saving')-total('investing'),due,planned,categories:plan.categories.map(c=>{const spent=live.filter(t=>t.data.kind==='expense'&&t.data.categoryId===c.id).reduce((n,t)=>n+t.data.amountCents,0);const scheduled=due.filter(r=>r.kind==='expense'&&r.categoryId===c.id&&!r.recorded).reduce((n,r)=>n+r.amountCents,0)+planned.filter(t=>t.data.kind==='expense'&&t.data.categoryId===c.id).reduce((n,t)=>n+t.data.amountCents,0);return {...c,spent,remaining:c.limitCents-spent,scheduled,afterScheduled:c.limitCents-spent-scheduled};})};
 }
 export function nextSet(w:Workout){
  for(const exercise of w.exercises){

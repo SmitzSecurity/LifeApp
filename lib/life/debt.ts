@@ -11,7 +11,7 @@ const days=(a:string,b:string)=>(Date.parse(b+'T12:00:00Z')-Date.parse(a+'T12:00
 // promotional-rate changes and lender-specific rounding need statement updates.
 export function debtEstimate(item:Item,transactions:Saved<Transaction>[],asOf:string){
  const debt=item.debt!;let principal=debt.balanceCents,interest=0,last=debt.balanceDate,totalPaid=0;
- const payments=transactions.filter(t=>t.data.recurringId===item.id&&t.data.kind==='expense'&&!t.data.voided&&!t.data.deleted&&t.data.date>debt.balanceDate&&t.data.date<=asOf).sort((a,b)=>a.data.date.localeCompare(b.data.date)||a.id.localeCompare(b.id));
+ const payments=transactions.filter(t=>t.data.recurringId===item.id&&t.data.kind==='expense'&&!t.data.planned&&!t.data.voided&&!t.data.deleted&&t.data.date>debt.balanceDate&&t.data.date<=asOf).sort((a,b)=>a.data.date.localeCompare(b.data.date)||a.id.localeCompare(b.id));
  const accrueDaily=(date:string)=>{if(debt.interestMethod==='daily'&&date>last)interest+=principal*debt.annualRatePercent/100*days(last,date)/365;last=date;};
  const pay=(amount:number)=>{const net=Math.max(0,amount-debt.otherPaymentCents),paidInterest=Math.min(net,Math.round(interest));interest=Math.max(0,interest-paidInterest);principal=Math.max(0,principal-(net-paidInterest));};
  const events:{date:string;payment?:number}[]=payments.map(t=>({date:t.data.date,payment:t.data.amountCents}));

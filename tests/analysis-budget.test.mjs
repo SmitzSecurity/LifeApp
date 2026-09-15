@@ -7,8 +7,10 @@ import {handleLife} from '../lib/life/service.ts';
 import {profileSchema,emptyEntry} from '../lib/life/domain.ts';
 import {analysisWindow,lastClosedPeriod,duePeriod} from '../lib/life/analysis-periods.ts';
 import {consumePeriodicAnalyses} from '../lib/life/periodic-analyses.ts';
-import {budgetSchema,recurringSchema,recurringDate,budgetSummary,occurrenceId} from '../lib/life/modules.ts';
-import {activityTotals,activityTrends} from '../lib/life/activity.ts';
+import {budgetSchema,recurringSchema,transactionSchema,recurringDate,budgetSummary,occurrenceId} from '../lib/life/modules.ts';
+import {activityTotals,activityTrends,readActivity} from '../lib/life/activity.ts';
+import {buildReviewContext} from '../lib/life/review-context.ts';
+import {debtEstimate} from '../lib/life/debt.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 import {buildPeriodContext} from '../lib/life/period-context.ts';
 import {AI_MODEL} from '../lib/life/ai-provider.ts';
@@ -57,6 +59,74 @@ test('variable occurrence forecasts become actuals once, with inline-compatible 
  assert.equal((await f.call({action:'resource',record:{kind:'budget',id:'2026-09',version:1,data:{...plan,categories:[],recurring:[]}}})).status,400);
  assert.equal((await f.call({action:'resource',record:{kind:'budget',id:'2026-09',version:1,data:{...plan,categories:plan.categories.map(c=>({...c,archived:true})),recurring:plan.recurring.map(r=>({...r,active:false}))}}})).status,200);
  const backup=validateBackup(JSON.stringify(await (await f.call(undefined,'a','?export=1')).json()));assert.equal(backup.resources.length,2);
+ }finally{f.raw.close();}
+});
+
+test('one-off planned payments keep their expected date and confirm early exactly once within the original month',async()=>{
+ const f=fixture();try{await f.setup();const category=randomUUID(),recurring=randomUUID(),id=randomUUID();
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:category,name:'Bills',limitCents:20000}],recurring:[{id:recurring,title:'Recurring bill',kind:'expense',amountCents:5000,categoryId:category,day:20}],goals:{spending:'',saving:'',investing:''}});
+ const save=record=>f.call({action:'resource',record});
+ assert.equal((await save({kind:'budget',id:'2026-09',version:0,data:plan})).status,200);
+ const pending={kind:'transaction',id,version:0,data:{date:'2026-09-20',kind:'expense',amountCents:8000,categoryId:category,note:'One-off synthetic payment',recurringId:null,voided:false,planned:true}};
+ assert.equal((await save({...pending,data:{...pending.data,planned:false}})).status,400);
+ assert.equal((await save({...pending,data:{...pending.data,planned:'true'}})).status,400);
+ assert.equal((await save({...pending,data:{...pending.data,expectedDate:'2026-10-20'}})).status,400);
+ assert.equal((await save({...pending,data:{...pending.data,expectedDate:'2026-09-21'}})).status,400);
+ assert.equal((await save({...pending,id:occurrenceId('2026-09',recurring),data:{...pending.data,recurringId:recurring}})).status,400);
+ const response=await save(pending);assert.equal(response.status,200,await response.clone().text());const first=(await response.json()).record;
+ assert.equal(first.data.expectedDate,'2026-09-20');assert.equal(first.data.planned,true);assert.equal(first.version,1);
+ assert.deepEqual((await (await save(pending)).json()).record,first);
+ assert.equal((await save({...pending,data:{...pending.data,amountCents:8100}})).status,409);
+ assert.equal((await save({...pending,version:1,data:{...first.data,date:'2026-10-20',expectedDate:'2026-10-20'}})).status,400);
+ const withoutFlag={...first.data,date:'2026-09-14'};delete withoutFlag.planned;
+ assert.equal((await save({...pending,version:1,data:withoutFlag})).status,400);
+ assert.equal((await save({...pending,version:1,data:{...first.data,planned:false}})).status,400);
+ assert.equal((await save({...pending,version:1,data:{...first.data,date:'2026-09-14',planned:false,expectedDate:'2026-09-19'}})).status,400);
+ const changed={...pending,version:1,data:{...first.data,date:'2026-09-22',expectedDate:'2026-09-22'}};
+ const revised=(await (await save(changed)).json()).record;assert.equal(revised.version,2);
+ const confirm={...pending,version:2,data:{...revised.data,date:'2026-09-14',amountCents:7750,planned:false}};
+ const paid=(await (await save(confirm)).json()).record;assert.equal(paid.version,3);assert.equal(paid.data.expectedDate,'2026-09-22');assert.equal(paid.data.date,'2026-09-14');assert.equal(paid.data.planned,false);
+ assert.deepEqual((await (await save(confirm)).json()).record,paid);assert.equal((await save(changed)).status,409);
+ const summary=budgetSummary(plan,[paid],'2026-09');assert.equal(summary.expenses,7750);assert.equal(summary.planned.length,0);assert.equal(summary.categories[0].scheduled,5000);assert.equal(summary.due.length,1);
+ assert.equal((await (await f.call(undefined,'a','?dashboard=1')).json()).trends.at(-1).spendingCents,7750);
+ const backup=validateBackup(JSON.stringify(await (await f.call(undefined,'a','?export=1')).json()));const exported=JSON.parse(backup.resources.find(r=>r.kind==='transaction').payload);assert.equal(exported.expectedDate,'2026-09-22');assert.equal(exported.planned,false);
+ assert.equal((await (await f.call(undefined,'b','?kind=transaction&month=2026-09')).json()).records.length,0);
+ assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE kind='transaction'").get().n,1);
+ }finally{f.raw.close();}
+});
+
+test('planned one-offs reserve allowances without counting as recorded spending, income, transfers, activity or analysis',()=>{
+ const category=randomUUID(),recurring=randomUUID();
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:category,name:'Bills',limitCents:20000}],recurring:[{id:recurring,title:'Recurring bill',kind:'expense',amountCents:5000,categoryId:category,day:20}],goals:{spending:'',saving:'',investing:''}});
+ const item=(amountCents,patch={})=>({id:randomUUID(),version:1,data:transactionSchema.parse({date:'2026-09-13',kind:'expense',amountCents,categoryId:category,note:'Synthetic',recurringId:null,voided:false,...patch})});
+ const actual=item(3000),pending=item(2500,{planned:true,expectedDate:'2026-09-13',note:'Unconfirmed private plan'});
+ const records=[actual,pending,item(10000,{kind:'income',planned:true}),item(4000,{kind:'saving',planned:true}),item(2000,{kind:'investing',planned:true}),item(9900,{planned:true,deleted:true}),item(9900,{planned:true,voided:true}),item(9900,{planned:true,date:'2026-10-13'})];
+ const summary=budgetSummary(plan,records,'2026-09');assert.equal(summary.expenses,3000);assert.equal(summary.income,0);assert.equal(summary.saving,0);assert.equal(summary.investing,0);assert.equal(summary.cashFlow,-3000);
+ assert.equal(summary.categories[0].scheduled,7500);assert.equal(summary.categories[0].remaining,17000);assert.equal(summary.categories[0].afterScheduled,9500);assert.equal(summary.planned.length,4);assert.equal(summary.due.length,1);assert.equal(summary.due[0].id,occurrenceId('2026-09',recurring));assert.equal(summary.due[0].recorded,false);
+ const activity={transactions:records,workouts:[],cardio:[]};const totals=activityTotals(activity,'2026-09-01','2026-09-30');assert.equal(totals.transactions,1);assert.equal(totals.spendingCents,3000);assert.equal(totals.incomeCents,0);assert.equal(totals.savingCents,0);
+ const daily=buildReviewContext({profile:profile(),from:'2026-09-13',through:'2026-09-13',entries:[],budget:{id:'2026-09',version:1,data:plan},transactions:records});
+ assert.equal(daily.money.summary.expenses,3000);assert.equal(daily.money.summary.categories[0].scheduled,5000);assert.deepEqual(daily.money.summary.planned,[]);assert.equal(JSON.stringify(daily).includes('Unconfirmed private plan'),false);
+ const period=buildPeriodContext(profile(),'monthly','2026-09-01','2026-09-30',[],activity,[]);assert.equal(period.activity.transactions,1);assert.equal(period.activity.spendingCents,3000);
+ const loan={...plan.recurring[0],debt:{originalBalanceCents:60000,balanceCents:60000,balanceDate:'2026-08-31',annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0}};
+ const estimate=debtEstimate(loan,[{...pending,data:{...pending.data,recurringId:recurring}}],'2026-09-14');assert.equal(estimate.confirmedPayments,0);assert.equal(estimate.confirmedPaymentCents,0);assert.equal(estimate.balanceCents,60000);
+ assert.equal('planned' in actual.data,false);assert.equal('expectedDate' in actual.data,false);
+});
+
+test('overdue planned records stay unconfirmed through reload, Trash restore and export',async()=>{
+ const f=fixture();try{await f.setup();const category=randomUUID(),id=randomUUID();
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:category,name:'Bills',limitCents:20000}],recurring:[],goals:{spending:'',saving:'',investing:''}});
+ const save=record=>f.call({action:'resource',record});await save({kind:'budget',id:'2026-09',version:0,data:plan});
+ const record={kind:'transaction',id,version:0,data:{date:'2026-09-13',expectedDate:'2026-09-13',kind:'expense',amountCents:8000,categoryId:category,note:'Overdue but not paid',recurringId:null,voided:false,planned:true}};
+ const first=(await (await save(record)).json()).record;
+ assert.equal((await (await f.call(undefined,'a','?kind=transaction&month=2026-09')).json()).records[0].data.planned,true);
+ const activity=await readActivity(f.db,'a','2026-09-01','2026-09-30');assert.deepEqual(activity.transactions,[]);
+ assert.equal((await (await f.call(undefined,'a','?dashboard=1')).json()).trends.reduce((n,b)=>n+b.spendingCents,0),0);
+ assert.equal((await f.call(ai())).status,200);assert.equal(f.state.calls[0].context.money.summary.expenses,0);assert.deepEqual(f.state.calls[0].context.money.summary.planned,[]);
+ const removed=(await (await save({...record,version:1,data:{...first.data,deleted:true}})).json()).record;assert.equal(budgetSummary(plan,[removed],'2026-09').categories[0].scheduled,0);
+ const trash=f.raw.prepare("SELECT deleted_at FROM life_trash WHERE user_id='a' AND kind='transaction' AND record_id=?").get(id);
+ assert.equal((await f.call({action:'trash',change:{kind:'transaction',id,deletedAt:trash.deleted_at,operation:'restore'}})).status,200);
+ const restored=(await (await f.call(undefined,'a','?kind=transaction&month=2026-09')).json()).records[0];assert.equal(restored.version,3);assert.equal(restored.data.planned,true);assert.equal(restored.data.expectedDate,'2026-09-13');assert.equal(budgetSummary(plan,[restored],'2026-09').categories[0].scheduled,8000);
+ const backup=validateBackup(JSON.stringify(await (await f.call(undefined,'a','?export=1')).json()));const exported=JSON.parse(backup.resources.find(r=>r.kind==='transaction').payload);assert.equal(exported.planned,true);assert.equal(exported.expectedDate,'2026-09-13');
  }finally{f.raw.close();}
 });
 test('transaction delete, restore and void preserve versions, references, totals and portable backup',async()=>{

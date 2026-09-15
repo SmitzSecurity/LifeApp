@@ -12,7 +12,7 @@ export const budgetItemSchema=z.discriminatedUnion('kind',[
  z.object({...base,kind:z.literal('recurring'),previous:recurringSchema.nullable(),item:recurringSchema}).strict(),
  z.object({...base,kind:z.literal('import'),categories:z.array(z.object({previous:categorySchema.nullable(),item:categorySchema}).strict()).max(20),recurring:z.array(z.object({previous:recurringSchema.nullable(),item:recurringSchema}).strict()).max(30)}).strict(),
  z.object({...base,kind:z.literal('category-order'),previous:categoryOrder,order:categoryOrder}).strict(),
- z.object({...base,kind:z.literal('category-edit'),categories:z.array(z.object({previous:categorySchema,item:categorySchema}).strict()).max(30),ordering:z.object({previous:categoryOrder,order:categoryOrder}).strict().optional()}).strict(),
+ z.object({...base,kind:z.literal('category-edit'),categories:z.array(z.object({previous:categorySchema.nullable(),item:categorySchema}).strict()).max(30),ordering:z.object({previous:categoryOrder,order:categoryOrder}).strict().optional()}).strict(),
 ]);
 export type BudgetItemChange=z.infer<typeof budgetItemSchema>;
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
@@ -37,15 +37,15 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
   const ordering=change.kind==='category-order'?change:change.kind==='category-edit'?change.ordering:undefined;
   if(ordering){
    const ids=current.categories.map(c=>c.id);
-   if(ordering.order.length!==ordering.previous.length||new Set(ordering.order).size!==ordering.order.length||new Set(ordering.previous).size!==ordering.previous.length||ordering.order.some(id=>!ordering.previous.includes(id)))return json({error:'Include each category exactly once when changing the order.'},400);
+   const additions=change.kind==='category-edit'?change.categories.filter(c=>c.previous===null).map(c=>c.item.id):[];
+   const expected=[...ordering.previous,...additions];
+   if(ordering.order.length!==expected.length||new Set(ordering.order).size!==ordering.order.length||new Set(expected).size!==expected.length||ordering.order.some(id=>!expected.includes(id)))return json({error:'Include each category exactly once when changing the order.'},400);
    if(!same(ids,ordering.order)&&!same(ids,ordering.previous))return json({error:'The category order changed in another session. Cancel and reopen Edit categories to use its saved order.',record:latest},409);
    if(change.kind==='category-order'&&latest&&same(ids,ordering.order))return json({record:latest});
-   data={...current,categories:ordering.order.map(id=>current.categories.find(c=>c.id===id)!)};
   }
   if(change.kind!=='initialize'&&change.kind!=='category-order'){
    const edits=change.kind==='category-edit'?change.categories.map(c=>({...c,kind:'category' as const})):change.kind==='import'?[...change.categories.map(c=>({...c,kind:'category' as const})),...change.recurring.map(r=>({...r,kind:'recurring' as const}))]:[change];
    if(edits.some(e=>e.previous&&e.previous.id!==e.item.id)||new Set(edits.map(e=>e.kind+e.item.id)).size!==edits.length)return json({error:'Each draft item must have its own unchanged ID.'},400);
-   let changed=!same(data,current);
    for(const edit of edits){
     const items=edit.kind==='category'?data.categories:data.recurring;
     const existing=items.find(item=>item.id===edit.item.id)||null;
@@ -58,10 +58,12 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
     }
     if(edit.kind==='category')data={...data,categories:existing?data.categories.map(c=>c.id===edit.item.id?edit.item:c):[...data.categories,edit.item]};
     else data={...data,recurring:existing?data.recurring.map(r=>r.id===edit.item.id?edit.item:r):[...data.recurring,edit.item]};
-    changed=true;
    }
-   if(!changed&&latest)return json({record:latest});
   }
+  // New categories must exist before applying the draft's order. This stays in
+  // the same CAS write, so conflicts cannot save additions or edits partially.
+  if(ordering)data={...data,categories:ordering.order.map(id=>data.categories.find(c=>c.id===id)!)};
+  if(same(data,current)&&latest)return json({record:latest});
   const saved=await saveResource({kind:'budget',id:change.month,version:latest?.version||0,data},db,userId,profile,now);
   if(saved.status!==409)return saved;
  }

@@ -133,3 +133,62 @@ test('category editor validates IDs and ordering, rejects stale resurrection and
  assert.equal((await f.call({action:'budget-item',change:{kind:'category-edit',month,categories:[edited]}},null)).status,401);
  }finally{f.raw.close();}
 });
+
+test('category editor adds, reorders, edits and archives together with idempotent retries',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;
+ const added={id:randomUUID(),name:'Travel',limitCents:6500,archived:false};
+ const change={kind:'category-edit',initial:f.initial,categories:[{previous:null,item:added},{previous:a,item:{...a,name:'Utilities',limitCents:22000}},{previous:b,item:{...b,archived:true}}],ordering:{previous:[a.id,b.id],order:[added.id,b.id,a.id]}};
+ const response=await f.change(change);assert.equal(response.status,200);const saved=(await response.json()).record;
+ assert.equal(saved.version,1);assert.deepEqual(saved.data.categories,[added,{...b,archived:true},{...a,name:'Utilities',limitCents:22000}]);
+ assert.equal((await (await f.change(change)).json()).record.version,1);
+ assert.equal((await f.change({kind:'category',previous:added,item:{...added,limitCents:9000}})).status,200);
+ assert.equal((await f.change(change)).status,409);
+ const current=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.equal(current.version,2);assert.equal(current.data.categories[0].limitCents,9000);
+ }finally{f.raw.close();}
+});
+
+test('category editor additions merge unrelated additions, allowances and saved order',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;await f.change({kind:'initialize',initial:f.initial});
+ await f.change({kind:'category-order',previous:[a.id,b.id],order:[b.id,a.id]});
+ const added={id:randomUUID(),name:'Travel',limitCents:6500,archived:false},other={id:randomUUID(),name:'Health',limitCents:12000,archived:false};
+ const change={kind:'category-edit',categories:[{previous:null,item:added},{previous:a,item:{...a,name:'Utilities'}}]};
+ const responses=await Promise.all([f.change(change),f.change({kind:'category',previous:null,item:other}),f.change({kind:'category',previous:b,item:{...b,limitCents:45000}})]);
+ assert.deepEqual(responses.map(r=>r.status),[200,200,200]);
+ const saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];
+ assert.deepEqual(saved.data.categories.slice(0,2),[{...b,limitCents:45000},{...a,name:'Utilities'}]);assert.equal(saved.data.categories.length,4);assert.deepEqual(saved.data.categories.find(c=>c.id===added.id),added);assert.deepEqual(saved.data.categories.find(c=>c.id===other.id),other);
+ assert.equal((await (await f.change(change)).json()).record.version,saved.version);
+ }finally{f.raw.close();}
+});
+
+test('category editor addition conflicts are atomic and reject malformed extended orders',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;await f.change({kind:'initialize',initial:f.initial});
+ const added={id:randomUUID(),name:'Travel',limitCents:6500,archived:false},edit={previous:null,item:added},previous=[a.id,b.id];
+ for(const change of [
+  {categories:[edit,edit]},
+  {categories:[edit],ordering:{previous,order:previous}},
+  {categories:[edit],ordering:{previous,order:[a.id,added.id,added.id]}},
+  {categories:[edit],ordering:{previous,order:[a.id,b.id,randomUUID()]}},
+  {categories:[{previous:null,item:a}],ordering:{previous,order:previous}},
+ ])assert.equal((await f.change({kind:'category-edit',...change})).status,400);
+ await f.change({kind:'category',previous:b,item:{...b,name:'Groceries'}});
+ const conflict=await f.change({kind:'category-edit',categories:[edit,{previous:b,item:{...b,archived:true}}],ordering:{previous,order:[added.id,b.id,a.id]}});
+ assert.equal(conflict.status,409);let saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.equal(saved.version,2);assert.deepEqual(saved.data.categories,[a,{...b,name:'Groceries'}]);
+ await f.change({kind:'category',previous:null,item:{...added,name:'Different saved item'}});
+ assert.equal((await f.change({kind:'category-edit',categories:[edit,{previous:a,item:{...a,archived:true}}]})).status,409);
+ saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.equal(saved.data.categories[0].archived,false);assert.equal(saved.data.categories[2].name,'Different saved item');
+ }finally{f.raw.close();}
+});
+
+test('category editor can add to an empty month and respects membership, size and account limits',async()=>{
+ const f=fixture();try{await f.setup();const added={id:randomUUID(),name:'First category',limitCents:0,archived:false};
+ const initial={...f.initial,categories:[]},change={kind:'category-edit',initial,categories:[{previous:null,item:added}],ordering:{previous:[],order:[added.id]}};
+ assert.equal((await f.change(change)).status,200);assert.equal((await (await f.change(change)).json()).record.version,1);
+ const another={id:randomUUID(),name:'Second category',limitCents:1,archived:false};
+ assert.equal((await f.change({kind:'category',previous:null,item:another})).status,200);
+ assert.equal((await f.change({...change,initial:undefined})).status,409);
+ assert.equal((await f.change(change,'b')).status,400);assert.equal((await f.call({action:'budget-item',change:{...change,month}},null)).status,401);
+ const additions=Array.from({length:29},(_,i)=>({previous:null,item:{id:randomUUID(),name:'Category '+i,limitCents:0,archived:false}}));
+ assert.equal((await f.change({kind:'category-edit',categories:additions})).status,400);
+ const saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.equal(saved.version,2);assert.deepEqual(saved.data.categories,[added,another]);assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE user_id='b'").get().n,0);
+ }finally{f.raw.close();}
+});

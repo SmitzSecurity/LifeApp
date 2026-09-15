@@ -46,7 +46,9 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  }
  if(kind==='transaction'){
   const t=data as Transaction;period=t.date.slice(0,7);
-  if(t.date>todayIn(profile.timezone,now))return json({error:'Record money on today or an earlier date. Use the monthly plan for future payments.'},400);
+  if(!t.planned&&t.date>todayIn(profile.timezone,now))return json({error:'Actual payments need today or an earlier date. Save a future one-off payment as planned.'},400);
+  if(previous?.data.planned&&t.planned!==true&&t.planned!==false)return json({error:'Confirm this planned payment before counting it as recorded.'},400);
+  if(previous?.data.expectedDate&&!t.planned&&t.expectedDate!==previous.data.expectedDate)return json({error:'Keep the original expected date when confirming or correcting this payment.'},400);
   if(previous&&(previous.data.date.slice(0,7)!==period||previous.data.recurringId!==t.recurringId))return json({error:'Keep this transaction in its original month. Void it and add a corrected transaction if needed.'},400);
   const plan=(await readResource(db,userId,'budget',period))?.data as Budget|undefined;
   const category=plan?.categories.find(c=>c.id===t.categoryId);
@@ -58,7 +60,7 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    if(!previous&&!scheduledInMonth(period,recurring))return json({error:'This payment is outside the saved schedule. Edit its schedule first.'},409);
    if(recurring.deleted&&!previous)return json({error:'This monthly item was deleted. Restore it in the monthly plan first.'},409);
   }else if(id.startsWith('due:'))return json({error:'Missing scheduled occurrence.'},400);
-  data={...t,categoryId:t.kind==='expense'?t.categoryId:'',categoryName:t.kind==='expense'?category!.name:''};
+  data={...t,...(t.planned?{expectedDate:t.expectedDate||t.date}:{}),categoryId:t.kind==='expense'?t.categoryId:'',categoryName:t.kind==='expense'?category!.name:''};
  }
  if(kind==='budget'&&(data as Budget).recurring.some(r=>r.debt&&(r.debt.balanceDate>todayIn(profile.timezone,now)||r.debt.balanceDate<'1900-01-01')))return json({error:'Use a statement balance date between 1900 and today.'},400);
  if(kind==='budget'&&previous){
