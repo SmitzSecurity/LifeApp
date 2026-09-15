@@ -1,0 +1,103 @@
+/* Shared visual rhythm. Keep touch targets and native text zoom independent of
+   the smaller type, card padding and gaps; never scale the viewport or hide copy. */
+.life-compact-theme{--ui-copy:.875rem;--ui-label:.8125rem;--ui-meta:.75rem;--ui-title:1rem;--ui-gap:12px}
+.life-compact-theme .compact-app{font-size:var(--ui-copy);line-height:1.5}
+.life-compact-theme :is([data-slot=dialog-content],[data-slot=alert-dialog-content],.workout-panel){font-size:var(--ui-copy);line-height:1.5}
+.life-compact-theme [data-slot=button]{font-size:var(--ui-label);font-weight:500;line-height:1.35;min-height:44px;gap:6px;padding-inline:12px}
+.life-compact-theme [data-slot=button][data-size^=icon]{width:44px;height:44px;padding:10px;flex-shrink:0}
+.life-compact-theme .compact-field{font-size:var(--ui-label);font-weight:500;gap:6px;margin-block:10px}
+.life-compact-theme .compact-field :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea,[data-slot=select-trigger]),
+.life-compact-theme .calendar-input-trigger{font-size:1rem;font-weight:400;line-height:1.4}
+.life-compact-theme .compact-field textarea{padding:9px 10px}
+.life-compact-theme :is(.field-hint,.privacy-note,.builder-consent){font-size:var(--ui-meta);line-height:1.5}
+.life-compact-theme .inline-check{font-size:var(--ui-label);gap:8px;margin-block:10px;min-height:44px}
+.life-compact-theme .inline-check input{flex-shrink:0}
+.life-compact-theme .compact-app .section-heading{gap:8px;margin-bottom:12px}
+.life-compact-theme .compact-app .section-heading :is(h2,h3){font-size:var(--ui-title);line-height:1.4;font-weight:600;letter-spacing:0}
+.life-compact-theme .compact-app :is(.error,.notice){font-size:var(--ui-label);line-height:1.5;padding:10px 12px;margin:10px 0}
+.life-compact-theme :is([data-slot=dialog-title],[data-slot=alert-dialog-title]){font-size:1.0625rem;line-height:1.4;font-weight:600;letter-spacing:0}
+.life-compact-theme :is([data-slot=dialog-description],[data-slot=alert-dialog-description]){font-size:var(--ui-label);line-height:1.5}
+.life-compact-theme .life-menu [data-slot=dropdown-menu-item]{font-size:var(--ui-copy);min-height:44px;gap:10px}
+.life-compact-theme .life-menu [data-slot=dropdown-menu-label]{font-size:var(--ui-title);padding:10px}
+
+/* Home and Responses share the same analysis surface, including empty states. */
+.life-compact-theme .home-dashboard{padding-top:16px;gap:16px}
+.life-compact-theme .today-invitation{gap:10px}
+.life-compact-theme .today-invitation h2{font-size:1.0625rem;line-height:1.4;font-weight:600;letter-spacing:-.01em}
+.life-compact-theme .today-invitation p{font-size:var(--ui-meta);margin-top:3px}
+.life-compact-theme .today-invitation>[data-slot=button]{font-size:var(--ui-copy);min-height:44px;padding-inline:12px}
+.life-compact-theme .analysis-card:not(.training-analysis){padding:14px 16px;border-radius:8px}
+.life-compact-theme .analysis-card .analysis-heading{gap:8px;margin-bottom:8px;min-height:44px}
+.life-compact-theme .analysis-card .analysis-heading h2{font-size:var(--ui-title);line-height:1.4;font-weight:600}
+.life-compact-theme .analysis-card .analysis-empty{font-size:var(--ui-copy);line-height:1.5;max-width:65ch}
+.life-compact-theme .analysis-card .analysis-tools{margin-top:12px;padding-top:8px;gap:4px}
+.life-compact-theme .analysis-card .analysis-tools button{font-size:var(--ui-label);min-height:44px}
+.life-compact-theme .analysis-card .analysis-note{font-size:var(--ui-meta);line-height:1.5;margin-top:8px}
+.life-compact-theme .analysis-card .analysis-progress{font-size:var(--ui-label);margin-top:8px}
+.life-compact-theme .analysis-copy{font-size:var(--ui-copy);line-height:1.6}
+/* Report HTML also serves email, so override its inline reading sizes only here. */
+.life-compact-theme .analysis-markdown p{line-height:1.6!important;margin-bottom:10px!important}
+.life-compact-theme .analysis-markdown :is(h3,h4,h5,h6){font-size:1rem!important;line-height:1.4!important;margin-top:16px!important;margin-bottom:8px!important}
+.life-compact-theme .analysis-markdown :is(ul,ol){padding-left:20px!important;margin-block:8px 12px!important}
+.life-compact-theme .analysis-markdown li{margin-block:4px!important}
+.life-compact-theme .analysis-markdown>:first-child{margin-top:0!important}
+.life-compact-theme .analysis-markdown>:last-child{margin-bottom:0!important}
+.life-compact-theme .home-dashboard>.subtle-link{margin-top:-12px;min-height:44px;font-size:var(--ui-label)}
+.life-compact-theme :is(.period-overview,.trend-heading) h2{font-size:var(--ui-title);line-height:1.4;font-weight:600;margin-bottom:8px}
+.life-compact-theme .period-links{gap:8px}
+.life-compact-theme .period-links button{padding:10px;border-radius:6px;min-height:76px}
+.life-compact-theme .period-links button>span{font-size:var(--ui-label);line-height:1.4;gap:4px}
+.life-compact-theme .period-links small{font-size:var(--ui-meta);line-height:1.4;margin-top:4px}
+.life-compact-theme .period-links svg{width:14px;height:14px;flex-shrink:0}
+.life-compact-theme .trend-heading{margin-bottom:10px;gap:4px}
+.life-compact-theme .trend-heading h2{margin-bottom:2px}
+.life-compact-theme .trend-heading small{font-size:var(--ui-meta);line-height:1.4}
+.life-compact-theme .trend-cards{gap:10px;align-items:stretch}
+.life-compact-theme .trend-card{display:flex;flex-direction:column;padding:12px;border-radius:6px}
+.life-compact-theme .trend-card>span{font-size:var(--ui-copy);line-height:1.4;gap:6px;width:100%;min-width:0}
+.life-compact-theme .trend-card>strong{font-size:1rem;line-height:1.4;font-weight:600;margin:8px 0 4px}
+.life-compact-theme .trend-card>small{font-size:var(--ui-meta);line-height:1.5}
+.life-compact-theme .trend-card .trend-chart{height:36px;margin-top:10px}
+
+.life-compact-theme .responses-hub{gap:16px;padding-top:16px}
+.life-compact-theme .response-history-heading{margin-bottom:6px;gap:8px}
+.life-compact-theme .response-history-heading h2{font-size:var(--ui-title);line-height:1.4;font-weight:600}
+.life-compact-theme .compact-app .history-entry .history-row{min-height:64px;padding:8px 2px;gap:3px 8px}
+.life-compact-theme .compact-app .history-date{font-size:var(--ui-copy);font-weight:600}
+.life-compact-theme .compact-app .history-text{font-size:var(--ui-label);line-height:1.4}
+.life-compact-theme .compact-app .history-score{font-size:var(--ui-meta)}
+.life-compact-theme .response-row-actions{gap:0}
+.life-compact-theme .response-row-actions button svg{width:18px;height:18px}
+.life-compact-theme .compact-app .history-filters{padding-block:12px;gap:8px}
+.life-compact-theme .compact-app .history-filters label{font-size:var(--ui-label)}
+.life-compact-theme .compact-app .history-filters :is(input,select){font-size:1rem;min-height:44px;padding:8px}
+.life-compact-theme .response-page .response-field{font-size:var(--ui-label);gap:6px;margin-bottom:16px}
+.life-compact-theme .response-page .response-field:has(#response-date){max-width:200px}
+.life-compact-theme .response-page .journal-input textarea{font-size:1rem;line-height:1.5}
+.life-compact-theme .response-page .response-habit{margin-block:16px}
+.life-compact-theme .response-page .response-habit-label{margin-bottom:6px;min-height:24px}
+.life-compact-theme .response-page .response-habit-label>span{font-size:var(--ui-copy)}
+.life-compact-theme .response-page .response-habit-label small{font-size:var(--ui-meta)}
+.life-compact-theme .response-page .response-choice{font-size:var(--ui-label);line-height:1.35}
+.life-compact-theme .response-page .response-score{font-size:var(--ui-label);padding-block:10px}
+.life-compact-theme .response-page .response-score summary{min-height:44px;align-content:center}
+.life-compact-theme .response-page .completion-help{font-size:var(--ui-meta);line-height:1.5;margin-block:8px}
+.life-compact-theme .response-page .response-save-buttons button{font-size:var(--ui-copy)}
+.life-compact-theme .feedback-dialog{padding:18px;gap:12px}
+.life-compact-theme .feedback-dialog .compact-field{margin-block:4px}
+
+@media(max-width:600px){
+ .life-compact-theme .home-dashboard{padding-top:12px;gap:14px}
+ .life-compact-theme .today-invitation{gap:8px}
+ .life-compact-theme .analysis-card:not(.training-analysis){padding:10px 12px}
+ .life-compact-theme .analysis-card .analysis-heading{margin-bottom:6px}
+ .life-compact-theme .analysis-card .analysis-tools{margin-top:10px;padding-top:6px}
+ .life-compact-theme .period-links button{padding:9px 8px;min-height:76px}
+ .life-compact-theme .trend-card{padding:10px}
+ .life-compact-theme .trend-card>span{font-size:var(--ui-label)}
+ .life-compact-theme .responses-hub{gap:14px;padding-top:12px}
+ .life-compact-theme .response-page .response-fields{padding-top:14px}
+ .life-compact-theme .compact-app .add-response{width:52px;height:52px;min-height:52px;right:16px}
+ .life-compact-theme .compact-app .add-response svg{width:26px;height:26px}
+ .life-compact-theme .feedback-dialog{padding:14px}
+}

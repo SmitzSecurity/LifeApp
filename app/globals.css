@@ -7,6 +7,10 @@
 @import "./life/theme.css";
 @import "./life/forms.css";
 @import "./life/mobile-density.css";
+@import "./life/ui-density.css";
+@import "./life/workout-density.css";
+@import "./life/budget-density.css";
+@import "./life/settings-density.css";
 
 .history-filters{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:22px 0}
 .history-filters label{display:flex;flex-direction:column;gap:6px;font-size:.875rem;font-weight:600;min-width:140px}

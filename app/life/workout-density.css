@@ -1,0 +1,213 @@
+/* Workout-only density. Keep every action, disclosure and saved detail visible. */
+.life-compact-theme :is(.training-workspace,.workout-panel){font-size:var(--ui-copy,.875rem);line-height:1.5}
+.life-compact-theme .training-workspace{padding-top:8px}
+.life-compact-theme .training-workspace :is(h2,h3,h4),
+.life-compact-theme .workout-panel :is(h2,h3,h4){font-weight:600;line-height:1.35;letter-spacing:0;overflow-wrap:anywhere}
+.life-compact-theme .training-workspace :is(h2,h3),
+.life-compact-theme .workout-panel :is(h3,h4){font-size:var(--ui-title,1rem)}
+.life-compact-theme .training-workspace :is(p,small),
+.life-compact-theme .workout-panel :is(p,small){line-height:1.5}
+.life-compact-theme .training-workspace small,
+.life-compact-theme .workout-panel small{font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .training-workspace :is(.notice,.analysis-note,.error),
+.life-compact-theme .workout-panel :is(.notice,.analysis-note,.error){margin:8px 0;padding:8px 10px;font-size:var(--ui-copy,.875rem);line-height:1.5}
+.life-compact-theme .training-workspace .section-heading,
+.life-compact-theme .workout-panel .section-heading{gap:8px;margin-bottom:8px}
+.life-compact-theme .training-workspace .action-row,
+.life-compact-theme .workout-panel .action-row{gap:8px;margin-block:8px}
+.life-compact-theme .training-workspace button,
+.life-compact-theme .workout-panel button{min-height:44px;font-size:var(--ui-copy,.875rem);line-height:1.35;font-weight:500}
+.life-compact-theme .training-workspace button[data-slot=button],
+.life-compact-theme .workout-panel button[data-slot=button]{height:auto;padding:8px 10px;white-space:normal;min-width:0}
+.life-compact-theme .training-workspace button[data-size=icon],
+.life-compact-theme .workout-panel button[data-size=icon]{width:44px;height:44px;padding:11px;flex-shrink:0}
+
+/* One restrained weekly summary, with the analysis action still explicit. */
+.life-compact-theme .training-workspace .training-overview{border-radius:8px}
+.life-compact-theme .training-workspace .training-overview>.training-week{padding:10px 12px;gap:8px}
+.life-compact-theme .training-workspace .training-overview>.training-week strong{font-size:var(--ui-copy,.875rem);line-height:1.4;margin:0}
+.life-compact-theme .training-workspace .training-overview>.training-week small{margin-top:3px;font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .training-workspace .training-overview>.training-analysis{padding:4px 12px 10px;margin:0}
+.life-compact-theme .training-workspace .training-analysis>.section-heading{margin:0;gap:4px;align-items:center;flex-wrap:nowrap}
+.life-compact-theme .training-workspace .training-analysis h3{font-size:var(--ui-copy,.875rem);margin:0}
+.life-compact-theme .training-workspace .training-analysis-actions{gap:0}
+.life-compact-theme .training-workspace .training-analysis-actions button{font-size:var(--ui-label,.8125rem);padding-inline:8px}
+.life-compact-theme .training-workspace .training-analysis-disclosure{font-size:var(--ui-meta,.75rem);line-height:1.45;margin:0}
+.life-compact-theme .training-workspace .training-analysis-summary{flex-direction:row;align-items:center;gap:4px;margin:0 0 4px}
+.life-compact-theme .training-workspace .training-analysis-preview{max-height:2.9em}
+.life-compact-theme .training-workspace .training-analysis-preview :is(.analysis-markdown,p){font-size:var(--ui-copy,.875rem);line-height:1.45;margin:0}
+.life-compact-theme .training-workspace .training-toolbar{gap:6px;margin:8px 0}
+.life-compact-theme .training-workspace .training-toolbar>button{height:44px;font-size:var(--ui-label,.8125rem);padding:6px}
+.life-compact-theme .training-workspace .training-view-switch{padding:2px;margin:0 0 8px}
+.life-compact-theme .training-workspace .coverage-tabs>button{min-height:44px;font-size:var(--ui-label,.8125rem);padding:6px}
+.life-compact-theme .training-workspace .training-columns{gap:12px}
+
+/* Programs remain the primary action; long names wrap instead of disappearing. */
+.life-compact-theme .training-workspace .training-card{padding:10px 12px;border-radius:8px}
+.life-compact-theme .training-workspace .training-card>.section-heading{margin:0 0 6px;min-height:44px}
+.life-compact-theme .training-workspace .training-card h3{margin:0;font-size:var(--ui-title,1rem)}
+.life-compact-theme .training-workspace .program-list{max-height:360px}
+.life-compact-theme .training-workspace .program-row{padding:6px 8px;margin-bottom:6px;gap:6px;min-height:64px;border-radius:6px}
+.life-compact-theme .training-workspace .program-select{min-height:44px;padding:0;font-size:var(--ui-copy,.875rem)}
+.life-compact-theme .training-workspace .program-select strong{font-size:var(--ui-copy,.875rem);line-height:1.35;font-weight:600;overflow-wrap:anywhere}
+.life-compact-theme .training-workspace .program-select small{font-size:var(--ui-meta,.75rem);line-height:1.45;margin-top:2px}
+.life-compact-theme .training-workspace .program-actions{flex-direction:row;gap:0}
+.life-compact-theme .training-workspace .program-actions>button{min-height:44px;height:auto;padding:8px;font-size:var(--ui-label,.8125rem)}
+.life-compact-theme .training-workspace .training-card>.action-row{margin:6px 0 0}
+.life-compact-theme .training-workspace .empty-inline{font-size:var(--ui-copy,.875rem);padding:12px 0;margin:0}
+
+/* The current lift and timer should fit as a compact header, even on a phone. */
+.life-compact-theme .training-workspace .gym-active{padding:12px;margin:0 0 12px;border-radius:8px;border-top-width:2px}
+.life-compact-theme .training-workspace .gym-active>.section-heading{grid-template-columns:minmax(0,1fr) 88px;gap:8px;margin:0 0 10px;align-items:start}
+.life-compact-theme .training-workspace .gym-active .section-heading h3{font-size:var(--ui-title,1rem);line-height:1.35;margin:4px 0}
+.life-compact-theme .training-workspace .gym-active .eyebrow{font-size:var(--ui-meta,.75rem);line-height:1.4;letter-spacing:.025em}
+.life-compact-theme .training-workspace .gym-active .section-heading small{font-size:var(--ui-meta,.75rem);line-height:1.45}
+.life-compact-theme .training-workspace .gym-active .rest-clock{min-width:0;width:88px}
+.life-compact-theme .training-workspace .gym-active .rest-clock strong{font-size:1.625rem;line-height:1.15;margin:3px 0;font-weight:600;letter-spacing:0}
+.life-compact-theme .training-workspace .gym-active .rest-clock>button{margin-top:4px;padding:6px 8px;min-height:44px;font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .training-workspace .current-set{padding:10px;border-radius:6px}
+.life-compact-theme .training-workspace .current-set h2{font-size:1.0625rem;line-height:1.35;margin:3px 0 5px}
+.life-compact-theme .training-workspace .current-set p{font-size:var(--ui-copy,.875rem);line-height:1.5;margin:4px 0}
+.life-compact-theme .training-workspace .current-set>.muted{font-size:var(--ui-meta,.75rem);margin-top:8px}
+.life-compact-theme .training-workspace .current-set .compact-field{font-size:var(--ui-label,.8125rem);margin:8px 0}
+.life-compact-theme .training-workspace .current-set .compact-field input{height:44px;min-height:44px;padding:8px;font-size:1rem}
+.life-compact-theme .training-workspace .current-set .inline-check{min-height:44px;font-size:var(--ui-label,.8125rem);margin:4px 0;gap:8px}
+.life-compact-theme .training-workspace .current-set .action-row{margin:6px 0 0}
+.life-compact-theme .training-workspace .gym-active>button{margin:6px 4px 0 0;font-size:var(--ui-label,.8125rem);padding-inline:8px}
+.life-compact-theme .training-workspace .gym-active>small{display:block;margin:6px 0 0;font-size:var(--ui-meta,.75rem)}
+
+/* Keep the map readable, and give its equivalent text controls full touch targets. */
+.life-compact-theme .training-workspace .coverage-choice{gap:8px;margin-top:8px}
+.life-compact-theme .training-workspace .coverage-choice select{min-height:44px;padding:6px 8px;font-size:1rem}
+.life-compact-theme .training-workspace .coverage-choice small{font-size:var(--ui-meta,.75rem);line-height:1.4}
+.life-compact-theme .training-workspace .coverage-caption{margin:8px 0;font-size:var(--ui-meta,.75rem);line-height:1.5}
+.life-compact-theme .training-workspace .coverage-visual{gap:10px;margin-top:8px}
+.life-compact-theme .training-workspace .coverage-visual:has(.muscle-overview){grid-template-columns:minmax(80px,.7fr) minmax(0,1.3fr);align-items:center}
+.life-compact-theme .training-workspace .muscle-map{max-height:250px}
+.life-compact-theme .training-workspace .coverage-visual:has(.muscle-overview) .muscle-map{max-height:260px}
+.life-compact-theme .training-workspace .muscle-overview h4{font-size:var(--ui-copy,.875rem);line-height:1.4;margin:0}
+.life-compact-theme .training-workspace .muscle-overview>small{font-size:var(--ui-meta,.75rem);margin:2px 0 5px}
+.life-compact-theme .training-workspace .muscle-overview ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px}
+.life-compact-theme .training-workspace .muscle-overview li{border-top:0;border-bottom:1px solid var(--border);min-width:0}
+.life-compact-theme .training-workspace .muscle-overview button{min-height:44px;height:100%;padding:4px 2px;gap:4px;font-size:var(--ui-meta,.75rem);line-height:1.35}
+.life-compact-theme .training-workspace .muscle-overview button span{overflow-wrap:normal}
+.life-compact-theme .training-workspace .muscle-overview button strong{font-size:var(--ui-meta,.75rem);flex-shrink:0}
+.life-compact-theme .training-workspace .muscle-overview button i{width:4px;flex-shrink:0}
+.life-compact-theme .training-workspace .muscle-detail .compact-field{font-size:var(--ui-label,.8125rem);margin:2px 0 6px}
+.life-compact-theme .training-workspace .muscle-detail select{min-height:44px;font-size:1rem;padding:6px}
+.life-compact-theme .training-workspace .coverage-back{min-height:44px;font-size:var(--ui-meta,.75rem);margin:0;padding:4px 0}
+.life-compact-theme .training-workspace .volume-number{font-size:1.625rem;line-height:1.2;margin:6px 0}
+.life-compact-theme .training-workspace .volume-number small{font-size:var(--ui-meta,.75rem);line-height:1.4;margin-top:2px}
+.life-compact-theme .training-workspace .volume-equation{font-size:var(--ui-meta,.75rem);margin:6px 0;line-height:1.5}
+.life-compact-theme .training-workspace .muscle-detail :is(p.muted,small){font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .training-workspace .muscle-contributors{margin:8px 0;max-height:112px}
+.life-compact-theme .training-workspace .muscle-contributors li{font-size:var(--ui-meta,.75rem);padding:5px 0;line-height:1.4}
+.life-compact-theme .training-workspace .muscle-contributors small{font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .training-workspace :is(.coverage-reference,.map-legend,.map-legend small){font-size:var(--ui-meta,.75rem);line-height:1.4}
+.life-compact-theme .training-workspace .map-legend{flex-wrap:wrap;gap:5px;margin:8px 0}
+.life-compact-theme .training-workspace .coverage-adjust{padding-top:8px;margin-top:8px}
+.life-compact-theme .training-workspace .coverage-adjust button{min-height:44px;font-size:var(--ui-label,.8125rem)}
+.life-compact-theme .training-workspace .coverage-adjust select{min-height:44px;font-size:1rem}
+
+/* Native workout tools share compact, legible fields rather than nested padded cards. */
+.life-compact-theme .workout-panel{padding:14px 16px;border-radius:10px;max-height:90dvh}
+.life-compact-theme .workout-panel>header{gap:8px;margin:0 0 8px;min-height:44px}
+.life-compact-theme .workout-panel>header h2{font-size:1.125rem;line-height:1.35;margin:0}
+.life-compact-theme .workout-panel>header>button{width:44px;height:44px;min-height:44px;font-size:1.5rem;padding:0}
+.life-compact-theme .workout-panel>.module-card{padding:0;margin:0;border:0;background:transparent}
+.life-compact-theme .workout-panel .compact-field{font-size:var(--ui-label,.8125rem);font-weight:400;line-height:1.4;margin:8px 0;gap:6px}
+.life-compact-theme .workout-panel :is(input:not([type=checkbox]),select,textarea){font-size:1rem;font-weight:400;line-height:1.4}
+.life-compact-theme .workout-panel :is(input:not([type=checkbox]),select){height:44px;min-height:44px;padding:8px;max-width:100%}
+.life-compact-theme .workout-panel textarea{padding:8px 10px;min-height:76px}
+.life-compact-theme .workout-panel .calendar-input-trigger{font-size:1rem;height:44px;min-height:44px}
+.life-compact-theme .workout-panel .form-grid{column-gap:10px}
+.life-compact-theme .workout-panel .inline-check{min-height:44px;gap:8px;margin:4px 0;font-size:var(--ui-label,.8125rem);font-weight:400;line-height:1.45}
+.life-compact-theme .workout-panel :is(.muted,.builder-notes,.training-guidance p){font-size:var(--ui-copy,.875rem);line-height:1.5;margin:8px 0}
+.life-compact-theme .workout-panel :is(.builder-consent,.dictation-message){font-size:var(--ui-meta,.75rem);line-height:1.5}
+.life-compact-theme .workout-panel .dictation-controls{gap:6px;margin:4px 0}
+.life-compact-theme .workout-panel .routine-basics{gap:10px}
+.life-compact-theme .workout-panel .routine-editor-grid{gap:12px;padding:10px 0}
+.life-compact-theme .workout-panel .routine-exercise-list{gap:4px}
+.life-compact-theme .workout-panel .routine-exercise-list button{min-height:44px;padding:7px 8px;font-size:var(--ui-label,.8125rem);line-height:1.4}
+.life-compact-theme .workout-panel .routine-exercise-list small{font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .workout-panel .exercise-focus .form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:10px}
+.life-compact-theme .workout-panel .coverage-tabs{padding:2px}
+.life-compact-theme .workout-panel .coverage-tabs>button{min-height:44px;font-size:var(--ui-label,.8125rem);padding:6px}
+.life-compact-theme .workout-panel .exercise-focus .action-row{margin:6px 0 0}
+.life-compact-theme .workout-panel .muscle-assignment{gap:6px 10px}
+.life-compact-theme .workout-panel .muscle-assignment label{font-size:var(--ui-meta,.75rem);line-height:1.4}
+.life-compact-theme .workout-panel .muscle-assignment select{font-size:1rem;min-height:44px;padding:6px;margin-top:4px}
+
+/* Do not make fieldsets the scroller: their special sizing can move the footer. */
+.life-compact-theme .workout-panel[open]:has(>.workout-panel-footer){display:flex;flex-direction:column;overflow:hidden}
+.life-compact-theme .workout-panel[open]:has(>.workout-panel-footer)>header{flex-shrink:0}
+.life-compact-theme .workout-panel[open]>.routine-scroll{flex:1 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding-right:3px}
+.life-compact-theme .workout-panel[open]>.workout-panel-footer{position:static;flex-shrink:0;margin-top:8px;padding:8px 0 0;background:var(--popover)}
+.life-compact-theme .workout-panel .workout-panel-footer>.action-row,
+.life-compact-theme .workout-panel .written-save,
+.life-compact-theme .workout-panel .cardio-card fieldset>.action-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:0;align-items:stretch}
+.life-compact-theme .workout-panel .workout-panel-footer>.action-row{margin:0}
+.life-compact-theme .workout-panel .workout-panel-footer>.action-row>button,
+.life-compact-theme .workout-panel .written-save>button,
+.life-compact-theme .workout-panel .cardio-card fieldset>.action-row>button{width:100%;min-width:0;min-height:44px;height:auto;white-space:normal}
+.life-compact-theme .workout-panel .written-save,
+.life-compact-theme .workout-panel .cardio-card fieldset>.action-row{position:sticky;bottom:-14px;padding:8px 0;background:var(--popover);border-top:1px solid var(--border);z-index:2}
+
+/* Saved notes, analyses, AI drafts and logged sets keep the same visible details. */
+.life-compact-theme .workout-panel :is(.workout-notes,.cardio-card)>h3{margin:0 0 4px}
+.life-compact-theme .workout-panel .workout-note-history{margin-top:10px}
+.life-compact-theme .workout-panel .workout-note-history>summary{min-height:44px;padding:10px 0;font-size:var(--ui-copy,.875rem);font-weight:600}
+.life-compact-theme .workout-panel :is(.workout-note-history article,.routine-build-result){margin-top:8px;padding-top:8px}
+.life-compact-theme .workout-panel .workout-note-history article>.section-heading{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin:0}
+.life-compact-theme .workout-panel .workout-note-history .section-heading>strong{flex:1;min-width:120px;font-size:var(--ui-copy,.875rem);font-weight:600}
+.life-compact-theme .workout-panel .workout-note-history article>p{font-size:var(--ui-copy,.875rem);margin:6px 0;line-height:1.5}
+.life-compact-theme .workout-panel .routine-build-result>.section-heading{margin:0;align-items:center;flex-wrap:wrap}
+.life-compact-theme .workout-panel .routine-build-result h4{font-size:var(--ui-title,1rem);margin:8px 0 4px}
+.life-compact-theme .workout-panel .routine-build-result .section-heading>.action-row{gap:4px;margin:0}
+.life-compact-theme .workout-panel .routine-draft{padding:8px 0}
+.life-compact-theme .workout-panel .routine-draft>.section-heading{margin:0;align-items:center;flex-wrap:wrap}
+.life-compact-theme .workout-panel .routine-draft strong{font-size:var(--ui-copy,.875rem);font-weight:600;line-height:1.4}
+.life-compact-theme .workout-panel .routine-draft ul{margin:6px 0}
+.life-compact-theme .workout-panel .routine-draft li{padding:5px 0;gap:2px 10px;font-size:var(--ui-copy,.875rem);line-height:1.4}
+.life-compact-theme .workout-panel .routine-draft li small{font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .workout-panel .routine-builder>.action-row{gap:6px;margin:8px 0;display:flex;flex-wrap:wrap}
+.life-compact-theme .workout-panel .routine-builder>.action-row>button{flex:1 1 130px}
+.life-compact-theme .workout-panel .training-analysis-reading{padding:0}
+.life-compact-theme .workout-panel .analysis-markdown{font-size:var(--ui-copy,.875rem);line-height:1.6}
+.life-compact-theme .workout-panel .analysis-markdown :is(h1,h2,h3,h4){font-size:var(--ui-title,1rem);margin:14px 0 6px;line-height:1.4;font-weight:600}
+.life-compact-theme .workout-panel .analysis-markdown :is(p,ul,ol){margin:8px 0;font-size:var(--ui-copy,.875rem);line-height:1.6}
+.life-compact-theme .workout-panel .analysis-markdown li{font-size:var(--ui-copy,.875rem);line-height:1.6;margin:3px 0}
+.life-compact-theme .workout-panel .exercise-log{padding:8px 0;font-size:var(--ui-copy,.875rem)}
+.life-compact-theme .workout-panel .exercise-log>strong{font-size:var(--ui-copy,.875rem);font-weight:600}
+.life-compact-theme .workout-panel .exercise-log>small{display:block;margin-top:2px}
+.life-compact-theme .workout-panel .exercise-log p{font-size:var(--ui-copy,.875rem);line-height:1.5;margin:4px 0}
+.life-compact-theme .workout-panel .ledger-row{gap:6px;padding:6px 0;min-height:44px;font-size:var(--ui-copy,.875rem);align-items:center}
+.life-compact-theme .workout-panel .ledger-row>span:first-child{flex:1 1 120px;min-width:0;line-height:1.45}
+.life-compact-theme .workout-panel .ledger-row>span>small{display:block;font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .workout-panel .ledger-row>button{font-size:var(--ui-label,.8125rem);padding:8px}
+.life-compact-theme .workout-panel [data-slot=accordion-trigger]{padding:10px 0;min-height:44px;font-size:var(--ui-copy,.875rem);line-height:1.5;gap:8px}
+.life-compact-theme .workout-panel [data-slot=accordion-content]{font-size:var(--ui-copy,.875rem)}
+.life-compact-theme .workout-panel .timer-options{margin:10px 0;font-size:var(--ui-copy,.875rem)}
+.life-compact-theme .workout-panel .training-guidance li{font-size:var(--ui-copy,.875rem);line-height:1.5;margin:6px 0}
+.life-compact-theme .workout-panel .structured-workout{padding-top:10px;margin-top:10px}
+.life-compact-theme .workout-panel :is(.written-set-head,.written-set-row){grid-template-columns:minmax(0,1fr) minmax(0,1fr) 60px 44px;gap:6px;margin:6px 0;font-size:var(--ui-meta,.75rem)}
+.life-compact-theme .workout-panel .written-set-row button{width:44px;min-height:44px;padding:8px}
+
+@media(max-width:760px){
+ .life-compact-theme .training-workspace .training-overview>.training-week{padding:8px 10px}
+ .life-compact-theme .training-workspace .training-overview>.training-analysis{padding:2px 10px 8px}
+ .life-compact-theme .training-workspace .training-card{padding:8px 10px}
+ .life-compact-theme .training-workspace .program-list{max-height:330px}
+ .life-compact-theme .training-workspace .program-row{padding:6px;gap:3px}
+ .life-compact-theme .training-workspace .gym-active{padding:10px}
+ .life-compact-theme .workout-panel{width:calc(100vw - 20px);padding:12px;border-radius:8px}
+ .life-compact-theme .workout-panel .routine-basics{gap:8px;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+ .life-compact-theme .workout-panel .routine-editor-grid{gap:8px}
+ .life-compact-theme .workout-panel .routine-exercise-list{gap:4px;padding-bottom:3px}
+ .life-compact-theme .workout-panel .routine-exercise-list button{min-width:128px;max-width:180px}
+ .life-compact-theme .workout-panel .routine-editor-grid aside>.compact-field{width:calc(100% - 136px)}
+ .life-compact-theme .workout-panel .routine-editor-grid aside>button{font-size:var(--ui-label,.8125rem);padding-inline:6px;margin-left:6px}
+ .life-compact-theme .workout-panel .exercise-focus .form-grid.three{column-gap:8px}
+ .life-compact-theme .workout-panel .written-save,
+ .life-compact-theme .workout-panel .cardio-card fieldset>.action-row{bottom:-12px}
+}

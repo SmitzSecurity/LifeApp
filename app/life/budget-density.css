@@ -1,0 +1,166 @@
+/* Budget uses the shared density rhythm without changing disclosures, editor
+   state or the distinction between recorded payments and forecasts. */
+.life-compact-theme .budget-workspace{padding-top:12px;font-size:var(--ui-copy);line-height:1.5}
+.life-compact-theme .budget-workspace .budget-toolbar{gap:12px;margin-bottom:10px;flex-wrap:nowrap}
+.life-compact-theme .budget-toolbar h2{font-size:1.0625rem;line-height:1.4;font-weight:600}
+.life-compact-theme .budget-toolbar>.compact-field{margin:0;width:180px;max-width:52%;flex-shrink:0}
+.life-compact-theme .budget-toolbar input{width:100%}
+.life-compact-theme .compact-app .budget-workspace .budget-metrics{gap:8px;margin:0 0 12px}
+.life-compact-theme .compact-app .budget-metrics>div{padding:8px 12px;border-radius:6px}
+.life-compact-theme .budget-metrics strong{font-size:1.25rem!important;line-height:1.4;letter-spacing:-.02em;font-weight:600}
+.life-compact-theme .budget-workspace small{font-size:var(--ui-meta);line-height:1.45}
+.life-compact-theme .budget-workspace .budget-columns{gap:12px;align-items:stretch}
+.life-compact-theme .compact-app .budget-columns>.module-card,
+.life-compact-theme .compact-app .budget-debts{padding:12px;margin-bottom:0}
+.life-compact-theme .budget-columns h3,
+.life-compact-theme .budget-debts h3{font-size:var(--ui-title);line-height:1.4;font-weight:600}
+.life-compact-theme .budget-workspace .budget-section-heading{gap:6px;margin-bottom:6px}
+.life-compact-theme .budget-workspace .budget-section[data-expanded=false]>.budget-section-heading{margin-bottom:0}
+.life-compact-theme .budget-workspace .budget-section-toggle{min-height:44px;gap:6px}
+.life-compact-theme .budget-workspace .budget-section-toggle>small{font-size:var(--ui-meta)}
+.life-compact-theme .budget-workspace [data-slot=button]{min-height:44px;font-size:var(--ui-label);line-height:1.35;padding-inline:10px}
+.life-compact-theme .budget-workspace .compact-field{font-size:var(--ui-label);font-weight:500;margin-block:7px;gap:4px}
+.life-compact-theme .budget-workspace .form-grid{gap:0 10px}
+.life-compact-theme .budget-workspace input:not([type=checkbox]),
+.life-compact-theme .budget-workspace [data-slot=select-trigger]{height:44px;min-height:44px;font-size:1rem;line-height:1.4;padding:8px 10px}
+.life-compact-theme .budget-workspace .currency-input>input{padding-left:28px}
+.life-compact-theme .budget-workspace .calendar-input{font-size:1rem}
+.life-compact-theme .budget-workspace .inline-check{min-height:44px;margin-block:6px;font-size:var(--ui-label)}
+.life-compact-theme .budget-workspace .action-row{gap:8px;margin:8px 0 0}
+.life-compact-theme .budget-workspace .inline-transaction{padding:0 0 6px}
+.life-compact-theme .budget-workspace .budget-notice{font-size:var(--ui-meta);margin-bottom:8px}
+.life-compact-theme .budget-workspace .budget-history{margin-top:12px}
+
+/* Category summaries remain whole-row targets, with their progress and every
+   expected/recorded item visible in the existing expanded content. */
+.life-compact-theme .budget-workspace .allowance-row>summary{min-height:44px;padding:6px 0;gap:3px 8px;font-size:var(--ui-copy);line-height:1.45}
+.life-compact-theme .budget-workspace .allowance-row>summary strong{font-size:var(--ui-label);line-height:1.5}
+.life-compact-theme .budget-workspace .allowance-row>summary small,
+.life-compact-theme .budget-workspace .allowance-name :is(.draft-label,.collapse-hint){font-size:var(--ui-meta)}
+.life-compact-theme .budget-workspace .allowance-content{padding:8px 0 10px}
+.life-compact-theme .budget-workspace .allowance-content p{font-size:var(--ui-meta);line-height:1.5}
+.life-compact-theme .budget-workspace .allowance-total{padding-top:8px}
+.life-compact-theme .budget-workspace .allowance-content h4{margin:10px 0 4px;font-size:var(--ui-label);line-height:1.4}
+.life-compact-theme .budget-workspace .allowance-content .action-row{margin:8px 0}
+.life-compact-theme .budget-workspace .category-upcoming{padding-bottom:4px}
+.life-compact-theme .budget-workspace .recurring-list{margin-top:12px;padding-top:8px}
+.life-compact-theme .budget-workspace .recurring-list>.budget-section-heading{gap:0 4px}
+.life-compact-theme .budget-workspace .recurring-list>.budget-section-heading>h3{flex-basis:180px}
+.life-compact-theme .budget-workspace .recurring-summary{min-height:44px;padding:8px 0;gap:8px}
+.life-compact-theme .budget-workspace .recurring-summary strong{font-size:var(--ui-copy);font-weight:500;line-height:1.4}
+.life-compact-theme .budget-workspace .recurring-summary small{margin-top:2px}
+.life-compact-theme .budget-workspace .recurring-summary .recurring-label{font-size:var(--ui-meta)}
+
+.life-compact-theme .budget-workspace .transaction-tile{container:budget-transaction / inline-size}
+.life-compact-theme .budget-workspace .ledger-row,
+.life-compact-theme .budget-workspace .ledger-row:has(>.transaction-actions){padding:8px 0;gap:4px 8px}
+.life-compact-theme .budget-workspace .ledger-row strong{font-size:var(--ui-copy);font-weight:500;line-height:1.4}
+.life-compact-theme .budget-workspace .ledger-row small{margin-top:2px}
+.life-compact-theme .budget-workspace .expected-item-title{min-height:44px}
+.life-compact-theme .budget-workspace .transaction-actions{gap:2px}
+.life-compact-theme .budget-workspace .transaction-actions [data-slot=button]{min-height:44px;padding-inline:9px}
+.life-compact-theme .budget-workspace .voided-label{font-size:var(--ui-meta)}
+.life-compact-theme .budget-workspace .forecast-totals{gap:16px;font-size:var(--ui-label);padding-bottom:8px}
+.life-compact-theme .budget-workspace .forecast-totals strong{font-size:var(--ui-copy);font-weight:600;margin-top:2px}
+.life-compact-theme .budget-workspace .needs-amount{padding-left:8px}
+.life-compact-theme .budget-workspace .budget-footer{font-size:var(--ui-meta);padding:10px 0;gap:4px 12px;align-items:center}
+.life-compact-theme .budget-workspace .budget-footer-actions{gap:16px}
+.life-compact-theme .budget-workspace .budget-goals-link{gap:8px}
+.life-compact-theme .budget-workspace .budget-footer button{min-height:44px;font-size:var(--ui-label)}
+.life-compact-theme .budget-workspace .budget-goals-link small{font-size:var(--ui-meta)}
+
+@container budget-transaction (min-width:420px){
+ .life-compact-theme .budget-workspace .ledger-row:has(>.transaction-actions){display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:4px 10px}
+ .life-compact-theme .budget-workspace .ledger-row>.transaction-actions{grid-column:3;grid-row:1;flex-basis:auto}
+ .life-compact-theme .budget-workspace .ledger-row>.voided-label{grid-column:1;justify-self:start;margin-top:0}
+}
+
+/* Debt balances retain the qualifications and confirmed-payment distinction. */
+.life-compact-theme .compact-app .budget-workspace .budget-debts{margin-block:12px}
+.life-compact-theme .budget-workspace .loan-grid{gap:10px}
+.life-compact-theme .budget-workspace .loan-card{padding:10px 12px;border-radius:6px}
+.life-compact-theme .budget-workspace .loan-card .section-heading{gap:8px;margin-bottom:4px}
+.life-compact-theme .budget-workspace .loan-card .section-heading>strong{font-size:var(--ui-copy);font-weight:600}
+.life-compact-theme .budget-workspace .loan-card .loan-balance{font-size:1.25rem;font-weight:600;line-height:1.4}
+.life-compact-theme .budget-workspace .loan-card>small{font-size:var(--ui-meta);margin-block:4px;line-height:1.45}
+.life-compact-theme .budget-workspace .loan-card progress{height:5px;margin:8px 0 6px}
+.life-compact-theme .budget-workspace .loan-figures{font-size:var(--ui-label);gap:4px 10px}
+.life-compact-theme .budget-workspace .loan-card>.field-hint{margin-block:6px}
+.life-compact-theme .budget-workspace .loan-card>button{margin-top:4px}
+
+/* Portal dialogs inherit the same spacing. Headers and action bars stay outside
+   their scrolling bodies; field display/grid rules are left to forms.css. */
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog){padding:16px;gap:10px;font-size:var(--ui-copy)}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) [data-slot=dialog-header]{gap:4px;flex-shrink:0;text-align:left;padding-right:20px}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) [data-slot=dialog-title]{font-size:1.0625rem;line-height:1.4;font-weight:600}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) [data-slot=dialog-description]{font-size:var(--ui-label);line-height:1.45;text-align:left}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) .compact-field{font-size:var(--ui-label);font-weight:500;margin-block:6px;gap:4px}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) .compact-field :is(input:not([type=checkbox]),select,textarea,[data-slot=select-trigger]){font-size:1rem;line-height:1.4}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) .calendar-input{font-size:1rem}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) .form-grid{column-gap:10px}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) .inline-check{min-height:44px;font-size:var(--ui-label);gap:8px;margin-block:6px}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog) .field-hint{font-size:var(--ui-meta);line-height:1.45;margin-block:6px}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog)>[data-slot=dialog-footer]{flex-shrink:0;gap:8px;margin-top:0;padding-top:8px;border-top:1px solid var(--border);align-items:stretch}
+.life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog)>[data-slot=dialog-footer]>button{min-height:44px;font-size:var(--ui-label);line-height:1.35;min-width:0;padding-inline:10px;white-space:normal}
+.life-compact-theme .recurring-dialog .loan-fields{margin-top:10px;padding-top:10px}
+.life-compact-theme .recurring-dialog .item-dialog-actions .delete-item{margin-right:auto}
+.life-compact-theme .budget-goals-dialog{display:flex;flex-direction:column;overflow:hidden}
+.life-compact-theme .budget-goals-dialog>fieldset{min-height:0;overflow:auto;padding-inline:2px}
+.life-compact-theme .budget-goals-dialog textarea{min-height:68px;padding:8px 10px}
+.life-compact-theme .budget-goals-dialog .compact-field:first-child{margin-top:0}
+
+.life-compact-theme .category-order-list>li.category-edit-item{padding:4px 0}
+.life-compact-theme .category-edit-heading{gap:4px}
+.life-compact-theme .category-edit-heading .category-order-name{font-size:var(--ui-copy);padding:4px 0;gap:5px}
+.life-compact-theme .category-order-name small{font-size:var(--ui-meta);margin-top:2px}
+.life-compact-theme .category-position{font-size:var(--ui-meta);width:16px}
+.life-compact-theme .category-order-list [data-slot=button]{width:44px;height:44px;min-height:44px;padding:10px}
+.life-compact-theme .category-edit-fields{padding:6px 2px 6px 24px}
+.life-compact-theme .category-edit-fields fieldset{gap:8px}
+.life-compact-theme .category-edit-fields .compact-field{margin:0}
+.life-compact-theme .category-order-list .category-edit-fields [data-slot=button]{width:auto;height:auto;min-height:44px;padding:8px 10px}
+.life-compact-theme .category-edit-fields .delete-category{margin-top:6px}
+.life-compact-theme .category-delete-confirm{margin-top:8px;padding:8px;font-size:var(--ui-label)}
+.life-compact-theme .category-delete-confirm .action-row{margin-top:6px}
+.life-compact-theme .removed-categories{font-size:var(--ui-label)}
+.life-compact-theme .removed-categories summary{min-height:44px;padding:8px 0;align-content:center}
+
+.life-compact-theme .budget-builder-body{padding:0 2px}
+.life-compact-theme .budget-builder-body h3{font-size:var(--ui-title);line-height:1.4;font-weight:600;margin:12px 0 6px}
+.life-compact-theme .budget-builder-body .compact-field{margin:0}
+.life-compact-theme .budget-builder-body input:not([type=checkbox]),
+.life-compact-theme .budget-builder-body textarea{padding:8px 10px;font-size:1rem}
+.life-compact-theme .budget-builder-body .currency-input{gap:6px;padding-inline:10px}
+.life-compact-theme .budget-builder-body .currency-input>input{padding-left:0}
+.life-compact-theme .budget-draft-categories{gap:10px 16px}
+.life-compact-theme .budget-draft-categories>div{gap:6px 8px}
+.life-compact-theme .budget-draft-recurring{padding:6px 0;gap:8px}
+.life-compact-theme .budget-draft-recurring .inline-check{gap:8px;margin:0}
+.life-compact-theme .budget-draft-recurring strong{font-size:var(--ui-copy);font-weight:500;line-height:1.4}
+.life-compact-theme .budget-draft-recurring small{font-size:var(--ui-meta);margin-top:2px;line-height:1.45}
+.life-compact-theme .budget-builder-body :is(.builder-consent,.builder-notes){font-size:var(--ui-meta);line-height:1.5;margin-block:8px}
+.life-compact-theme .budget-image-picker{font-size:var(--ui-label);margin:10px 0}
+.life-compact-theme .budget-image-picker input{margin-top:4px;min-height:44px}
+.life-compact-theme .budget-image-preview{gap:8px}
+.life-compact-theme .budget-build-list .section-heading{font-size:var(--ui-label);padding:6px 0;gap:6px}
+.life-compact-theme .budget-builder-body .exclude-draft-category{min-height:44px;font-size:var(--ui-meta);padding-block:6px}
+.life-compact-theme .imported-allowance{font-size:var(--ui-meta)}
+
+@media(max-width:700px){
+ .life-compact-theme .budget-workspace .budget-footer{align-items:flex-start;gap:0}
+ .life-compact-theme .budget-workspace .budget-footer-actions{gap:20px}
+}
+@media(max-width:600px){
+ .life-compact-theme .budget-workspace{padding-top:10px}
+ .life-compact-theme .budget-toolbar>.compact-field{width:155px;max-width:54%}
+ .life-compact-theme .compact-app .budget-metrics>div{padding:8px 10px}
+ .life-compact-theme .compact-app .budget-columns>.module-card,
+ .life-compact-theme .compact-app .budget-debts{padding:10px}
+ .life-compact-theme .budget-workspace .budget-columns{gap:10px}
+ .life-compact-theme .budget-workspace .loan-card{padding:8px 10px}
+ .life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog){padding:12px;gap:8px}
+ .life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog)>[data-slot=dialog-footer]{gap:8px;padding-top:8px;flex-wrap:nowrap}
+ .life-compact-theme :is(.recurring-dialog,.category-order-dialog,.budget-goals-dialog,.budget-builder-dialog)>[data-slot=dialog-footer]>button{flex:1;padding:8px}
+ .life-compact-theme .recurring-dialog .item-dialog-actions .delete-item{margin-right:0}
+ .life-compact-theme .category-edit-fields{padding-left:2px}
+}
