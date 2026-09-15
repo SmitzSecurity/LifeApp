@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {runInNewContext} from 'node:vm';
 import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
-import {appearanceSchema,defaultAppearance,palettes,themeColors,themeVariables,appearanceBootstrap,readability,colorKeys} from '../lib/life/appearance.ts';
+import {appearanceSchema,defaultAppearance,palettes,themeColors,themeVariables,appearanceBootstrap,readability,colorKeys,saveTheme,applyTheme,removeTheme,recommendedColors,recommendationKeys,undoRecommendation} from '../lib/life/appearance.ts';
 import {handleLife} from '../lib/life/service.ts';
 
 function bootstrap(storage){const values={},style={setProperty:(k,v)=>values[k]=v},dataset={};runInNewContext(appearanceBootstrap(),{localStorage:{getItem:()=>storage},document:{documentElement:{style,dataset}}});return {values,style,dataset};}
@@ -41,6 +41,51 @@ test('contrast checks retain stable identities and color dependencies after reco
  assert.ok(good.find(c=>c.label===pair.label).ratio>=pair.minimum);
  assert.ok(good.filter(c=>c.colors.includes('ring')).every(c=>c.minimum===3));
 });
+test('three named theme snapshots preserve colors independently of later edits, mode switching and replacement',()=>{
+ const original=defaultAppearance();let value=saveTheme(original,1,'  Evening  ');
+ value={...value,mode:'light',custom:{...value.custom,light:{primary:'#654321'}}};value=saveTheme(value,2,'Day');
+ value={...value,custom:{...value.custom,light:{primary:'#abcdef'}}};value=saveTheme(value,3,'Sketch');
+ assert.equal(value.savedThemes.length,3);assert.equal(value.savedThemes[0].name,'Evening');
+ assert.deepEqual(themeColors(applyTheme(value,1)),palettes.oled);
+ const applied=applyTheme(value,2);assert.equal(applied.mode,'light');assert.equal(themeColors(applied).primary,'#654321');
+ applied.custom.light.primary='#000000';assert.equal(value.savedThemes[1].colors.primary,'#654321');
+ const updated=saveTheme(value,2,'New day');assert.equal(updated.savedThemes.length,3);assert.equal(updated.savedThemes[1].colors.primary,'#abcdef');
+ assert.equal(value.savedThemes[1].name,'Day');assert.deepEqual(original,defaultAppearance());
+ assert.equal(removeTheme(value,2).savedThemes.length,2);assert.equal(removeTheme(value,2).custom,value.custom);
+ assert.deepEqual(appearanceSchema.parse(value),value);assert.deepEqual(bootstrap(JSON.stringify(applyTheme(value,2))).values,themeVariables(themeColors(applyTheme(value,2))));
+});
+test('theme slots reject oversized, duplicate, incomplete or unsafe saved palettes while legacy profiles remain valid',()=>{
+ const good=saveTheme(defaultAppearance(),1,'Theme'),theme=good.savedThemes[0];
+ for(const savedThemes of [[theme,theme],[{...theme,slot:4}],[{...theme,slot:1.5}],[{...theme,name:' '}],[{...theme,name:'a'.repeat(41)}],[{...theme,colors:{primary:'#123456'}}],[{...theme,colors:{...theme.colors,evil:'#123456'}}],[{...theme,colors:{...theme.colors,card:'url(evil)'}}],[theme,{...theme,slot:2},{...theme,slot:3},{...theme,slot:4}]])assert.equal(appearanceSchema.safeParse({...good,savedThemes}).success,false);
+ assert.equal(appearanceSchema.safeParse(defaultAppearance()).success,true);assert.equal(appearanceSchema.safeParse({...good,savedThemes:[]}).success,true);
+});
+test('optional recommendations repair text and controls without changing chart/map data colors',()=>{
+ for(const mode of ['oled','light']){
+  const base=palettes[mode];assert.deepEqual(recommendedColors(base,mode),base);
+  const poor={...base,foreground:base.card,mutedForeground:base.card,input:base.inputBackground,ring:base.background,primaryForeground:base.primary};
+  const before=structuredClone(poor),fixed=recommendedColors(poor,mode);
+  assert.deepEqual(readability(fixed).filter(c=>c.ratio<c.minimum),[]);assert.deepEqual(poor,before);
+  for(const key of colorKeys.filter(k=>k.startsWith('chart')||k.startsWith('muscle')))assert.equal(fixed[key],poor[key]);
+  assert.deepEqual(recommendedColors(fixed,mode),fixed);
+ }
+ let state=42;const next=()=>{state=(Math.imul(state,1664525)+1013904223)>>>0;return '#'+(state&0xffffff).toString(16).padStart(6,'0');};
+ for(let i=0;i<40;i++){
+  const colors=Object.fromEntries(colorKeys.map(key=>[key,next()])),mode=i%2?'light':'oled',fixed=recommendedColors(colors,mode);
+  assert.deepEqual(readability(fixed).filter(c=>c.ratio<c.minimum),[],`palette ${i}`);
+  assert.equal(appearanceSchema.safeParse({mode,custom:{oled:fixed,light:{}}}).success,true);
+ }
+});
+test('undo recommendations restores exact overrides while retaining subsequent edits, slots and the other mode',()=>{
+ const initial={...defaultAppearance(),custom:{oled:{foreground:'#0c0c0c',primaryForeground:'#eeeeee'},light:{card:'#eeeeee'}}};
+ const recommendation={mode:'oled',before:{...initial.custom.oled},after:recommendedColors(themeColors(initial),'oled')};
+ assert.ok(recommendationKeys(recommendation).length>=2);
+ let preview={...initial,custom:{...initial.custom,oled:{...initial.custom.oled,...Object.fromEntries(recommendationKeys(recommendation).map(key=>[key,recommendation.after[key]]))}}};
+ assert.deepEqual(undoRecommendation(preview,recommendation),initial);
+ preview=saveTheme(preview,1,'Recommended');preview={...preview,mode:'light',custom:{...preview.custom,oled:{...preview.custom.oled,foreground:'#abcdef',chart1:'#456789'}}};
+ const undone=undoRecommendation(preview,recommendation);
+ assert.equal(undone.mode,'light');assert.deepEqual(undone.custom.light,initial.custom.light);assert.deepEqual(undone.savedThemes,preview.savedThemes);
+ assert.equal(undone.custom.oled.foreground,'#abcdef');assert.equal(undone.custom.oled.chart1,'#456789');assert.equal(undone.custom.oled.primaryForeground,'#eeeeee');
+});
 test('appearance saves, exports and reconciles through the versioned account profile without changing other data',async t=>{
  const raw=new DatabaseSync(':memory:');t.after(()=>raw.close());for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+f,'utf8'));
  const db={prepare(sql){return {bind(...params){return {async first(){return raw.prepare(sql).get(...params)||null;},async all(){return {results:raw.prepare(sql).all(...params)};}};}};}};
@@ -48,7 +93,7 @@ test('appearance saves, exports and reconciles through the versioned account pro
  const initial={goal:'Synthetic goal',timezone:'UTC',modules:['reflection'],habits:[],version:0};
  const old=(await (await call({action:'profile',profile:initial})).json()).profile;assert.equal(old.appearance,undefined);
  await call({action:'profile',profile:initial},'b');
- const appearance={mode:'light',custom:{light:{primary:'#224466'},oled:{}}};
+ const appearance=saveTheme(saveTheme(saveTheme({mode:'light',custom:{light:{primary:'#224466'},oled:{}}},1,'Day'),2,'Backup'),3,'Alternate');
  const response=await call({action:'profile',profile:{...old,appearance}});assert.equal(response.status,200);const saved=(await response.json()).profile;assert.deepEqual(saved.appearance,appearance);assert.equal(saved.goal,old.goal);
  assert.equal((await call({action:'profile',profile:{...old,goal:'Stale change'}})).status,409);
  const invalid=await call({action:'profile',profile:{...saved,appearance:{...appearance,custom:{light:{primary:'url(evil)'},oled:{}}}}});assert.equal(invalid.status,400);
