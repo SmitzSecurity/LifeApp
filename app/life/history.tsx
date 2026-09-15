@@ -1,4 +1,6 @@
 "use client";
+import {DateInput} from './date-input';
+import {formatDate} from '@/lib/life/date-display';
 import {useEffect,useRef,useState,type FormEvent} from 'react';
 import {SquarePen,BookOpen,Search,Trash2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
@@ -9,7 +11,7 @@ import {request} from './shared';
 
 type Filters=Omit<HistoryFilters,'before'>;
 const blank:Filters={query:'',from:'',through:'',status:'all',deleted:false};
-const niceDate=(date:string)=>new Date(date+'T12:00:00').toLocaleDateString(undefined,{year:'numeric',month:'numeric',day:'numeric'});
+const niceDate=formatDate;
 
 export default function History({disabled,onOpen,onDeleted,onBusy,searchOpen=false,refreshKey=0}:{disabled:boolean;onOpen:(date:string)=>void;onDeleted:(date:string)=>void;onBusy:(busy:boolean)=>void;searchOpen?:boolean;refreshKey?:number}){
  const [filters,setFilters]=useState<Filters>(blank),[applied,setApplied]=useState<Filters>(blank);
@@ -38,8 +40,8 @@ export default function History({disabled,onOpen,onDeleted,onBusy,searchOpen=fal
  return <section className="history-panel" aria-label="Saved responses" tabIndex={0}>
   <form className="history-filters" onSubmit={search} hidden={!searchOpen}>
    <label className="history-search">Search journal text<input type="search" maxLength={200} value={filters.query} onChange={e=>setFilters({...filters,query:e.target.value})} placeholder="Find a word or phrase"/></label>
-   <label>From<input type="date" value={filters.from} max={filters.through||undefined} onChange={e=>setFilters({...filters,from:e.target.value})}/></label>
-   <label>Through<input type="date" value={filters.through} min={filters.from||undefined} onChange={e=>setFilters({...filters,through:e.target.value})}/></label>
+   <div className="compact-field"><DateInput label="From" clearable value={filters.from} max={filters.through||undefined} onValueChange={from=>setFilters({...filters,from})}/></div>
+   <div className="compact-field"><DateInput label="Through" clearable value={filters.through} min={filters.from||undefined} onValueChange={through=>setFilters({...filters,through})}/></div>
    <label>Check-in status<select value={filters.status} onChange={e=>setFilters({...filters,status:e.target.value as Filters['status']})}><option value="all">All check-ins</option><option value="complete">Complete</option><option value="draft">Drafts</option></select></label>
    <div className="action-row"><Button type="submit" disabled={disabled}><Search/>Search</Button><Button type="button" variant="ghost" onClick={clear} disabled={disabled}>Clear filters</Button></div>
   </form>

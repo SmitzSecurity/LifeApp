@@ -1,0 +1,27 @@
+/* Paired fields share label, control and help rows, including wrapped labels. */
+.life-compact-theme .compact-field>:is(input:not([type=checkbox]),select,[data-slot=select-trigger],.currency-input,.calendar-input){min-height:44px;height:44px}
+.life-compact-theme .compact-field>.currency-input>input{height:100%;min-height:0}
+.life-compact-theme .calendar-input-trigger{height:44px}
+@supports(grid-template-rows:subgrid){
+ .life-compact-theme :is(.form-grid,.routine-basics,.budget-draft-categories>div,.category-edit-fields>fieldset)>.compact-field{display:grid;grid-template-rows:subgrid;grid-row:span 3;row-gap:0;align-self:stretch}
+ .life-compact-theme :is(.form-grid,.routine-basics,.budget-draft-categories>div,.category-edit-fields>fieldset)>.compact-field>:is(input,select,textarea,[data-slot=select-trigger],.currency-input,.calendar-input){grid-row:2;align-self:start;margin-top:6px;min-width:0}
+ .life-compact-theme :is(.form-grid,.routine-basics,.budget-draft-categories>div,.category-edit-fields>fieldset)>.compact-field>small{grid-row:3;margin-top:4px}
+ .life-compact-theme .muscle-assignment>label{display:grid;grid-template-rows:subgrid;grid-row:span 2;row-gap:0}
+ .life-compact-theme .muscle-assignment>label>select{grid-row:2;align-self:start}
+}
+.life-compact-theme .calendar-input-trigger:focus-visible,.life-compact-theme .calendar-input-clear:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.life-compact-theme .calendar-input-trigger:disabled,.life-compact-theme .calendar-input-clear:disabled{opacity:.5;cursor:not-allowed}
+.life-compact-theme .calendar-month-options label{display:flex;flex-direction:column;gap:6px}
+.life-compact-theme .calendar-month-options select{width:100%;border:1px solid var(--input);padding:6px}
+.budget-footer-actions{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+@media(max-width:600px){
+ /* Keep form action pairs together; long labels wrap inside their button. */
+ .life-compact-theme .action-row:has(>button:first-child:nth-last-child(2)):not(.section-heading>.action-row){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
+ .life-compact-theme .action-row:has(>button:first-child:nth-last-child(2)):not(.section-heading>.action-row)>button,
+ .life-compact-theme :is([data-slot=dialog-footer],[data-slot=alert-dialog-footer])>button{min-width:0;white-space:normal;height:auto;min-height:44px;padding:8px;line-height:1.35}
+ .life-compact-theme :is([data-slot=dialog-footer],[data-slot=alert-dialog-footer]):has(>button:first-child){display:flex;flex-direction:row;gap:8px;flex-wrap:nowrap;align-items:stretch}
+ .life-compact-theme :is([data-slot=dialog-footer],[data-slot=alert-dialog-footer])>button{flex:1}
+ .life-compact-theme .settings-save{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+ .life-compact-theme .settings-save>small{grid-column:1/-1}
+ .life-compact-theme .settings-save>button{min-width:0;white-space:normal;height:auto;min-height:44px}
+}

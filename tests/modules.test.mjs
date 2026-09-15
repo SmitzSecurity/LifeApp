@@ -7,6 +7,7 @@ import { handleLife } from '../lib/life/service.ts';
 import { profileSchema } from '../lib/life/domain.ts';
 import { parseMoney,budgetSummary,dueDate,occurrenceId,nextSet,restRemaining } from '../lib/life/modules.ts';
 import { buildReviewContext } from '../lib/life/review-context.ts';
+import { numericDraftValue,numericDraftText,assertFiniteNumbers } from '../lib/life/numeric-draft.ts';
 const now=new Date('2026-09-09T12:00:00Z'),cat=randomUUID(),rec=randomUUID(),exercise=randomUUID(),routineId=randomUUID();
 const profile={goal:'Synthetic goals',timezone:'UTC',modules:['reflection','money','fitness','spiritual'],moduleGoals:{money:'Build a buffer',fitness:'Track consistency',spiritual:'Reflect within my chosen tradition'},spiritualTradition:'User defined',habits:[],version:0};
 const budget={currency:'USD',categories:[{id:cat,name:'Food',limitCents:30000}],recurring:[{id:rec,title:'Monthly plan',kind:'expense',amountCents:5000,categoryId:cat,day:9,active:true}],goals:{spending:'Stay within my plan',saving:'Build a buffer',investing:'Define a long-term target'}};
@@ -22,6 +23,29 @@ test('money uses exact cents, recurrence handles leap years, missing months are 
  assert.equal(parseMoney('0.10')+parseMoney('0.20'),30);assert.equal(parseMoney('1000.09'),100009);
  for(const v of ['1.005','-2','NaN','1e4','1000001',''])assert.throws(()=>parseMoney(v));
  assert.equal(dueDate('2028-02',31),'2028-02-29');assert.equal(dueDate('2026-02',31),'2026-02-28');assert.equal(dueDate('2026-04',31),'2026-04-30');assert.throws(()=>dueDate('2026-13',1));
+});
+
+test('numeric drafts can clear required fields and replace zero without retaining an earlier value',()=>{
+ let sets=3;
+ sets=numericDraftValue('');assert.equal(Number.isNaN(sets),true);assert.equal(numericDraftText(sets),'');
+ assert.throws(()=>assertFiniteNumbers({record:{data:{exercises:[{sets}]}}}),{status:400});
+ sets=numericDraftValue('4');assert.equal(sets,4);assert.doesNotThrow(()=>assertFiniteNumbers({sets}));
+ let load=0;load=numericDraftValue('');assert.equal(Number.isNaN(load),true);
+ load=numericDraftValue('22.');assert.equal(load,22);load=numericDraftValue('22.5');assert.equal(load,22.5);
+ assert.equal(numericDraftValue('.25'),.25);assert.equal(numericDraftValue('0'),0);
+ for(const text of ['.', '-', '+', '1e', '1e3', '12kg', 'Infinity', 'NaN'])assert.ok(Number.isNaN(numericDraftValue(text)));
+});
+
+test('optional numeric fields distinguish intentionally empty from unfinished text before JSON serialization',()=>{
+ assert.equal(numericDraftValue('',true),null);assert.equal(numericDraftValue('  ',true),null);
+ assert.doesNotThrow(()=>assertFiniteNumbers({minutes:null,distance:null}));
+ for(const text of ['.', '-', '1e', 'abc']){
+  const distance=numericDraftValue(text,true);assert.ok(Number.isNaN(distance));
+  assert.throws(()=>assertFiniteNumbers({record:{data:{distance}}}),{status:400});
+ }
+ assert.throws(()=>assertFiniteNumbers({rate:Infinity}),{status:400});
+ const record={version:0,data:{minutes:numericDraftValue('25'),distance:numericDraftValue('1.25',true)}};
+ const before=JSON.stringify(record);assert.doesNotThrow(()=>assertFiniteNumbers(record));assert.equal(JSON.stringify(record),before);
 });
 test('budget separates planned from actual, transfers and voids; a scheduled payment consumes allowance once',()=>{
  const pending=budgetSummary(budget,[],'2026-09');assert.equal(pending.categories[0].remaining,30000);assert.equal(pending.categories[0].afterScheduled,25000);

@@ -1,4 +1,5 @@
 "use client";
+import {formatDate} from '@/lib/life/date-display';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,7 +27,7 @@ export default function AutomaticReviewSettings({ setupDirty }: { setupDirty: bo
     {error && <p className="error" role="alert">{error}</p>}
     {!data ? <Button variant="outline" onClick={refresh}>Refresh settings</Button> : <>
       {data.schedule && <p>Saved schedule: {data.schedule.time} · {data.schedule.timezone}{!data.schedule.enabled ? ' · daily reviews off' : ''}</p>}
-      <p role="status">{data.consent.enabled ? `You opted in for check-ins dated ${data.consent.startDate} onward.` : 'Automatic analysis is off for your account.'}{!data.available ? ' The automatic service is awaiting activation.' : ''}</p>
+      <p role="status">{data.consent.enabled ? `You opted in for check-ins dated ${formatDate(data.consent.startDate)} onward.` : 'Automatic analysis is off for your account.'}{!data.available ? ' The automatic service is awaiting activation.' : ''}</p>
       {setupDirty && <p className="completion-help">Save Settings changes before turning automatic analysis on.</p>}
       {data.consent.enabled ? <Button variant="outline" disabled={busy} onClick={() => save(false)}>{busy ? 'Saving…' : 'Turn off automatic analysis'}</Button> : <>
         <label className="inline-check"><Checkbox checked={agreed} disabled={busy || setupDirty || !data.available || !data.schedule?.enabled} onCheckedChange={v => setAgreed(v === true)} />I agree to automatic use of this saved context for daily AI analysis.</label>

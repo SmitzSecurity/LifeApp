@@ -1,3 +1,4 @@
+import {formatDate,formatMonth} from './date-display.ts';
 import {z} from 'zod/v3';
 import type {Database} from './service.ts';
 
@@ -19,10 +20,10 @@ export async function listTrash(db:Database,userId:string,offset=0){
  const items:TrashItem[]=rows.results.slice(0,50).map(row=>{
   const {kind,record_id:id}=row,data=row.payload?JSON.parse(row.payload):{},item=kind==='recurring'?data.recurring?.find((x:{id:string})=>x.id===id.slice(8)):data;
   let title=item?.title||item?.name||item?.activity||({entry:'Journal','workout-note':'Workout note',transaction:'Transaction',analysis:'Analysis',build:id.startsWith('training:')?'Training analysis':'AI draft'} as Record<string,string>)[kind]||kind;
-  let detail=item?.date||'';
-  if(kind==='entry'){title+=' · '+id;detail=data.journal?.slice(0,140)||'';}
-  if(kind==='analysis'){title=(row.cadence||'Daily')+' analysis';detail=row.entry_date||'';}
-  if(kind==='recurring')detail=id.slice(0,7);
+  let detail=item?.date?formatDate(item.date):'';
+  if(kind==='entry'){title+=' · '+formatDate(id);detail=data.journal?.slice(0,140)||'';}
+  if(kind==='analysis'){title=(row.cadence||'Daily')+' analysis';detail=row.entry_date?formatDate(row.entry_date):'';}
+  if(kind==='recurring')detail=formatMonth(id.slice(0,7));
   if(kind==='transaction')detail+=` · $${(item.amountCents/100).toFixed(2)} · ${item.note}`;
   if(kind==='workout-note')detail+=' · '+(item.text||'').slice(0,100);
   return {kind,id,title,detail,deletedAt:row.deleted_at,expiresAt:new Date(Date.parse(row.deleted_at)+retentionMs).toISOString()};

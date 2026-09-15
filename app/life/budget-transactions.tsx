@@ -1,4 +1,6 @@
 "use client";
+import {DateInput} from './date-input';
+import {formatDate} from '@/lib/life/date-display';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {transactionSchema,parseMoney,money,dueDate,type Transaction,type Budget,type Saved} from '@/lib/life/modules';
@@ -16,7 +18,7 @@ export function TransactionEditor({initial,scope,variable=false,onCancel,onSaved
  return <div className="inline-transaction"><fieldset disabled={operation.busy||!!operation.pending}><div className="form-grid">
  <label className="compact-field">Type<Choice label="Transaction type" value={data.kind} options={data.recurringId?transactionKinds.filter(k=>k.value===data.kind):transactionKinds} onChange={kind=>edit({kind:kind as Transaction['kind'],categoryId:''})}/></label>
  <CurrencyInput label={data.recurringId?'Actual amount':'Amount'} ariaLabel="Transaction amount" value={amount} onChange={setAmount} placeholder={data.recurringId?(base.data.amountCents/100).toFixed(2):'0.00'}/>
- <label className="compact-field">Date<input type="date" min={plan.id+'-01'} max={plan.id===today.slice(0,7)?today:dueDate(plan.id,31)} value={data.date} onInput={e=>edit({date:e.currentTarget.value})} onChange={e=>edit({date:e.target.value})}/></label>
+ <div className="compact-field"><DateInput label="Date" required min={plan.id+'-01'} max={plan.id===today.slice(0,7)?today:dueDate(plan.id,31)} value={data.date} onValueChange={date=>edit({date})}/></div>
  {data.kind==='expense'&&<label className="compact-field">Category<Choice label="Expense category" value={data.categoryId} options={plan.data.categories.filter(c=>(!c.archived||c.id===data.categoryId)&&(!data.recurringId||c.id===data.categoryId)).map(c=>({value:c.id,label:c.name}))} onChange={categoryId=>edit({categoryId})}/></label>}
  </div>{variable&&<p className="field-hint">Estimated {money(base.data.amountCents)}. Enter the actual amount.</p>}<label className="compact-field">Description<input maxLength={300} placeholder="e.g. Lunch" value={data.note} onChange={e=>edit({note:e.target.value})}/></label>
  {base.version>0&&<label className="inline-check"><input type="checkbox" checked={data.voided} onChange={e=>edit({voided:e.target.checked})}/>Void transaction</label>}</fieldset>
@@ -29,7 +31,7 @@ export function TransactionTile({record,scope,...props}:Props&{record:Saved<Tran
  async function change(patch:Partial<Transaction>){await operation.submit({...record,data:{...record.data,...patch}});}
  const title=record.data.note||transactionKinds.find(k=>k.value===record.data.kind)?.label;
  return <div className={`transaction-tile ${record.data.voided?'is-voided':''}`}>{editing?<TransactionEditor {...props} initial={record} scope={scope} onCancel={()=>setEditing(false)} onSaved={()=>setEditing(false)}/>:<>
- <div className="ledger-row"><span className="transaction-description"><strong>{title}</strong><small>{record.data.date} · {record.data.categoryName||record.data.kind}</small></span><strong className="transaction-amount">{money(record.data.amountCents)}</strong>{record.data.voided&&<small className="voided-label">Voided</small>}
+ <div className="ledger-row"><span className="transaction-description"><strong>{title}</strong><small>{formatDate(record.data.date)} · {record.data.categoryName||record.data.kind}</small></span><strong className="transaction-amount">{money(record.data.amountCents)}</strong>{record.data.voided&&<small className="voided-label">Voided</small>}
  <div className="transaction-actions">{record.data.deleted?null:<><Button variant="ghost" disabled={operation.busy||!!operation.pending} onClick={()=>setEditing(true)}>Edit</Button><Button variant="ghost" disabled={operation.busy||!!operation.pending} onClick={()=>void change({voided:!record.data.voided})}>{record.data.voided?'Unvoid':'Void'}</Button><Button variant="ghost" className="delete-item" disabled={operation.busy||!!operation.pending} onClick={()=>void change({deleted:true})}>Delete</Button></>}</div></div>
  {operation.error&&<p role="alert" className="error">{operation.error}</p>}{operation.pending&&<Button disabled={operation.busy} onClick={()=>void operation.submit(operation.pending!)}>{operation.busy?'Saving…':'Retry save'}</Button>}</>}</div>;
 }

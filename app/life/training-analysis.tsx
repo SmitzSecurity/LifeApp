@@ -1,4 +1,5 @@
 "use client";
+import {formatTimestampDate} from '@/lib/life/date-display';
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {request} from './shared';
@@ -25,6 +26,6 @@ export default function TrainingAnalysis({onBusy}:{onBusy:(v:boolean)=>void}){
   {error&&<p className="error" role="alert">{error}</p>}{unconfirmed&&<p className="muted">An AI outcome is unconfirmed. <Button variant="ghost" disabled={busy} onClick={()=>void refresh()}>Refresh status</Button></p>}
  </section>
  <WorkoutPanel open={!!selected} title="Training analysis" onClose={()=>setReading(null)}>{selected?.result&&<div className="training-analysis-reading"><AnalysisText text={selected.result.text}/><Button variant="ghost" disabled={busy} onClick={()=>void remove(selected)}>Delete analysis</Button>{error&&<p role="alert" className="error">{error}</p>}</div>}</WorkoutPanel>
- <WorkoutPanel open={history} title="Training analysis history" onClose={()=>setHistory(false)}><div className="training-analysis-reading">{builds.filter(b=>!b.deleted).map(b=><article key={b.id} className="routine-build-result"><div className="section-heading"><strong>{new Date(b.createdAt).toLocaleDateString()} · {b.deleted?'Trash':b.status}</strong><div className="action-row">{!b.deleted&&b.result&&<Button variant="ghost" onClick={()=>{setHistory(false);setReading(b.id);}}>Read analysis</Button>}<Button variant="ghost" disabled={busy} onClick={()=>void remove(b)}>{b.deleted?'Restore':'Delete'}</Button></div></div></article>)}{error&&<p role="alert" className="error">{error}</p>}</div></WorkoutPanel>
+ <WorkoutPanel open={history} title="Training analysis history" onClose={()=>setHistory(false)}><div className="training-analysis-reading">{builds.filter(b=>!b.deleted).map(b=><article key={b.id} className="routine-build-result"><div className="section-heading"><strong>{formatTimestampDate(b.createdAt)} · {b.deleted?'Trash':b.status}</strong><div className="action-row">{!b.deleted&&b.result&&<Button variant="ghost" onClick={()=>{setHistory(false);setReading(b.id);}}>Read analysis</Button>}<Button variant="ghost" disabled={busy} onClick={()=>void remove(b)}>{b.deleted?'Restore':'Delete'}</Button></div></div></article>)}{error&&<p role="alert" className="error">{error}</p>}</div></WorkoutPanel>
  </>;
 }

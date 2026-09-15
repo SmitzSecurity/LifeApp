@@ -1,5 +1,7 @@
 "use client";
 import {useAppearance} from "./life/use-appearance";
+import {formatDate} from "@/lib/life/date-display";
+import {assertFiniteNumbers} from "@/lib/life/numeric-draft";
 import { useEffect, useRef, useState } from "react";
 import { Check, Plus, ArrowRight, ArrowLeft, Archive, LoaderCircle, SquarePen, SlidersHorizontal, ShieldCheck, Menu, Search, RefreshCw, Wallet, Dumbbell, House, Download, LogOut, Trash2 } from "lucide-react";
 import { useDraftSync } from "./life/use-draft-sync";
@@ -24,8 +26,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { modules, coreModules, standardHabits, todayIn, emptyEntry, dateSchema, type Entry, type Profile } from "@/lib/life/domain";
 
 const freshProfile=():Profile=>({goal:"",budgetGoals:null,analysisGuidance:[],reviewPreferences:defaultReviewPreferences(),moduleGoals:{},spiritualTradition:"",timezoneMode:"automatic",timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC",modules:[...coreModules],habits:[],version:0});
-async function api(body?:unknown){const r=await fetch("/api/life",{method:body?"POST":"GET",headers:body?{"Content-Type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined,cache:"no-store"});const data=await r.json();if(!r.ok)throw new Error(data.error||"Unable to connect. Please try again.");return data;}
-function niceDate(v:string){return new Date(v+"T12:00:00").toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});}
+async function api(body?:unknown){assertFiniteNumbers(body);const r=await fetch("/api/life",{method:body?"POST":"GET",headers:body?{"Content-Type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined,cache:"no-store"});const data=await r.json();if(!r.ok)throw new Error(data.error||"Unable to connect. Please try again.");return data;}
+const niceDate=formatDate;
 
 export default function LifeApp({signOutHref="/signout-with-chatgpt?return_to=%2F"}:{signOutHref?:string}){
  const [profile,setProfile]=useState<Profile|null>(null),[config,setConfig]=useState<Profile|null>(null),[entries,setEntries]=useState<Entry[]>([]);
