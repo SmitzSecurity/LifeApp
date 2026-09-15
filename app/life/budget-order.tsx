@@ -1,23 +1,33 @@
 "use client";
 import {useState} from 'react';
-import {ArrowUp,ArrowDown} from 'lucide-react';
+import {ArrowUp,ArrowDown,ChevronDown,Trash2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter} from '@/components/ui/dialog';
-import type {Budget,Saved} from '@/lib/life/modules';
+import {categorySchema,parseMoney,money,type Budget,type Saved} from '@/lib/life/modules';
 import type {BudgetItemChange} from '@/lib/life/budget-items';
-import {useBudgetDirty,useItemSave,type DirtyReporter} from './budget-fields';
+import {CurrencyInput,useBudgetDirty,useItemSave,type DirtyReporter} from './budget-fields';
 
+type Category=Budget['categories'][number];
 export default function BudgetOrder({plan,onSave,onClose,onDirty}:{plan:Saved<Budget>;onSave:(change:BudgetItemChange)=>Promise<Saved<Budget>>;onClose:()=>void;onDirty:DirtyReporter}){
- const [base]=useState(plan),[order,setOrder]=useState(()=>plan.data.categories.map(c=>c.id)),[announcement,setAnnouncement]=useState('');
- const operation=useItemSave(onSave),previous=base.data.categories.map(c=>c.id),dirty=order.some((id,i)=>id!==previous[i]),locked=operation.busy||!!operation.pending;
- const visible=order.filter(id=>!base.data.categories.find(c=>c.id===id)!.archived);
+ const [base]=useState(plan),[order,setOrder]=useState(()=>plan.data.categories.map(c=>c.id)),[items,setItems]=useState(()=>structuredClone(plan.data.categories)),[amounts,setAmounts]=useState(()=>Object.fromEntries(plan.data.categories.map(c=>[c.id,(c.limitCents/100).toFixed(2)]))),[open,setOpen]=useState<string|null>(null),[removing,setRemoving]=useState<string|null>(null),[announcement,setAnnouncement]=useState('');
+ const operation=useItemSave(onSave),previous=base.data.categories.map(c=>c.id),orderDirty=order.some((id,i)=>id!==previous[i]),locked=operation.busy||!!operation.pending;
+ const dirty=orderDirty||JSON.stringify(items)!==JSON.stringify(base.data.categories)||items.some(c=>amounts[c.id]!==(base.data.categories.find(b=>b.id===c.id)!.limitCents/100).toFixed(2));
+ const visible=order.filter(id=>!items.find(c=>c.id===id)!.archived);
  useBudgetDirty('category-order',dirty||locked,onDirty);
- function move(id:string,direction:number){const index=visible.indexOf(id),next=visible[index+direction];if(!next||locked)return;const changed=[...order],a=changed.indexOf(id),b=changed.indexOf(next);[changed[a],changed[b]]=[changed[b],changed[a]];setOrder(changed);operation.setError('');setAnnouncement(`${base.data.categories.find(c=>c.id===id)!.name} moved to position ${index+direction+1} of ${visible.length}.`);}
- async function save(){if(await operation.submit(operation.pending||{kind:'category-order',month:base.id,previous,order,...(!base.version?{initial:base.data}:{})}))onClose();}
- return <Dialog open onOpenChange={open=>{if(!open&&!locked)onClose();}}><DialogContent className="category-order-dialog" showCloseButton={!locked} onInteractOutside={e=>e.preventDefault()}>
-  <DialogHeader><DialogTitle>Reorder categories</DialogTitle><DialogDescription>Move categories into the order you prefer for this month.</DialogDescription></DialogHeader>
-  <ol className="category-order-list">{visible.map((id,index)=>{const category=base.data.categories.find(c=>c.id===id)!;return <li key={id}><span className="category-position" aria-hidden="true">{index+1}</span><span className="category-order-name">{category.name}</span><Button variant="ghost" size="icon" aria-label={`Move ${category.name} up`} disabled={locked||index===0} onClick={()=>move(id,-1)}><ArrowUp aria-hidden="true"/></Button><Button variant="ghost" size="icon" aria-label={`Move ${category.name} down`} disabled={locked||index===visible.length-1} onClick={()=>move(id,1)}><ArrowDown aria-hidden="true"/></Button></li>;})}</ol>
+ function edit(id:string,patch:Partial<Category>){setItems(list=>list.map(c=>c.id===id?{...c,...patch}:c));operation.setError('');}
+ function move(id:string,direction:number){const index=visible.indexOf(id),next=visible[index+direction];if(!next||locked)return;const changed=[...order],a=changed.indexOf(id),b=changed.indexOf(next);[changed[a],changed[b]]=[changed[b],changed[a]];setOrder(changed);operation.setError('');setAnnouncement(`${items.find(c=>c.id===id)!.name} moved to position ${index+direction+1} of ${visible.length}.`);}
+ async function save(){try{
+  const categories=items.map(item=>({previous:base.data.categories.find(c=>c.id===item.id)!,item:categorySchema.parse({...item,limitCents:parseMoney(amounts[item.id]||'0')})})).filter(c=>JSON.stringify(c.item)!==JSON.stringify(c.previous));
+  if(await operation.submit(operation.pending||{kind:'category-edit',month:base.id,categories,...(orderDirty?{ordering:{previous,order}}:{}),...(!base.version?{initial:base.data}:{})}))onClose();
+ }catch{operation.setError('Give every category a name and an allowance of zero or more.');}}
+ return <Dialog open onOpenChange={next=>{if(!next&&!locked)onClose();}}><DialogContent className="category-order-dialog" showCloseButton={!locked} onInteractOutside={e=>e.preventDefault()}>
+  <DialogHeader><DialogTitle>Edit categories</DialogTitle><DialogDescription>Reorder, rename or change this month’s allowances. Save applies your changes together.</DialogDescription></DialogHeader>
+  <ol className="category-order-list">{visible.map((id,index)=>{const category=items.find(c=>c.id===id)!;return <li key={id} className="category-edit-item"><div className="category-edit-heading"><span className="category-position" aria-hidden="true">{index+1}</span><button className="category-order-name" aria-expanded={open===id} onClick={()=>{setOpen(open===id?null:id);setRemoving(null);}}><ChevronDown aria-hidden="true"/><span>{category.name||'Unnamed category'}<small>{money(Number.isFinite(Number(amounts[id]))?Math.round(Number(amounts[id])*100):category.limitCents)} / month</small></span></button><Button variant="ghost" size="icon" aria-label={`Move ${category.name} up`} disabled={locked||index===0} onClick={()=>move(id,-1)}><ArrowUp aria-hidden="true"/></Button><Button variant="ghost" size="icon" aria-label={`Move ${category.name} down`} disabled={locked||index===visible.length-1} onClick={()=>move(id,1)}><ArrowDown aria-hidden="true"/></Button></div>
+   <div className="category-edit-fields" hidden={open!==id}><fieldset disabled={locked}><label className="compact-field">Category name<input aria-label={`${base.data.categories.find(c=>c.id===id)!.name} name`} maxLength={100} value={category.name} onChange={e=>edit(id,{name:e.target.value})}/></label><CurrencyInput label="Monthly allowance" ariaLabel={`${base.data.categories.find(c=>c.id===id)!.name} allowance`} value={amounts[id]} onChange={value=>setAmounts({...amounts,[id]:value})}/></fieldset>
+   {removing===id?<div className="category-delete-confirm"><p>Delete {category.name} from your allowances? Existing transactions and recurring items keep their category.</p><div className="action-row"><Button variant="destructive" disabled={locked} onClick={()=>{edit(id,{archived:true});setRemoving(null);setOpen(null);}}>Delete category</Button><Button variant="ghost" disabled={locked} onClick={()=>setRemoving(null)}>Keep category</Button></div></div>:<Button className="delete-category" variant="ghost" disabled={locked} onClick={()=>setRemoving(id)}><Trash2/>Delete category</Button>}</div>
+  </li>;})}</ol>
+  {items.some(c=>c.archived)&&<details className="removed-categories"><summary>Removed categories</summary>{items.filter(c=>c.archived).map(c=><div key={c.id}><span>{c.name}</span><Button variant="ghost" disabled={locked} onClick={()=>edit(c.id,{archived:false})}>{base.data.categories.find(b=>b.id===c.id)!.archived?'Restore':'Undo delete'}</Button></div>)}</details>}
   <span className="sr-only" role="status">{announcement}</span>{operation.error&&<p role="alert" className="error">{operation.error}</p>}
-  <DialogFooter><Button variant="ghost" disabled={locked} onClick={onClose}>Cancel</Button><Button disabled={operation.busy||(!dirty&&!operation.pending)} onClick={()=>void save()}>{operation.busy?'Saving…':operation.pending?'Retry save':'Save order'}</Button></DialogFooter>
+  <DialogFooter><Button variant="ghost" disabled={locked} onClick={onClose}>Cancel</Button><Button disabled={operation.busy||(!dirty&&!operation.pending)} onClick={()=>void save()}>{operation.busy?'Saving…':operation.pending?'Retry save':'Save changes'}</Button></DialogFooter>
  </DialogContent></Dialog>;
 }

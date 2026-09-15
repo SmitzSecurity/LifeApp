@@ -6,6 +6,8 @@ Preview is local until Save Settings. Cancel changes returns to the saved profil
 
 Default text and control contrast is tested against [WCAG 2.2](https://www.w3.org/TR/WCAG22/): 4.5:1 for ordinary text and 3:1 for input outlines/focus indicators. Custom combinations receive contrast feedback, not an accessibility certification. The white/blue palette is a design choice. [Palmer & Schloss (2010)](https://pmc.ncbi.nlm.nih.gov/articles/2889342/) explains color preference through associations and experience; it does not establish a universally best app color. Semantic status colors also have text labels. Muscle colors express estimated set ranges, with numbers available independently.
 
+The September 15 update embeds all checks inside Customize colors and relevant checks beneath each color picker. Passing checks remain visible as Preferred; repairing a failing color does not close or remove the checks. The adjacent live preview includes actual muscle-map and habit controls plus sample scores, allowances, trends, timer, surfaces and status messages. It uses example data and the draft theme while editing/recovery controls retain the readable base palette. See docs/category-editor-and-previews.md.
+
 All active page CSS, native fields, portaled menus/dialogs and SVG muscle regions inherit semantic tokens. Legacy unused calm.css is historical. Adding a new visible component must not introduce a fixed light/dark palette. The default root CSS must match the TypeScript OLED preset; bootstrap runs self-contained from compiled HTML and never interpolates arbitrary CSS or cached script.
 
 ## Dialog behavior

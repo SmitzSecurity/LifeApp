@@ -32,6 +32,15 @@ test('custom low-contrast choices are reported and map tokens remain independent
  const failed=readability(custom).filter(c=>c.ratio<c.minimum);assert.ok(failed.some(c=>c.label==='Text on cards'));assert.ok(failed.some(c=>c.label==='Input outline'));
  assert.ok(colorKeys.includes('muscleLow'));assert.equal(themeVariables({...palettes.light,muscleLow:'#123456'})['--muscle-low'],'#123456');
 });
+
+test('contrast checks retain stable identities and color dependencies after recovering from poor contrast',()=>{
+ const good=readability(palettes.oled),bad=readability({...palettes.oled,foreground:palettes.oled.card});
+ assert.deepEqual(good.map(c=>c.label),bad.map(c=>c.label));
+ assert.ok(good.every(c=>c.colors.length===2&&c.colors.every(k=>colorKeys.includes(k))));
+ const pair=bad.find(c=>c.label==='Text on cards');assert.equal(pair.ratio,1);assert.deepEqual(pair.colors,['foreground','card']);
+ assert.ok(good.find(c=>c.label===pair.label).ratio>=pair.minimum);
+ assert.ok(good.filter(c=>c.colors.includes('ring')).every(c=>c.minimum===3));
+});
 test('appearance saves, exports and reconciles through the versioned account profile without changing other data',async t=>{
  const raw=new DatabaseSync(':memory:');t.after(()=>raw.close());for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+f,'utf8'));
  const db={prepare(sql){return {bind(...params){return {async first(){return raw.prepare(sql).get(...params)||null;},async all(){return {results:raw.prepare(sql).all(...params)};}};}};}};

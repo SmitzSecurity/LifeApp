@@ -95,6 +95,28 @@
 .workout-note-history p, .builder-notes { white-space: pre-wrap; overflow-wrap: anywhere; }
 .note-excluded > p { text-decoration: line-through; opacity: .65; }
 .dictation-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .5rem 0; }
+
+.category-order-list>li.category-edit-item{display:block;padding:8px 0}
+.category-edit-heading{display:flex;align-items:center;gap:6px}
+.category-edit-heading .category-order-name{display:flex;align-items:center;gap:7px;text-align:left;padding:5px 0;min-height:44px}
+.category-order-name>svg{width:14px;height:14px;flex-shrink:0;transform:rotate(-90deg)}
+.category-order-name[aria-expanded=true]>svg{transform:rotate(0)}
+.category-order-name small{display:block;font-size:.7rem;font-weight:400;color:var(--muted-foreground);margin-top:3px}
+.category-edit-fields{padding:8px 6px 10px 28px}
+.category-edit-fields[hidden]{display:none}
+.category-edit-fields fieldset{display:grid;grid-template-columns:1fr 1fr;gap:10px;min-width:0}
+.category-edit-fields .compact-field{font-size:.8rem;gap:5px;margin:0}
+.category-edit-fields input{min-width:0;width:100%;padding:8px;font-size:.85rem}
+.category-order-list .category-edit-fields [data-slot=button]{width:auto;height:auto;min-height:38px}
+.category-edit-fields .delete-category{color:var(--destructive);margin-top:12px}
+.category-delete-confirm{margin-top:12px;padding:10px;border:1px solid var(--border);border-radius:5px;font-size:.8rem}
+.category-delete-confirm .action-row{margin:10px 0 0;gap:4px}
+.removed-categories{flex-shrink:0;max-height:160px;overflow:auto;font-size:.8rem}
+.removed-categories summary{cursor:pointer;padding:8px 0}
+.removed-categories>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.allowance-content h4{font-size:.78rem;font-weight:600;margin:12px 0 4px;color:var(--muted-foreground)}
+.category-upcoming{padding-bottom:8px}
+@media(max-width:440px){.category-edit-fields{padding-left:6px}.category-edit-fields fieldset{grid-template-columns:minmax(0,1fr)}}
 .routine-builder summary, .training-guidance summary, .workout-note-history summary { cursor: pointer; font-weight: 650; }
 .routine-builder details > p { margin-top: 1rem; }
 .routine-builder .builder-consent { font-size: .85rem; }

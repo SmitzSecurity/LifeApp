@@ -1,0 +1,18 @@
+"use client";
+import {useState,type CSSProperties} from 'react';
+import {Check,Info,TriangleAlert} from 'lucide-react';
+import {themeVariables,type ThemeColors} from '@/lib/life/appearance';
+import {muscleIds,muscleNames,type MuscleId} from '@/lib/life/muscle-groups';
+import type {MuscleVolume} from '@/lib/life/muscle-volume';
+import MuscleMap from './muscle-map';
+
+const examples=Object.fromEntries(muscleIds.map((id,index)=>[id,{direct:[0,3,7,12][index%4],indirect:0,estimated:[0,3,7,12][index%4]}])) as Record<MuscleId,MuscleVolume>;
+export default function AppearancePreview({colors}:{colors:ThemeColors}){
+ const [selected,setSelected]=useState<MuscleId|null>(null),[habit,setHabit]=useState('Done');
+ return <section className="palette-preview" aria-label="Live color preview" style={themeVariables(colors) as CSSProperties}>
+  <div className="preview-nav"><strong>LifeApp</strong><span>Example data</span></div>
+  <div className="preview-card"><strong>A little perspective</strong><p>See your text, surfaces and everyday controls.</p><div className="preview-buttons"><button type="button" className="theme-example-primary">Primary</button><button type="button" className="theme-example-secondary">Secondary</button><button type="button" className="theme-example-selected">Selected</button><button type="button" className="theme-example-delete">Delete</button></div><input aria-label="Example input" value="Your journal goes here" readOnly/><div className="preview-popover">Menu or dialog <small>Secondary text</small></div><div className="preview-status"><span style={{color:'var(--success)'}}><Check/>Saved</span><span style={{color:'var(--warning)'}}><TriangleAlert/>Upcoming</span><span style={{color:'var(--info)'}}><Info/>Information</span><span style={{color:'var(--destructive)'}}>Needs attention</span></div></div>
+  <div className="preview-card"><div className="preview-habit-heading"><strong>Read a few pages</strong><span className="preview-habit-score">75%</span></div><div className="response-choices" role="group" aria-label="Example habit choices">{['Done','Missed','Exempt'].map(choice=><button type="button" key={choice} className={`response-choice ${habit===choice?'selected':''}`} aria-pressed={habit===choice} onClick={()=>setHabit(choice)}>{choice}</button>)}</div><div className="allowance-row preview-allowance"><strong>Groceries <span>$120 left</span></strong><progress aria-label="Example category allowance" value={280} max={400}/><small>$280 / $400 · $35 upcoming</small></div><div className="preview-trends"><svg viewBox="0 0 200 50" role="img" aria-label="Example budget and movement trends"><polyline points="0,35 40,25 80,30 120,18 160,22 200,8" fill="none" stroke="var(--chart-1)" strokeWidth="3"/><polyline points="0,45 40,39 80,20 120,30 160,16 200,20" fill="none" stroke="var(--chart-2)" strokeWidth="3"/></svg><div><span style={{color:'var(--chart-1)'}}>Budget</span><span style={{color:'var(--chart-2)'}}>Movement</span></div><small>Rest timer <strong style={{color:'var(--chart-4)'}}>1:30</strong></small></div></div>
+  <div className="preview-card preview-muscles"><div><strong>Muscle coverage</strong><small>{selected?`${muscleNames[selected]} · ${examples[selected].estimated} example sets`:'Select a muscle to preview its highlight.'}</small></div><MuscleMap volumes={examples} selected={selected} onSelect={id=>setSelected(selected===id?null:id)}/><div className="preview-muscle-legend">{[['--muscle-empty','0'],['--muscle-low','1–4'],['--muscle-mid','5–9'],['--muscle-high','10+']].map(([color,label])=><span key={color}><i style={{background:`var(${color})`}}/>{label}</span>)}</div></div>
+ </section>;
+}

@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  const text=document.createElement('textarea');text.setAttribute('aria-label','Synthetic transcript');text.value='I went for a walk today.';panel.append(text);
  const button=(title,run)=>{const b=document.createElement('button');b.textContent=title;b.style.cssText='display:block;padding:6px;color:#111;background:#eee';b.onclick=run;panel.append(b);};
  button('Emit final speech',()=>{if(active){active.results.push({isFinal:true,0:{transcript:text.value}});active.onresult?.({results:active.results});}});
- button('Emit interim speech',()=>active?.onresult?.({results:[{isFinal:false,0:{transcript:text.value}}]}));
+ button('Emit interim speech',()=>active?.onresult?.({results:[...active.results,{isFinal:false,0:{transcript:text.value}}]}));
  button('Emit late speech',()=>lateResult?.({results:[{isFinal:true,0:{transcript:'This cancelled speech must never be saved.'}}]}));
  button('Deny microphone',()=>active?.onerror?.({error:'not-allowed'}));
  button('Unsupported browser on reload',()=>{sessionStorage.setItem('synthetic-speech-unsupported','true');location.reload();});

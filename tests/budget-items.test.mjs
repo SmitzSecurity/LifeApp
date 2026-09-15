@@ -93,3 +93,43 @@ test('category reorder rejects malformed lists, stale order or changed membershi
  assert.equal((await f.call({action:'budget-item',change:{kind:'category-order',month,previous:reverse,order:ids}},null)).status,401);
  }finally{f.raw.close();}
 });
+
+test('category editor saves names, allowances, removal and order atomically while retaining payment references',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;
+ const recurring={id:randomUUID(),title:'Electric',kind:'expense',amountCents:8000,categoryId:a.id,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:true,active:true,deleted:false};
+ await f.change({kind:'recurring',initial:f.initial,previous:null,item:recurring});
+ const record={kind:'transaction',id:occurrenceId(month,recurring.id),version:0,data:{date:month+'-01',kind:'expense',amountCents:7200,categoryId:a.id,note:'Electric payment',recurringId:recurring.id,voided:false}};
+ assert.equal((await f.call({action:'resource',record})).status,200);const before=f.raw.prepare("SELECT * FROM life_resources WHERE kind='transaction'").all();
+ const change={kind:'category-edit',categories:[{previous:a,item:{...a,name:'Utilities',limitCents:24000}},{previous:b,item:{...b,archived:true}}],ordering:{previous:[a.id,b.id],order:[b.id,a.id]}};
+ const response=await f.change(change);assert.equal(response.status,200);const saved=(await response.json()).record;assert.equal(saved.version,2);assert.deepEqual(saved.data.categories,[{...b,archived:true},{...a,name:'Utilities',limitCents:24000}]);
+ assert.deepEqual(saved.data.recurring,[recurring]);assert.deepEqual(f.raw.prepare("SELECT * FROM life_resources WHERE kind='transaction'").all(),before);
+ assert.equal((await (await f.change(change)).json()).record.version,2);
+ const tx=(await (await f.call(undefined,'a','?kind=transaction&month='+month)).json()).records;assert.equal(budgetSummary(saved.data,tx,month).expenses,7200);
+ }finally{f.raw.close();}
+});
+
+test('category editor conflicts reject the entire change, including order and deletions',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;await f.change({kind:'initialize',initial:f.initial});
+ await f.change({kind:'category',previous:b,item:{...b,name:'Groceries'}});
+ const conflict=await f.change({kind:'category-edit',categories:[{previous:a,item:{...a,archived:true}},{previous:b,item:{...b,limitCents:70000}}],ordering:{previous:[a.id,b.id],order:[b.id,a.id]}});
+ assert.equal(conflict.status,409);const saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.equal(saved.version,2);assert.deepEqual(saved.data.categories,[a,{...b,name:'Groceries'}]);
+ }finally{f.raw.close();}
+});
+
+test('category editor merges unrelated concurrent edits and does not require an unchanged order when only fields change',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;await f.change({kind:'initialize',initial:f.initial});
+ const responses=await Promise.all([f.change({kind:'category-edit',categories:[{previous:a,item:{...a,name:'Utilities'}}]}),f.change({kind:'category',previous:b,item:{...b,limitCents:77700}}),f.change({kind:'category-order',previous:[a.id,b.id],order:[b.id,a.id]})]);assert.deepEqual(responses.map(r=>r.status),[200,200,200]);
+ const saved=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.deepEqual(saved.data.categories,[{...b,limitCents:77700},{...a,name:'Utilities'}]);
+ }finally{f.raw.close();}
+});
+
+test('category editor validates IDs and ordering, rejects stale resurrection and remains account scoped',async()=>{
+ const f=fixture();try{await f.setup();const [a,b]=f.initial.categories;await f.change({kind:'initialize',initial:f.initial});
+ const edited={previous:a,item:{...a,archived:true}};
+ for(const change of [{categories:[edited,edited]},{categories:[{previous:a,item:{...a,id:randomUUID()}}]},{categories:[],ordering:{previous:[a.id,b.id],order:[a.id,a.id]}},{categories:[{previous:{...a,id:randomUUID()},item:a}]}])assert.equal((await f.change({kind:'category-edit',...change})).status,400);
+ assert.equal((await f.change({kind:'category-edit',categories:[edited]})).status,200);
+ assert.equal((await f.change({kind:'category-edit',categories:[{previous:a,item:{...a,name:'Stale'}}]})).status,409);
+ assert.equal((await f.change({kind:'category-edit',categories:[edited]},'b')).status,400);
+ assert.equal((await f.call({action:'budget-item',change:{kind:'category-edit',month,categories:[edited]}},null)).status,401);
+ }finally{f.raw.close();}
+});
