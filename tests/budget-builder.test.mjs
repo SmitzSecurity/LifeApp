@@ -197,6 +197,15 @@ test('present optional budget metadata stays strict and financial amounts, categ
  // saving still requires the missing date and never supplies one implicitly.
  for(const startDate of [undefined,null]){const input=structuredClone(nullScheduleOutput);input.recurring[1].startDate=startDate;const item=parseBudgetDraft(JSON.stringify(input)).recurring[1];assert.equal(item.installments,6);assert.equal(item.startDate,undefined);assert.equal(recurringSchema.safeParse(item).success,false);}
 });
+
+test('income drafts need no expense category while expenses require an existing category',()=>{
+ for(const category of [null,undefined]){
+  const income={...nullScheduleOutput.recurring[1],title:'Monthly income',kind:'income',amountCents:400000,category,startDate:null,installments:null,debt:null};
+  const draft=parseBudgetDraft(JSON.stringify({notes:'Synthetic income',categories:[],recurring:[income]}));
+  assert.equal(draft.categories.length,0);assert.equal(draft.recurring[0].categoryId,'');assert.equal(draft.recurring[0].amountCents,400000);assert.equal(draft.recurring[0].kind,'income');assert.equal(recurringSchema.safeParse(draft.recurring[0]).success,true);
+ }
+ for(const category of [null,undefined,'','  ','Unknown']){const input=structuredClone(nullScheduleOutput);input.recurring[0].category=category;assert.throws(()=>parseBudgetDraft(JSON.stringify(input)),undefined,String(category));}
+});
 test('budget builds honor shared cost caps, per-purpose limits, concurrent retries and uncertain outcomes',async t=>{
  const f=fixture(t);await f.setup();f.ai.userCapMicros=RESERVATION_MICROS-1;assert.equal((await f.call(f.build())).status,429);f.ai.userCapMicros=1000000;
  const request=f.build();await Promise.all([f.call(request),f.call(request)]);assert.equal(f.state.calls.length,1);assert.equal((await f.call(f.build())).status,200);assert.equal((await f.call(f.build())).status,429);
