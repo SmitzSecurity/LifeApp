@@ -10,7 +10,7 @@ const ownerDailyMicros=1_000_000;
 const ownerMonthMicros=(now:Date)=>new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth()+1,0)).getUTCDate()*ownerDailyMicros;
 export function limitsForAI(settings:AISettings,userId:string,now:Date){
  const prototype=prototypeOwner(settings,now)?.userId===userId;
- return {userCapMicros:prototype?ownerMonthMicros(now):settings.userCapMicros,dailyAttempts:prototype?25:5,builderAttempts:prototype?10:2,regenerations:prototype?5:2};
+ return {userCapMicros:prototype?ownerMonthMicros(now):settings.userCapMicros,dailyAttempts:prototype?25:5,builderAttempts:prototype?20:2,regenerations:prototype?5:2};
 }
 
 // Both admission paths use the complete ledger, including archived attempts and

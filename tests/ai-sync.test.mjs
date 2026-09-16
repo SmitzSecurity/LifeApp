@@ -74,7 +74,7 @@ function archivedUsage(f,id,n,{cost=100,at=now.toISOString(),error=null}={}){for
 test('prototype limits require the exact server-configured identity and expire without changing global settings',()=>{
  const env={LIFEAPP_AUTH_MODE:'google',LIFEAPP_AI_OWNER_USER_ID:ownerPrototype.userId,LIFEAPP_AI_OWNER_LIMITS_UNTIL:ownerPrototype.expiresAt};
  const settings=settingsForAI(env);
- assert.deepEqual(limitsForAI(settings,ownerPrototype.userId,now),{userCapMicros:30000000,dailyAttempts:25,builderAttempts:10,regenerations:5});
+ assert.deepEqual(limitsForAI(settings,ownerPrototype.userId,now),{userCapMicros:30000000,dailyAttempts:25,builderAttempts:20,regenerations:5});
  assert.equal(limitsForAI(settings,ownerPrototype.userId,new Date('2026-10-01T00:00:00Z')).userCapMicros,31000000);
  for(const id of ['google:other','synthetic-owner','owner@example.test'])assert.equal(limitsForAI(settings,id,now).dailyAttempts,5);
  for(const override of [{LIFEAPP_AUTH_MODE:'sites'},{LIFEAPP_AI_OWNER_USER_ID:''},{LIFEAPP_AI_OWNER_LIMITS_UNTIL:'invalid'}])assert.equal(limitsForAI(settingsForAI({...env,...override}),ownerPrototype.userId,now).dailyAttempts,5);
@@ -107,6 +107,16 @@ test('owner regeneration allowance is five and cannot bypass the cost breaker',a
 });
 
 const budgetBuild=()=>({action:'budget-build',build:{requestId:randomUUID(),month:'2026-09',text:'Synthetic groceries allowance $300.',consent:true}});
+test('owner can pass ten builds but stops at twenty while ordinary builders retain two',async()=>{
+ const f=fixture({generate:async()=>({...result,text:JSON.stringify({notes:'',categories:[],recurring:[]})})},{ownerPrototype});try{
+  for(const [id,count] of [[ownerPrototype.userId,20],['google:other',2]]){
+   await f.setup(id);
+   for(let i=0;i<count;i++)assert.equal((await f.call(budgetBuild(),id)).status,200);
+   assert.equal((await f.call(budgetBuild(),id)).status,429);
+   assert.equal(f.raw.prepare("SELECT count(*) n FROM life_ai_usage WHERE user_id=? AND request_id LIKE 'budget:%'").get(id).n,count);
+  }
+ }finally{f.raw.close();}
+});
 test('owner daily dollars include measured and archived unknown costs in analyses and budget builds',async()=>{
  for(const request of [review,budgetBuild]){
   const f=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await f.setup(ownerPrototype.userId);

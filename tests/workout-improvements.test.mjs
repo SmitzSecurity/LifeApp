@@ -37,10 +37,10 @@ test('owner builder allowance remains bounded, identity-scoped and subordinate t
  const f=fixture(t),owner='google:synthetic-owner';f.ai.ownerPrototype={userId:owner,expiresAt:'2026-10-14T23:59:59.000Z'};await f.setup(owner);await f.setup('b');
  for(let i=0;i<2;i++)assert.equal((await f.call(f.build(),'b')).status,200);
  assert.equal((await f.call(f.build(),'b')).status,429);
- for(let i=0;i<10;i++)assert.equal((await f.call(f.build(),owner)).status,200);
+ for(let i=0;i<20;i++)assert.equal((await f.call(f.build(),owner)).status,200);
  assert.equal((await f.call(f.build(),owner)).status,429);
  f.ai.ownerPrototype.expiresAt=now.toISOString();assert.equal((await f.call(f.analysis(),owner)).status,429);
- assert.equal(f.state.calls.length,12);
+ assert.equal(f.state.calls.length,22);
 });
 test('untrusted report Markdown cannot run HTML, scripts or load images',()=>{
  const html=renderReportMarkdown('<script>alert(1)</script>\n<img src=x onerror=alert(1)>\n\n[bad](javascript:alert%281%29) [data](data:text/html,hello) ![tracking](https://evil.test/pixel) [good](https://example.test)');
