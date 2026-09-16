@@ -26,7 +26,10 @@ async function fixture(t,{countTokens=100000,rejectGeneration=false}={}){
  for(const operation of ['countTokens','generateContent'])mock.intercept({path:`/v1beta/models/${AI_MODEL}:${operation}`,method:'POST'}).reply(rejectGeneration&&operation==='generateContent'?400:200,async options=>{
   const body=JSON.parse(await new Response(options.body).text());calls.push({operation,body});
   if(operation==='generateContent'){
-   assert.ok(outputMimeContract.enum.includes(body.generationConfig.responseFormat.text.mimeType),'REST output MIME must be a discovery enum, not a media MIME string');
+   assert.equal(body.generationConfig.responseMimeType,'application/json');
+   assert.ok(outputMimeContract.properties.responseMimeType.supported.includes(body.generationConfig.responseMimeType),'REST responseMimeType must use a documented media MIME string');
+   assert.equal(body.generationConfig.responseJsonSchema.type,'object');assert.ok(body.generationConfig.responseJsonSchema.properties.recurring);
+   assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);
    if(rejectGeneration)return JSON.stringify({error:{code:400,status:'INVALID_ARGUMENT',message:'Synthetic request rejected'}});
   }
   return JSON.stringify(operation==='countTokens'?{totalTokens:countTokens}:{responseId:'synthetic-compiled-budget',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:JSON.stringify(output)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100000,candidatesTokenCount:100,thoughtsTokenCount:0,totalTokenCount:100100}});

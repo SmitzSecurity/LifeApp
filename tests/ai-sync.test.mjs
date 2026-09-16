@@ -7,7 +7,7 @@ import { handleLife } from '../lib/life/service.ts';
 import { DraftSync } from '../lib/life/draft-sync.ts';
 import {settingsForAI} from '../lib/life/ai-configuration.ts';
 import {limitsForAI} from '../lib/life/ai-limits.ts';
-import { geminiProvider,tokenCostMicros,AI_MODEL,MAX_OUTPUT_TOKENS,RESERVATION_MICROS,AIRequestRejected } from '../lib/life/ai-provider.ts';
+import { geminiProvider,tokenCostMicros,AI_MODEL,MAX_OUTPUT_TOKENS,RESERVATION_MICROS,AIRequestRejected,rejectionCategory } from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-09T12:00:00Z');
 const profile={goal:'Synthetic goal: read consistently',timezone:'UTC',modules:['reflection'],habits:[],version:0};
 const entry=(date='2026-09-08')=>({date,journal:'Synthetic journal: read a chapter.',context:{},statuses:[],version:0,complete:true});
@@ -23,14 +23,16 @@ function fixture(provider={generate:async()=>result},caps={}){
 const review=(overrides={})=>({action:'ai',review:{date:'2026-09-08',requestId:randomUUID(),sourceVersion:1,predecessorId:null,critique:'',consent:true,...overrides}});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 
-test('Gemini structured output follows the REST discovery enum while ordinary analyses omit it',async()=>{
+test('Gemini structured output uses the documented MIME and JSON-schema fields without mixing format contracts',async()=>{
  const contract=JSON.parse(readFileSync('tests/fixtures/gemini-output-format.json','utf8'));
- assert.equal(contract.enum.includes('application/json'),false);
+ assert.equal(contract.properties.responseMimeType.type,'string');assert.equal(contract.properties.responseJsonSchema.type,'any');
  let body;const provider=geminiProvider('synthetic',async(url,init)=>{body=JSON.parse(init.body);return Response.json({candidates:[{content:{parts:[{text:'{}'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:1,candidatesTokenCount:1,totalTokenCount:2}});});
  for(const purpose of ['budget','workout',undefined,'routine','training']){
   await provider.generate('{}',purpose);
-  if(['budget','workout'].includes(purpose))assert.ok(contract.enum.includes(body.generationConfig.responseFormat.text.mimeType));
-  else assert.equal(body.generationConfig.responseFormat,undefined);
+  const config=body.generationConfig;assert.equal(config.responseFormat,undefined);assert.equal(config.responseSchema,undefined);
+  if(['budget','workout'].includes(purpose)){
+   assert.equal(config.responseMimeType,'application/json');assert.ok(contract.properties.responseMimeType.supported.includes(config.responseMimeType));assert.equal(config.responseJsonSchema.type,'object');assert.ok(config.responseJsonSchema.properties);
+  }else{assert.equal(config.responseMimeType,undefined);assert.equal(config.responseJsonSchema,undefined);}
  }
 });
 
@@ -43,6 +45,26 @@ test('only explicit provider INVALID_ARGUMENT receipts settle rejected requests 
  try{await f.setup();const request=review();assert.equal((await f.call(request)).status,422);assert.equal((await f.call(request)).status,200);assert.equal(calls,1);
   assert.deepEqual({...f.raw.prepare('SELECT status,cost_micros,input_tokens,output_tokens,error_code FROM life_ai_usage').get()},{status:'failed',cost_micros:0,input_tokens:0,output_tokens:0,error_code:'provider_request_rejected'});
  }finally{f.raw.close();}
+});
+
+test('provider rejection diagnostics expose only fixed categories without private descriptions or credentials',async()=>{
+ const cases=[
+  ['API key not valid: SyntheticCredentialValue','credentials'],
+  ['JSON schema complexity exceeded: PrivateBudgetValue','schema'],
+  ['Invalid response_format mime_type: PrivateBudgetValue','output-format'],
+  ['Invalid thinking level: PrivateBudgetValue','thinking'],
+  ['This model does not support the configuration: PrivateBudgetValue','model-configuration'],
+  ['Unexpected field: PrivateBudgetValue','request-configuration'],
+  [null,'request-configuration'],[{message:'SyntheticCredentialValue'},'request-configuration'],
+ ];
+ for(const [message,category] of cases){
+  assert.equal(rejectionCategory(message),category);
+  const provider=geminiProvider('SyntheticCredentialValue',async()=>Response.json({error:{code:400,status:'INVALID_ARGUMENT',message}},{status:400}));
+  await assert.rejects(provider.generate('PrivateBudgetValue','budget'),error=>{
+   assert.ok(error instanceof AIRequestRejected);assert.ok(error.message.includes(category));assert.doesNotMatch(error.message,/PrivateBudgetValue|SyntheticCredentialValue|Unexpected field|JSON schema complexity/);return true;
+  });
+ }
+ assert.equal(rejectionCategory('x'.repeat(12000)+' api key SyntheticCredentialValue'),'request-configuration');
 });
 
 const ownerPrototype={userId:'google:synthetic-owner',expiresAt:'2026-10-14T23:59:59.000Z'};

@@ -137,12 +137,12 @@ test('workout provider enforces JSON schema and fenced JSON keeps completed fact
  let body;
  const provider=geminiProvider('synthetic',async(url,options)=>{body=JSON.parse(options.body);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(written)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:10,totalTokenCount:110}});});
  await provider.generate('Synthetic completed workout','workout');
- assert.deepEqual(body.generationConfig.responseFormat.text,{mimeType:'APPLICATION_JSON',schema:workoutOutputSchema});assert.equal(body.generationConfig.candidateCount,1);
+ assert.equal(body.generationConfig.responseMimeType,'application/json');assert.deepEqual(body.generationConfig.responseJsonSchema,workoutOutputSchema);assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);assert.equal(body.generationConfig.candidateCount,1);
  const draft=parseWorkoutDraft('```json\n'+JSON.stringify(written)+'\n```',now.toISOString());assert.equal(draft.workout.sets.length,4);assert.equal(draft.workout.sets[0].warmup,true);assert.equal(draft.workout.sets[1].load,135);
  assert.throws(()=>parseWorkoutDraft('Here is your workout:\n'+JSON.stringify(written),now.toISOString()));
  assert.throws(()=>parseWorkoutDraft('```json\n'+JSON.stringify(written)+'\n``` trailing text',now.toISOString()));
  assert.equal(parseWorkoutDraft(JSON.stringify({notes:'No explicit loads or reps.',name:'Unstructured',exercises:[]}),now.toISOString()).workout,null);
- await provider.generate('Synthetic analysis','training');assert.equal(body.generationConfig.responseFormat,undefined);
+ await provider.generate('Synthetic analysis','training');assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseMimeType,undefined);assert.equal(body.generationConfig.responseJsonSchema,undefined);
 });
 
 test('workout failures distinguish invalid JSON, invalid structure and truncation without retaining raw output',async t=>{
