@@ -169,6 +169,34 @@ test('budget drafts reject missing applicable dates, out-of-range schedule value
  ];
  for(const [index,patch] of invalid){const input=structuredClone(nullScheduleOutput);Object.assign(input.recurring[index],patch);assert.throws(()=>parseBudgetDraft(JSON.stringify(input)),undefined,JSON.stringify({index,patch}));}
 });
+
+test('budget drafts accept omitted optional limits and debt metadata without inventing dates, balances or installment counts',async t=>{
+ for(const value of [undefined,null]){
+  const input=structuredClone(nullScheduleOutput);delete input.notes;
+  for(const item of input.recurring)for(const key of ['startDate','endDate','installments','debt'])item[key]=value;
+  const draft=parseBudgetDraft(JSON.stringify(input));assert.equal(draft.notes,'');
+  for(const [i,item] of draft.recurring.entries()){
+   for(const key of ['startDate','endDate','installments','debt'])assert.equal(Object.hasOwn(item,key),false);
+   assert.equal(item.amountCents,input.recurring[i].amountCents);assert.equal(item.variable,input.recurring[i].variable);assert.equal(item.categoryId,draft.categories[0].id);
+  }
+  const f=fixture(t);await f.setup();f.state.result={...providerResult,text:JSON.stringify(input)};
+  const response=await f.call(f.build());assert.equal(response.status,200);assert.equal((await response.json()).build.status,'complete');assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);
+ }
+});
+
+test('present optional budget metadata stays strict and financial amounts, category references and variable flags remain required',()=>{
+ const invalid=[
+  {startDate:''},{startDate:'09/01/2026'},{startDate:'2026-02-30'},{endDate:'not a date'},
+  {installments:0},{installments:-1},{installments:1.5},{installments:601},{installments:'6'},
+  {debt:{}},{debt:{...debt,originalBalanceCents:0}},{debt:{...debt,balanceCents:-1}},
+  {debt:{...debt,annualRatePercent:'0'}},{debt:{...debt,balanceDate:'2026-02-30'}},{debt:{...debt,interestMethod:'unknown'}},{debt:{...debt,unrecognized:1}},
+  {amountCents:undefined},{amountCents:null},{category:undefined},{category:'Unknown'},{variable:undefined},{variable:null},
+ ];
+ for(const patch of invalid){const input=structuredClone(nullScheduleOutput);Object.assign(input.recurring[1],patch);assert.throws(()=>parseBudgetDraft(JSON.stringify(input)),undefined,JSON.stringify(patch));}
+ // A valid installment count without a start date remains an editable draft;
+ // saving still requires the missing date and never supplies one implicitly.
+ for(const startDate of [undefined,null]){const input=structuredClone(nullScheduleOutput);input.recurring[1].startDate=startDate;const item=parseBudgetDraft(JSON.stringify(input)).recurring[1];assert.equal(item.installments,6);assert.equal(item.startDate,undefined);assert.equal(recurringSchema.safeParse(item).success,false);}
+});
 test('budget builds honor shared cost caps, per-purpose limits, concurrent retries and uncertain outcomes',async t=>{
  const f=fixture(t);await f.setup();f.ai.userCapMicros=RESERVATION_MICROS-1;assert.equal((await f.call(f.build())).status,429);f.ai.userCapMicros=1000000;
  const request=f.build();await Promise.all([f.call(request),f.call(request)]);assert.equal(f.state.calls.length,1);assert.equal((await f.call(f.build())).status,200);assert.equal((await f.call(f.build())).status,429);

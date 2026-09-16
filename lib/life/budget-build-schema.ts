@@ -25,14 +25,14 @@ export const budgetSnapshotSchema=z.object({description:z.string().max(BUDGET_TE
 const amount=z.number().int().min(0).max(100_000_000),name=z.string().trim().min(1).max(100);
 // AI may leave irrelevant schedule controls blank. Only those unused controls
 // receive defaults; fields that determine the actual due date remain required.
-const suggestion=z.object({title:name,kind:z.enum(['expense','income']),amountCents:amount,category:z.string().max(100),day:z.number().int().min(1).max(31).nullish(),frequency:z.enum(['monthly-day','monthly-weekday','annual']),month:z.number().int().min(1).max(12).nullable().optional(),week:z.enum(['first','second','third','fourth','last']).nullish(),weekday:z.number().int().min(0).max(6).nullish(),variable:z.boolean(),startDate:dateSchema.nullable(),endDate:dateSchema.nullable(),installments:z.number().int().min(1).max(600).nullable(),debt:debtSchema.nullable()}).strict().superRefine((r,c)=>{
+const suggestion=z.object({title:name,kind:z.enum(['expense','income']),amountCents:amount,category:z.string().max(100),day:z.number().int().min(1).max(31).nullish(),frequency:z.enum(['monthly-day','monthly-weekday','annual']),month:z.number().int().min(1).max(12).nullable().optional(),week:z.enum(['first','second','third','fourth','last']).nullish(),weekday:z.number().int().min(0).max(6).nullish(),variable:z.boolean(),startDate:dateSchema.nullish(),endDate:dateSchema.nullish(),installments:z.number().int().min(1).max(600).nullish(),debt:debtSchema.nullish()}).strict().superRefine((r,c)=>{
  refineRecurringSchedule(r,c);
  if(r.frequency==='monthly-weekday'){
   if(r.week==null)c.addIssue({code:'custom',path:['week'],message:'A weekday schedule needs its week.'});
   if(r.weekday==null)c.addIssue({code:'custom',path:['weekday'],message:'A weekday schedule needs its weekday.'});
  }else if(r.day==null)c.addIssue({code:'custom',path:['day'],message:'A fixed-date schedule needs its day.'});
 }).transform(r=>({...r,day:r.day??1,week:r.week??'first' as const,weekday:r.weekday??1}));
-export const suggestedBudget=z.object({notes:z.string().max(3000),categories:z.array(z.object({name,limitCents:amount}).strict()).max(20),recurring:z.array(suggestion).max(30)}).strict();
+export const suggestedBudget=z.object({notes:z.string().max(3000).default(''),categories:z.array(z.object({name,limitCents:amount}).strict()).max(20),recurring:z.array(suggestion).max(30)}).strict();
 // A zero amount remains an editable draft and cannot pass recurringSchema when
 // adopted. Unknown amounts are never silently turned into real expenses.
 const draftItem=recurringSchema.innerType().extend({amountCents:amount}).superRefine(refineRecurringSchedule);

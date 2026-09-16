@@ -82,7 +82,7 @@ test('prototype limits require the exact server-configured identity and expire w
  assert.equal(settings.globalCapMicros,5000000);assert.equal(settings.userCapMicros,1000000);assert.equal(settings.enabled,false);
 });
 test('owner daily analysis admission includes archived attempts and keeps other accounts at five',async()=>{
- const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);await f.setup('google:other');
+ const f=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await f.setup(ownerPrototype.userId);await f.setup('google:other');
  archivedUsage(f,ownerPrototype.userId,24);archivedUsage(f,'google:other',5);
  assert.equal((await f.call(review(),'google:other')).status,429);
  assert.equal((await f.call(review(),ownerPrototype.userId)).status,200);
@@ -92,7 +92,7 @@ test('owner daily analysis admission includes archived attempts and keeps other 
  }finally{f.raw.close();}
 });
 test('owner regeneration allowance is five and cannot bypass the cost breaker',async()=>{
- const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+ const f=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await f.setup(ownerPrototype.userId);
  let response=await (await f.call(review(),ownerPrototype.userId)).json();
  for(let i=0;i<5;i++){const r=await f.call(review({predecessorId:response.report.id}),ownerPrototype.userId);assert.equal(r.status,200);response=await r.json();}
  assert.equal((await f.call(review({predecessorId:response.report.id}),ownerPrototype.userId)).status,429);
@@ -109,7 +109,7 @@ test('owner regeneration allowance is five and cannot bypass the cost breaker',a
 const budgetBuild=()=>({action:'budget-build',build:{requestId:randomUUID(),month:'2026-09',text:'Synthetic groceries allowance $300.',consent:true}});
 test('owner daily dollars include measured and archived unknown costs in analyses and budget builds',async()=>{
  for(const request of [review,budgetBuild]){
-  const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+  const f=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await f.setup(ownerPrototype.userId);
    archivedUsage(f,ownerPrototype.userId,1,{cost:600000});archivedUsage(f,ownerPrototype.userId,1,{cost:null});
    const body=request();assert.equal((await f.call(body,ownerPrototype.userId)).status,200); // $0.80 + $0.20 exactly fits.
    assert.equal((await f.call(body,ownerPrototype.userId)).status,200); // Exact replay spends nothing.
@@ -134,7 +134,7 @@ test('simultaneous owner analysis and budget reservations cannot cross the daily
 test('active owner pool preserves ordinary caps and has a bounded aggregate; expiry counts everyone again',async()=>{
  const owner=ownerPrototype.userId,other='google:other';
  for(const request of [review,budgetBuild]){
-  const f=fixture(undefined,{ownerPrototype});try{await f.setup(owner);await f.setup(other);
+  const f=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await f.setup(owner);await f.setup(other);
    archivedUsage(f,owner,1,{cost:6000000,at:'2026-09-01T00:00:00.000Z'});
    assert.equal((await f.call(request(),other)).status,200); // Owner usage does not exhaust the ordinary pool.
    archivedUsage(f,other,1,{cost:800000});
@@ -145,7 +145,7 @@ test('active owner pool preserves ordinary caps and has a bounded aggregate; exp
    assert.equal((await f.call(request(),owner)).status,429); // Owner falls back to personal $1.
    await f.setup('google:new');assert.equal((await f.call(request(),'google:new')).status,429); // Shared $5 includes all owner rows again.
   }finally{f.raw.close();}
-  const g=fixture(undefined,{ownerPrototype});try{await g.setup(owner);await g.setup(other);
+  const g=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await g.setup(owner);await g.setup(other);
    archivedUsage(g,'google:retired',1,{cost:4800001,at:'2026-09-01T00:00:00.000Z'});
    assert.equal((await g.call(request(),other)).status,429); // Ordinary shared $5 is independent of owner headroom.
    assert.equal((await g.call(request(),owner)).status,200);
@@ -158,7 +158,7 @@ test('active owner pool preserves ordinary caps and has a bounded aggregate; exp
 });
 test('owner month headroom remains bounded even with prior-day accounting',async()=>{
  for(const request of [review,budgetBuild]){
-  const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+  const f=fixture({generate:async(_input,purpose)=>({...result,text:purpose==='budget'?JSON.stringify({notes:'',categories:[],recurring:[]}):result.text})},{ownerPrototype});try{await f.setup(ownerPrototype.userId);
    archivedUsage(f,ownerPrototype.userId,1,{cost:29800001,at:'2026-09-01T00:00:00.000Z'});
    assert.equal((await f.call(request(),ownerPrototype.userId)).status,429);
   }finally{f.raw.close();}
