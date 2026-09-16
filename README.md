@@ -50,6 +50,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 This is a private web beta, not an app-store release. On September 9, 2026, the owner confirmed Google sign-in and check-in persistence on the deployed Cloudflare app, then supplied a screenshot of a completed Gemini review for a synthetic check-in with measured usage and no remaining reservation. Independent provider invoice reconciliation and live cross-account isolation checks remain outstanding. The old Sites app and its records remain separate until verified account/data cutover. See `docs/architecture.md` for the migration boundary and remaining capabilities.
 
 See [Budget builder and loans](docs/budget-builder-and-loans.md) for pasted-text/image drafts, finite recurring schedules, payoff estimates and their verification boundaries.
+See [Loan presets and assisted import](docs/loan-builder.md) for mortgage, card, student, car, personal and medical presets; balance-only tracking; and reviewed AI drafts from files or pasted images.
 See [Recurring budget workflow](docs/budget-recurring-workflow.md) for advanced schedules, explicit AI category selection, payment undo, credit-card reminders and the annual-bills sinking fund.
 
 ## Validation

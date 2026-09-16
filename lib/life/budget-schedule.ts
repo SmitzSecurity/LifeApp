@@ -12,7 +12,7 @@ export const customScheduleSchema=z.object({unit:z.enum(['weeks','months','years
  if(s.unit==='years'&&(s.weekdays||s.days||s.weekdayRules))c.addIssue({code:'custom',message:'A yearly interval uses its month and day.'});
 });
 export type CustomSchedule=z.infer<typeof customScheduleSchema>;
-export type MonthlySchedule={day:number;frequency?:string;month?:number;week?:string;weekday?:number;startDate?:string;endDate?:string;installments?:number;custom?:CustomSchedule};
+export type MonthlySchedule={day:number;frequency?:string;month?:number;week?:string;weekday?:number;startDate?:string;endDate?:string;installments?:number;custom?:CustomSchedule;debt?:{paymentStatus?:'scheduled'|'balance-only'}};
 const monthNumber=(month:string)=>Number(month.slice(0,4))*12+Number(month.slice(5,7))-1;
 const dateNumber=(date:string)=>Date.parse(date+'T12:00:00Z')/86400000;
 export function shiftMonth(month:string,offset:number){const n=monthNumber(month)+offset;return String(Math.floor(n/12)).padStart(4,'0')+'-'+String(n%12+1).padStart(2,'0');}
@@ -68,6 +68,7 @@ function earlierOccurrences(month:string,r:MonthlySchedule){
  return count;
 }
 export function scheduledDatesInMonth(month:string,r:MonthlySchedule){
+ if(r.debt?.paymentStatus==='balance-only')return [];
  if(r.startDate&&month<r.startDate.slice(0,7)||r.endDate&&month>r.endDate.slice(0,7))return [];
  const dates=rawDatesInMonth(month,r).filter(date=>withinBounds(date,r));
  if(!r.installments)return dates;

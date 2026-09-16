@@ -82,6 +82,7 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    if(adoptingCurrent){
     if(!recurring||recurring.kind!==t.kind||recurring.categoryId!==t.categoryId)return json({error:'This scheduled payment changed. Reload the monthly plan.'},409);
     if(recurring.deleted||!recurring.active)return json({error:'This recurring item is deleted or paused. Restore it before confirming a payment.'},409);
+    if(recurring.debt?.paymentStatus==='balance-only')return json({error:'Add a confirmed monthly payment and due date before logging a payment for this balance-only loan.'},409);
     if(isAdvancedSchedule(recurring)!==!!t.occurrenceDate||!scheduledDatesInMonth(period,recurring).some(date=>!t.occurrenceDate||date===t.occurrenceDate))return json({error:'This payment is outside the saved schedule. Edit its schedule first.'},409);
     if(t.incomeDetails&&JSON.stringify(recurring.incomePlan)!==JSON.stringify(t.incomeDetails.plan))return json({error:'Income rules changed. Reopen the payment before confirming.'},409);
     if(recurring.incomePlan&&!t.incomeDetails)return json({error:'Confirm the take-home amount and income rules before saving.'},400);

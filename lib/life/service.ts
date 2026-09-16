@@ -37,7 +37,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
    if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout');
    if(new URL(request.url).searchParams.has('training-analyses'))return await listRoutineBuilds(db,userId,ai,now,'training');
-   if(new URL(request.url).searchParams.has('debt-payments'))return await readDebtPayments(request,db,userId);
+   if(new URL(request.url).searchParams.has('debt-payments'))return await readDebtPayments(request,db,userId,now);
    if(new URL(request.url).searchParams.has('budget-builds'))return await listRoutineBuilds(db,userId,ai,now,'budget');
    if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);

@@ -1,0 +1,79 @@
+{
+  "notes": "Synthetic loan statement. Student group A has no confirmed repayment schedule or interest-accrual status, so it tracks the statement balance only. The credit card tracks its complete statement balance; confirm a payment schedule separately. These four items are separate accounts/groups, without a duplicate aggregate balance.",
+  "categories": [],
+  "recurring": [
+    {
+      "title": "Student loan — group A",
+      "kind": "expense",
+      "amountCents": 0,
+      "frequency": "monthly-day",
+      "variable": false,
+      "debt": {
+        "loanType": "student",
+        "paymentStatus": "balance-only",
+        "balanceCents": 212345,
+        "accruedInterestCents": 1267,
+        "balanceDate": "2026-09-14",
+        "interestMethod": "statement",
+        "interestAccrual": "unknown",
+        "otherPaymentCents": 0
+      }
+    },
+    {
+      "title": "Student loan — group B",
+      "kind": "expense",
+      "amountCents": 7000,
+      "frequency": "monthly-day",
+      "day": 28,
+      "variable": false,
+      "debt": {
+        "loanType": "student",
+        "paymentStatus": "scheduled",
+        "originalBalanceCents": 1200000,
+        "balanceCents": 910000,
+        "accruedInterestCents": 1250,
+        "balanceDate": "2026-09-14",
+        "annualRatePercent": 6.8,
+        "interestMethod": "daily",
+        "interestAccrual": "accruing",
+        "otherPaymentCents": 0
+      }
+    },
+    {
+      "title": "Home mortgage",
+      "kind": "expense",
+      "amountCents": 155000,
+      "frequency": "monthly-day",
+      "day": 1,
+      "variable": false,
+      "debt": {
+        "loanType": "mortgage",
+        "paymentStatus": "scheduled",
+        "originalBalanceCents": 24000000,
+        "balanceCents": 22345678,
+        "balanceDate": "2026-09-15",
+        "annualRatePercent": 5.5,
+        "interestMethod": "monthly",
+        "interestAccrual": "accruing",
+        "otherPaymentCents": 35000
+      }
+    },
+    {
+      "title": "Credit card statement",
+      "kind": "transfer",
+      "amountCents": 0,
+      "frequency": "monthly-day",
+      "variable": true,
+      "debt": {
+        "loanType": "credit-card",
+        "paymentStatus": "balance-only",
+        "balanceCents": 42500,
+        "balanceDate": "2026-09-12",
+        "annualRatePercent": 21.99,
+        "interestMethod": "statement",
+        "interestAccrual": "unknown",
+        "otherPaymentCents": 0
+      }
+    }
+  ]
+}

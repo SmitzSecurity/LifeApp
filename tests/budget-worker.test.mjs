@@ -7,6 +7,7 @@ import {serializeSignedCookie} from 'better-call';
 import {AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 import {budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
+import {beginBudgetReview,addBudgetReviewCategory,budgetReviewImport} from '../lib/life/budget-build-review.ts';
 import {budgetSummary} from '../lib/life/modules.ts';
 
 const digest=value=>createHash('sha256').update(value).digest('hex');
@@ -19,7 +20,7 @@ function pdfDocument(){
  return {mimeType:'application/pdf',data:Buffer.from(pdf).toString('base64')};
 }
 
-async function fixture(t,{countTokens=100000,rejectGeneration=false}={}){
+async function fixture(t,{countTokens=100000,rejectGeneration=false,draft=output}={}){
  const fetchMock=createFetchMock();fetchMock.disableNetConnect();const calls=[];
  const mock=fetchMock.get('https://generativelanguage.googleapis.com');
  // Drain large mocked request bodies before responding. A static mock reply
@@ -32,7 +33,7 @@ async function fixture(t,{countTokens=100000,rejectGeneration=false}={}){
    assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);
    if(rejectGeneration)return JSON.stringify({error:{code:400,status:'INVALID_ARGUMENT',message:'Synthetic request rejected'}});
   }
-  return JSON.stringify(operation==='countTokens'?{totalTokens:countTokens}:{responseId:'synthetic-compiled-budget',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:JSON.stringify(output)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100000,candidatesTokenCount:100,thoughtsTokenCount:0,totalTokenCount:100100}});
+  return JSON.stringify(operation==='countTokens'?{totalTokens:countTokens}:{responseId:'synthetic-compiled-budget',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:JSON.stringify(typeof draft==='function'?draft(body):draft)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100000,candidatesTokenCount:100,thoughtsTokenCount:0,totalTokenCount:100100}});
  }).persist();
  const secret=randomBytes(48).toString('base64url');
  const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],fetchMock,
@@ -123,5 +124,43 @@ test('compiled explicit provider rejection is zero-cost, replay-safe and does no
  assert.equal((await f.call({action:'budget-build',build},'?budget-build')).status,200);assert.equal(f.calls.length,1);
  const list=await (await f.call(undefined,'?budget-builds')).json();assert.equal(list.blockedReason,null);
  assert.equal((await f.call({action:'budget-build',build:{...build,requestId:randomUUID()}},'?budget-build')).status,422);assert.equal(f.calls.length,2);
+ assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
+});
+
+test('compiled loan builder preserves file intent, separate groups and explicit reviewed adoption alongside general Budget',{timeout:60000},async t=>{
+ const loanOutput=JSON.parse(readFileSync('tests/fixtures/loan-workflow.json','utf8'));
+ const f=await fixture(t,{draft:body=>JSON.parse(body.contents[0].parts[0].text).intent==='loans'?loanOutput:output});
+ const image={mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jbeQAAAAASUVORK5CYII='};
+ const build={requestId:randomUUID(),text:'Synthetic student, mortgage and credit card statements.',intent:'loans',month:f.month,image,consent:true};
+ const response=await f.call({action:'budget-build',build},'?budget-build'),payload=await response.json();
+ assert.equal(response.status,200,JSON.stringify(payload));assert.equal(payload.build.status,'complete');assert.equal(payload.build.intent,'loans');assert.equal(payload.build.result.recurring.length,4);
+ const generated=f.calls.at(-1).body;assert.match(generated.systemInstruction.parts[0].text,/LOAN BUILDER MODE:/);assert.deepEqual(generated.contents[0].parts[1],{inlineData:image});
+ assert.deepEqual(await (await f.call({action:'budget-build',build},'?budget-build')).json(),payload);assert.equal(f.calls.length,1);
+ assert.equal((await f.call({action:'budget-build',build:{...build,intent:undefined}},'?budget-build')).status,409);
+ assert.equal((await f.call({action:'budget-build',build:{...build,intent:'routine'}},'?budget-build')).status,400);
+ assert.equal(f.calls.length,1);
+ assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='budget'").first()).n,0);
+ const initial={currency:'USD',categories:[],recurring:[],goals:{spending:'',saving:'',investing:''}};
+ let review=beginBudgetReview(payload.build.result,initial);assert.throws(()=>budgetReviewImport(review,f.month),/category/);
+ review=addBudgetReviewCategory(review,'Debt payments','2000',review.recurring[0].id);const categoryId=review.categories[0].item.id;
+ review={...review,recurring:review.recurring.map(item=>item.kind==='expense'?{...item,categoryId}:item)};
+ const adoption={action:'budget-item',change:budgetReviewImport(review,f.month)},savedResponse=await f.call(adoption),saved=await savedResponse.json();
+ assert.equal(savedResponse.status,200,JSON.stringify(saved));assert.deepEqual(await (await f.call(adoption)).json(),saved);
+ const student=saved.record.data.recurring.filter(item=>item.debt.loanType==='student');assert.equal(student.length,2);assert.notEqual(student[0].id,student[1].id);assert.equal(student[0].debt.balanceCents,212345);assert.equal(student[0].debt.accruedInterestCents,1267);assert.equal(student[1].debt.annualRatePercent,6.8);
+ const card=saved.record.data.recurring.find(item=>item.debt.loanType==='credit-card');assert.equal(card.kind,'transfer');assert.equal(card.debt.interestMethod,'statement');assert.equal(card.debt.paymentStatus,'balance-only');
+ const summary=budgetSummary(saved.record.data,[],f.month);assert.equal(summary.due.length,2);assert.equal(summary.due.some(item=>item.recurringId===card.id||item.recurringId===student[0].id),false);assert.equal(summary.expenses,0);assert.equal(summary.saving,0);assert.equal(summary.cashFlow,0);
+ const general=await f.call({action:'budget-build',build:{requestId:randomUUID(),month:f.month,text:'Groceries monthly allowance $400.',consent:true}},'?budget-build');assert.equal(general.status,200);const generalResult=await general.json();assert.equal(generalResult.build.intent,undefined);assert.equal(generalResult.build.result.categories[0].name,'Groceries');
+ const list=await (await f.call(undefined,'?budget-builds')).json();assert.equal(list.builds.length,2);assert.equal(list.builds.filter(item=>item.intent==='loans').length,1);
+ const ledger=await f.db.prepare('SELECT request_id,cost_micros,reserved_micros FROM life_ai_usage').all();assert.equal(ledger.results.length,2);assert.ok(ledger.results.every(item=>item.request_id.startsWith('budget:')&&item.cost_micros>0&&item.reserved_micros===RESERVATION_MICROS));
+ assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
+});
+
+test('compiled loan mode rejects nonloan provider output and retains measured usage without saving budget items',{timeout:60000},async t=>{
+ const f=await fixture(t),build={requestId:randomUUID(),intent:'loans',month:f.month,text:'Synthetic loan statement',document:pdfDocument(),consent:true};
+ const response=await f.call({action:'budget-build',build},'?budget-build'),payload=await response.json();
+ assert.equal(response.status,200,JSON.stringify(payload));assert.equal(payload.build.status,'failed');assert.equal(payload.build.errorCode,'invalid_budget_output');assert.equal(payload.build.result,null);assert.equal(payload.build.intent,'loans');
+ assert.deepEqual(f.calls.map(call=>call.operation),['countTokens','generateContent']);assert.deepEqual(await (await f.call({action:'budget-build',build},'?budget-build')).json(),payload);assert.equal(f.calls.length,2);
+ const row=await f.db.prepare('SELECT status,cost_micros,reserved_micros,result_json FROM life_routine_builds WHERE request_id=?1').bind('budget:'+build.requestId).first();assert.equal(row.status,'failed');assert.ok(row.cost_micros>0);assert.equal(row.reserved_micros,RESERVATION_MICROS);assert.equal(row.result_json,null);
+ assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='budget'").first()).n,0);
  assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
 });
