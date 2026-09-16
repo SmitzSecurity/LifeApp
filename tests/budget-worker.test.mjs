@@ -6,7 +6,7 @@ import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {serializeSignedCookie} from 'better-call';
 import {AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
-import {budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
+import {budgetOutputSchema,loanOutputSchema} from '../lib/life/budget-build-schema.ts';
 import {beginBudgetReview,addBudgetReviewCategory,budgetReviewImport} from '../lib/life/budget-build-review.ts';
 import {budgetSummary} from '../lib/life/modules.ts';
 
@@ -28,7 +28,7 @@ async function fixture(t,{countTokens=100000,rejectGeneration=false,draft=output
  for(const operation of ['countTokens','generateContent'])mock.intercept({path:`/v1beta/models/${AI_MODEL}:${operation}`,method:'POST'}).reply(rejectGeneration&&operation==='generateContent'?400:200,async options=>{
   const body=JSON.parse(await new Response(options.body).text());calls.push({operation,body});
   if(operation==='generateContent'){
-   assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(budgetOutputSchema)));
+   assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(body.systemInstruction.parts[0].text.includes('LOAN BUILDER MODE:')?loanOutputSchema:budgetOutputSchema)));
    assert.equal(body.generationConfig.responseMimeType,undefined);assert.equal(body.generationConfig.responseJsonSchema,undefined);
    assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);
    if(rejectGeneration)return JSON.stringify({error:{code:400,status:'INVALID_ARGUMENT',message:'Synthetic request rejected'}});
@@ -168,6 +168,9 @@ test('compiled loan mode rejects nonloan provider output and retains measured us
 test('compiled missing loan due day keeps all fifteen loans reviewable and status checks stay read-only',{timeout:60000},async t=>{
  const fixtures=JSON.parse(readFileSync('tests/fixtures/loan-workflow.json','utf8'));
  const recurring=Array.from({length:14},(_,i)=>({...fixtures.recurring[0],title:'Synthetic student group '+(i+1)}));
+ recurring[0]={...recurring[0],day:19,startDate:'2026-10-01'};
+ recurring[1]={...recurring[1],debt:{...recurring[1].debt,paymentStatus:null,interestAccrual:null}};
+ recurring[13]={...fixtures.recurring[3],kind:'expense',debt:{...fixtures.recurring[3].debt,interestMethod:'daily'}};
  recurring.push({...fixtures.recurring[2],day:null});
  const f=await fixture(t,{draft:{notes:'Verify repayment terms against the statement.',categories:[],recurring}});
  const text='Synthetic dated loan statement.\n'.repeat(11000);
@@ -175,6 +178,9 @@ test('compiled missing loan due day keeps all fifteen loans reviewable and statu
  const response=await f.call({action:'budget-build',build},'?budget-build'),payload=await response.json();
  assert.equal(response.status,200,JSON.stringify(payload));assert.equal(payload.build.status,'complete');
  assert.equal(payload.build.result.recurring.length,15);
+ assert.equal(payload.build.result.recurring[0].startDate,undefined);assert.equal(payload.build.result.recurring[0].day,1);
+ assert.equal(payload.build.result.recurring[1].debt.paymentStatus,'balance-only');assert.equal(payload.build.result.recurring[1].debt.interestAccrual,'unknown');
+ assert.equal(payload.build.result.recurring[13].kind,'transfer');assert.equal(payload.build.result.recurring[13].debt.interestMethod,'statement');
  const mortgage=payload.build.result.recurring[14];assert.equal(mortgage.debt.paymentStatus,'balance-only');assert.equal(mortgage.amountCents,0);
  assert.equal(mortgage.debt.balanceCents,fixtures.recurring[2].debt.balanceCents);assert.equal(mortgage.debt.annualRatePercent,5.5);
  assert.match(payload.build.result.notes,/Home mortgage/);assert.match(payload.build.result.notes,/1,550|1550/);

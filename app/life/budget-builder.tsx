@@ -29,7 +29,7 @@ function failedBuild(build:Build){
  if(build.errorCode==='input_preflight_rejected')return 'This input was rejected before generation. Use a supported file or a smaller budget section, then try again.';
  if(build.errorCode==='cost_bound_exceeded')return 'This build exceeded its spending allowance. AI building is paused for review.';
  if(build.errorCode==='budget_output_truncated')return 'The generated draft was too long. Try importing fewer budget sections at once.';
- return 'AI could not produce a valid budget draft. Review the source or try a smaller section; nothing was added.';
+ return `AI could not produce a valid ${build.intent==='loans'?'loan':'budget'} draft. Review the source or try a smaller section; nothing was added.`;
 }
 export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{intent?:'loans';plan:Saved<Budget>;onSave:(change:BudgetItemChange)=>Promise<Saved<Budget>>;onClose:()=>void;onDirty:DirtyReporter}){
  const loanMode=intent==='loans';

@@ -53,11 +53,10 @@ test('malformed money, dates, debt data and unsupported schedules still fail bef
   {frequency:'annual',month:10},{frequency:'monthly-day',custom:{unit:'months',interval:1,days:[5]}},
   {kind:'income'},{debt:{...incomplete.debt,balanceDate:'2026-02-30'}},{debt:{...incomplete.debt,balanceCents:-1}},
   {debt:{...incomplete.debt,annualRatePercent:-1}},{debt:{...incomplete.debt,otherPaymentCents:8450}},
-  {debt:{...incomplete.debt,loanType:undefined}},{debt:{...incomplete.debt,interestAccrual:undefined}},{debt:{...incomplete.debt,paymentStatus:undefined}},
+  {debt:{...incomplete.debt,loanType:undefined}},
   {unexpected:'not permitted'},{debt:{...incomplete.debt,unexpected:'not permitted'}}
  ];
  for(const patch of invalid)assert.throws(()=>parse({...incomplete,...patch}),JSON.stringify(patch));
- for(const patch of [{amountCents:8450},{day:15},{startDate:'2026-10-01'}])assert.throws(()=>parse({...student(0),...patch}));
 });
 
 test('general Budget parser stays strict and existing loan warnings are never truncated',()=>{
@@ -71,4 +70,33 @@ test('general Budget parser stays strict and existing loan warnings are never tr
 test('loan instructions are scoped to loans and explicitly handle missing timing without invented dates',()=>{
  assert.ok(!loanInstruction.startsWith(budgetInstruction));
  for(const text of ['categories array must be empty','Do not include income, subscriptions','required day, week, weekday','Describe any known payment amount','Never substitute day 1','balance-only','Never estimate current rates'])assert.ok(loanInstruction.includes(text));
+});
+
+test('balance-only loans preserve unused payment facts in review notes without creating bills',()=>{
+ const original={...student(0),amountCents:8500,day:19,startDate:'2026-10-01',endDate:'2027-01-31',installments:4};
+ const draft=parse(original),loan=draft.recurring[0];
+ assert.equal(loan.amountCents,0);assert.equal(loan.day,1);assert.equal(loan.startDate,undefined);assert.equal(loan.endDate,undefined);assert.equal(loan.installments,undefined);
+ assert.deepEqual(loan.debt,original.debt);
+ for(const fact of ['$85.00','payment day: 19','10/01/2026','01/31/2027','4 installments'])assert.ok(draft.notes.includes(fact));
+ const plan=budgetSchema.parse({currency:'USD',categories:[{id:crypto.randomUUID(),name:'Loans',limitCents:0}],recurring:[],goals:{spending:'',saving:'',investing:''}});
+ plan.recurring=[{...loan,categoryId:plan.categories[0].id}];assert.equal(budgetSummary(plan,[],'2026-10').due.length,0);
+ const ordinary=parseBudgetDraft(JSON.stringify(wrap([original]))).recurring[0];assert.equal(ordinary.amountCents,8500);assert.equal(ordinary.day,19);
+});
+
+test('missing loan statuses become explicit unknown statement tracking without invented accrual',()=>{
+ for(const missing of [undefined,null]){
+  const original={...incomplete,day:20,debt:{...incomplete.debt,paymentStatus:missing,interestAccrual:missing}},draft=parse(original),loan=draft.recurring[0];
+  assert.equal(loan.debt.paymentStatus,'balance-only');assert.equal(loan.debt.interestAccrual,'unknown');assert.equal(loan.debt.interestMethod,'statement');
+  assert.equal(loan.debt.balanceCents,original.debt.balanceCents);assert.equal(loan.debt.annualRatePercent,original.debt.annualRatePercent);assert.equal(loan.amountCents,0);
+  assert.match(draft.notes,/Payment status was not supplied/);assert.match(draft.notes,/Interest accrual was not supplied/);
+ }
+ const scheduled=parse({...incomplete,day:20,debt:{...incomplete.debt,interestAccrual:null}}).recurring[0];
+ assert.equal(scheduled.debt.paymentStatus,'scheduled');assert.equal(scheduled.amountCents,8450);assert.equal(scheduled.debt.interestMethod,'statement');
+});
+
+test('credit-card classification follows app accounting while ambiguous amounts remain rejected',()=>{
+ const card={...student(0),title:'Synthetic card',kind:'expense',day:25,paymentDueDay:27,debt:{loanType:'credit-card',paymentStatus:'balance-only',balanceCents:150000,balanceDate:'2026-09-16',annualRatePercent:19,interestMethod:'daily',interestAccrual:'accruing',otherPaymentCents:0}};
+ const result=parse(card),item=result.recurring[0];assert.equal(item.kind,'transfer');assert.equal(item.debt.interestMethod,'statement');assert.equal(item.debt.balanceCents,150000);assert.equal(item.debt.annualRatePercent,19);assert.equal(item.paymentDueDay,undefined);assert.equal(item.amountCents,0);assert.match(result.notes,/deadline: day 27/);assert.match(result.notes,/payments use transfers/);
+ for(const patch of [{otherPaymentCents:500},{accruedInterestCents:1200}])assert.throws(()=>parse({...card,debt:{...card.debt,...patch}}));
+ assert.throws(()=>parse({...card,kind:'income'}));
 });

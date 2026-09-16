@@ -1,4 +1,4 @@
-import {budgetInstructionForIntent,budgetOutputSchema,BUDGET_INPUT_BYTES,type BudgetAttachment} from './budget-build-schema.ts';
+import {budgetInstructionForIntent,budgetOutputSchema,loanOutputSchema,BUDGET_INPUT_BYTES,type BudgetAttachment} from './budget-build-schema.ts';
 import {workoutInstruction,trainingInstruction,workoutOutputSchema} from './workout-ai-schema.ts';
 import { z } from 'zod/v3';
 import {routineInstruction} from './routine-build-schema.ts';
@@ -36,7 +36,7 @@ export function geminiProvider(key:string,fetcher:typeof fetch=fetch):AIProvider
  // storage; no provider schema compiler is required for this nested document.
  let loanIntent=false;
  if(purpose==='budget'){try{loanIntent=JSON.parse(input)?.intent==='loans';}catch{/* Legacy direct provider calls may supply plain text. */}}
- const instruction=purpose==='budget'?budgetInstructionForIntent(loanIntent?'loans':undefined)+'\nRequired JSON shape:\n'+JSON.stringify(budgetOutputSchema):purpose==='routine'?routineInstruction:purpose==='workout'?workoutInstruction:purpose==='training'?trainingInstruction:systemInstruction;
+ const instruction=purpose==='budget'?budgetInstructionForIntent(loanIntent?'loans':undefined)+'\nRequired JSON shape:\n'+JSON.stringify(loanIntent?loanOutputSchema:budgetOutputSchema):purpose==='routine'?routineInstruction:purpose==='workout'?workoutInstruction:purpose==='training'?trainingInstruction:systemInstruction;
  const bytes=new TextEncoder().encode(input+instruction).length;
  if(bytes>(purpose==='budget'?BUDGET_INPUT_BYTES:MAX_INPUT_BYTES))throw new AIInputRejected('This request has too much context. Use a smaller file or description.');
  const contents=[{role:'user',parts:[{text:input},...(purpose==='budget'&&attachment?[{inlineData:attachment}]:[])]}],system={parts:[{text:instruction}]};

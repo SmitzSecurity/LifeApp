@@ -5,7 +5,7 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
 import {budgetSchema,budgetSummary} from '../lib/life/modules.ts';
-import {budgetBuildInput,budgetSnapshotSchema,budgetBuildResult,parseBudgetDraft,budgetInstruction,loanInstruction,budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
+import {budgetBuildInput,budgetSnapshotSchema,budgetBuildResult,parseBudgetDraft,budgetInstruction,loanInstruction,loanOutputSchema} from '../lib/life/budget-build-schema.ts';
 import {beginBudgetReview,addBudgetReviewCategory,budgetReviewUnassigned,budgetReviewImport} from '../lib/life/budget-build-review.ts';
 import {geminiProvider,AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
@@ -60,12 +60,6 @@ test('loan mode rejects ordinary charges, income and generated categories before
   {...result,recurring:[{...student,debt:undefined,amountCents:1000,day:1}]},
   {...result,recurring:[{...student,kind:'income'}]},
   {...result,recurring:[{...student,debt:{...student.debt,loanType:undefined}}]},
-  {...result,recurring:[{...student,debt:{...student.debt,paymentStatus:undefined}}]},
-  {...result,recurring:[{...student,debt:{...student.debt,interestAccrual:undefined}}]},
-  {...result,recurring:[{...student,amountCents:212345}]},
-  {...result,recurring:[{...student,startDate:'2026-09-01'}]},
-  {...result,recurring:[{...student,day:15}]},
-  {...result,recurring:[{...card,debt:{...card.debt,interestMethod:'daily'}}]},
   {...result,recurring:[{...student,debt:{...student.debt,balanceDate:'2026-02-30'}}]},
   {...result,recurring:[{...student,debt:{...student.debt,balanceCents:null}}]},
   {...result,recurring:[{...student,debt:{...student.debt,annualRatePercent:-1}}]},
@@ -123,7 +117,7 @@ test('loan provider instruction carries the full schema and attachment without p
  const input=JSON.stringify({intent:'loans',description:'Synthetic statement',month});await provider.generate(input,'budget',pdf);
  assert.equal(calls.length,2);assert.match(calls[0].url,/:countTokens$/);const body=calls[1].body;
  assert.equal(body.contents[0].parts[0].text,input);assert.deepEqual(body.contents[0].parts[1],{inlineData:pdf});
- assert.ok(body.systemInstruction.parts[0].text.startsWith(loanInstruction));assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(budgetOutputSchema)));
+ assert.ok(body.systemInstruction.parts[0].text.startsWith(loanInstruction));assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(loanOutputSchema)));
  for(const key of ['responseMimeType','responseJsonSchema','responseSchema','responseFormat'])assert.equal(body.generationConfig[key],undefined);
  for(const text of ['separate from outstanding principal','Never estimate current rates','categories array must be empty','monthly-day','balance-only'])assert.ok(loanInstruction.includes(text));
  assert.match(budgetInstruction,/credit-card and interestMethod statement/);
