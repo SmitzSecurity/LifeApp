@@ -164,3 +164,28 @@ test('compiled loan mode rejects nonloan provider output and retains measured us
  assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='budget'").first()).n,0);
  assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
 });
+
+test('compiled missing loan due day keeps all fifteen loans reviewable and status checks stay read-only',{timeout:60000},async t=>{
+ const fixtures=JSON.parse(readFileSync('tests/fixtures/loan-workflow.json','utf8'));
+ const recurring=Array.from({length:14},(_,i)=>({...fixtures.recurring[0],title:'Synthetic student group '+(i+1)}));
+ recurring.push({...fixtures.recurring[2],day:null});
+ const f=await fixture(t,{draft:{notes:'Verify repayment terms against the statement.',categories:[],recurring}});
+ const text='Synthetic dated loan statement.\n'.repeat(11000);
+ const build={requestId:randomUUID(),intent:'loans',month:f.month,text,consent:true};
+ const response=await f.call({action:'budget-build',build},'?budget-build'),payload=await response.json();
+ assert.equal(response.status,200,JSON.stringify(payload));assert.equal(payload.build.status,'complete');
+ assert.equal(payload.build.result.recurring.length,15);
+ const mortgage=payload.build.result.recurring[14];assert.equal(mortgage.debt.paymentStatus,'balance-only');assert.equal(mortgage.amountCents,0);
+ assert.equal(mortgage.debt.balanceCents,fixtures.recurring[2].debt.balanceCents);assert.equal(mortgage.debt.annualRatePercent,5.5);
+ assert.match(payload.build.result.notes,/Home mortgage/);assert.match(payload.build.result.notes,/1,550|1550/);
+ const before=await f.db.prepare('SELECT request_id,status,cost_micros,reserved_micros FROM life_ai_usage').all();
+ for(let i=0;i<3;i++){
+  const result=await (await f.call(undefined,'?budget-builds&summary=1')).json();assert.equal(result.builds.length,1);
+  assert.equal(result.builds[0].description,undefined);assert.deepEqual(result.builds[0].result,payload.build.result);
+ }
+ const full=await (await f.call(undefined,'?budget-builds')).json();assert.equal(full.builds[0].description,text.trim());
+ assert.deepEqual((await f.db.prepare('SELECT request_id,status,cost_micros,reserved_micros FROM life_ai_usage').all()).results,before.results);
+ assert.equal(f.calls.filter(call=>call.operation==='generateContent').length,1);
+ assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='budget'").first()).n,0);
+ assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
+});

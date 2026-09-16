@@ -35,11 +35,11 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(new URL(request.url).searchParams.has('trash'))return await listTrash(db,userId,Number(new URL(request.url).searchParams.get('offset')||0));
    if(new URL(request.url).searchParams.has('training-summary'))return await readTrainingSummary(db,userId,now);
    if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
-   if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout');
-   if(new URL(request.url).searchParams.has('training-analyses'))return await listRoutineBuilds(db,userId,ai,now,'training');
+   if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout',new URL(request.url).searchParams.get('summary')==='1');
+   if(new URL(request.url).searchParams.has('training-analyses'))return await listRoutineBuilds(db,userId,ai,now,'training',new URL(request.url).searchParams.get('summary')==='1');
    if(new URL(request.url).searchParams.has('debt-payments'))return await readDebtPayments(request,db,userId,now);
-   if(new URL(request.url).searchParams.has('budget-builds'))return await listRoutineBuilds(db,userId,ai,now,'budget');
-   if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now);
+   if(new URL(request.url).searchParams.has('budget-builds'))return await listRoutineBuilds(db,userId,ai,now,'budget',new URL(request.url).searchParams.get('summary')==='1');
+   if(new URL(request.url).searchParams.has('routine-builds'))return await listRoutineBuilds(db,userId,ai,now,'routine',new URL(request.url).searchParams.get('summary')==='1');
    if(new URL(request.url).searchParams.has('dashboard'))return await readDashboard(db,userId,now);
    if(new URL(request.url).searchParams.has('periodic'))return await periodConsentStatus(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('automatic'))return await automaticConsentStatus(db,userId,ai,now);

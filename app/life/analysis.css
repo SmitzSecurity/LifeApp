@@ -12,6 +12,8 @@
 .analysis-tools{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-top:18px;padding-top:12px;border-top:1px solid var(--border)}
 .analysis-tools button{font-size:.8rem;min-height:40px}.analysis-tools svg{width:15px;height:15px}
 .analysis-note{font-size:.75rem;color:var(--muted-foreground);line-height:1.6;margin-top:12px}.analysis-progress{display:flex;gap:8px;align-items:center;font-size:.85rem;margin-top:16px}.analysis-progress svg{width:16px}
+.analysis-progress>span{flex:1;min-width:0}.analysis-progress>button,.analysis-progress>svg{flex-shrink:0}
+.life-compact-theme .training-workspace .training-analysis>.section-heading.is-generating{flex-wrap:wrap}
 .analysis-versions article{border-top:1px solid var(--border);margin-top:24px;padding-top:20px}.analysis-versions h3{font-size:.8rem;margin-bottom:10px;color:var(--muted-foreground)}
 .guidance-link,.subtle-link{font-size:.8rem;color:var(--primary);display:inline-flex;align-items:center;gap:5px;min-height:40px;text-align:left}.guidance-link svg,.subtle-link svg{width:14px;height:14px}.subtle-link{margin-top:-18px;justify-self:start}
 .period-overview h2,.trend-heading h2{font-size:1rem;letter-spacing:0;margin-bottom:12px}.trend-heading small{font-size:.72rem}

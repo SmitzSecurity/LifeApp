@@ -51,6 +51,7 @@ This is a private web beta, not an app-store release. On September 9, 2026, the 
 
 See [Budget builder and loans](docs/budget-builder-and-loans.md) for pasted-text/image drafts, finite recurring schedules, payoff estimates and their verification boundaries.
 See [Loan presets and assisted import](docs/loan-builder.md) for mortgage, card, student, car, personal and medical presets; balance-only tracking; and reviewed AI drafts from files or pasted images.
+See [AI completion and loan timing](docs/ai-build-completion.md) for automatic result updates, safe cancellation and reviewable loan balances when payment timing is incomplete.
 See [Recurring budget workflow](docs/budget-recurring-workflow.md) for advanced schedules, explicit AI category selection, payment undo, credit-card reminders and the annual-bills sinking fund.
 
 ## Validation

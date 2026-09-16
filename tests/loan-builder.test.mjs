@@ -68,7 +68,6 @@ test('loan mode rejects ordinary charges, income and generated categories before
   {...result,recurring:[{...card,debt:{...card.debt,interestMethod:'daily'}}]},
   {...result,recurring:[{...student,debt:{...student.debt,balanceDate:'2026-02-30'}}]},
   {...result,recurring:[{...student,debt:{...student.debt,balanceCents:null}}]},
-  {...result,recurring:[{...mortgage,day:undefined}]},
   {...result,recurring:[{...student,debt:{...student.debt,annualRatePercent:-1}}]},
   {...result,recurring:[{...student,debt:{...student.debt,unsupported:'private'}}]},
  ])assert.throws(()=>parseBudgetDraft(JSON.stringify(input),'loans'));

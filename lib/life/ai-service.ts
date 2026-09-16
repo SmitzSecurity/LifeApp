@@ -54,7 +54,7 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  if(!periodic&&(input.date>todayIn(profile.timezone,now)||!entry?.complete||completionIssues(entry).length||entry.version!==input.sourceVersion))return json({error:'Save a complete response before generating its analysis.'},409);
  if(periodic&&profile.version!==input.sourceVersion)return json({error:'Your preferences changed. Refresh before generating this analysis.'},409);
  const latest=await db.prepare(`SELECT *, NOT (${visibleAnalysisSQL()}) AS deleted FROM life_ai_reviews WHERE user_id=?1 AND entry_date=?2 AND cadence=?3 ORDER BY revision DESC LIMIT 1`).bind(userId,input.date,cadence).first<ReportRow>();
- if(input.predecessorId&&(!latest||latest.request_id!==input.predecessorId||latest.status!=='complete'))return json({error:'Refresh to open the latest completed analysis.'},409);
+ if(input.predecessorId&&(!latest||latest.request_id!==input.predecessorId||latest.status!=='complete'))return json({error:'The saved analysis changed. Its latest status is being checked automatically.'},409);
  const previous=input.predecessorId?latest:null;
  const month=input.date.slice(0,7),budget=!periodic?await readResource(db,userId,'budget',month):null;
  if(!profile.budgetGoals){const goalPlan=budget||await db.prepare("SELECT payload FROM life_resources WHERE user_id=?1 AND kind='budget' ORDER BY period DESC LIMIT 1").bind(userId).first<{payload:string}>();if(goalPlan)profile.budgetGoals='data' in goalPlan?goalPlan.data.goals:JSON.parse(goalPlan.payload).goals;}
