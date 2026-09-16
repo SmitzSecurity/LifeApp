@@ -1,0 +1,29 @@
+{
+  "notes": "Synthetic schedule fixture. Check dates before saving.",
+  "categories": [{"name": "Bills", "limitCents": 60000}],
+  "recurring": [
+    {
+      "title": "Annual subscription", "kind": "expense", "category": "Bills",
+      "amountCents": 12000, "frequency": "annual", "month": 10, "day": 15,
+      "week": null, "weekday": null, "variable": false,
+      "startDate": null, "endDate": null, "installments": null, "debt": null
+    },
+    {
+      "title": "Medical loan", "kind": "expense", "category": "Bills",
+      "amountCents": 10000, "frequency": "monthly-day", "month": null, "day": 1,
+      "week": null, "weekday": null, "variable": false,
+      "startDate": "2026-09-01", "endDate": null, "installments": 6,
+      "debt": {
+        "originalBalanceCents": 60000, "balanceCents": 60000,
+        "balanceDate": "2026-08-31", "annualRatePercent": 0,
+        "interestMethod": "monthly", "otherPaymentCents": 0
+      }
+    },
+    {
+      "title": "Sunday expense", "kind": "expense", "category": "Bills",
+      "amountCents": 500, "frequency": "monthly-weekday", "month": null, "day": null,
+      "week": "first", "weekday": 0, "variable": false,
+      "startDate": null, "endDate": null, "installments": null, "debt": null
+    }
+  ]
+}

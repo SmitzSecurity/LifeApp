@@ -14,6 +14,7 @@ const now=new Date('2026-09-14T12:00:00.000Z'),month='2026-09';
 const debt={originalBalanceCents:60000,balanceCents:60000,balanceDate:'2026-08-31',annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0};
 const rawItem={title:'Medical loan',kind:'expense',category:'Bills',amountCents:10000,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,startDate:'2026-09-01',endDate:null,installments:6,debt};
 const output={notes:'Check the dates and payment amount.',categories:[{name:'Bills',limitCents:60000}],recurring:[rawItem]};
+const nullScheduleOutput=JSON.parse(readFileSync('tests/fixtures/budget-null-schedules.json','utf8'));
 const providerResult={text:JSON.stringify(output),inputTokens:100,outputTokens:150,thoughtTokens:0,costMicros:500,providerId:'synthetic',modelVersion:AI_MODEL,finishReason:'STOP'};
 const png={mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jbeQAAAAASUVORK5CYII='};
 function loan(patch={}){const {category,endDate,...base}=rawItem;return recurringSchema.parse({...base,id:randomUUID(),categoryId:randomUUID(),...patch});}
@@ -142,6 +143,31 @@ test('Gemini budget requests instruct the complete JSON shape without provider s
 test('malformed, truncated or unknown-category responses never create a plan and retain measured usage',async t=>{
  for(const patch of [{text:'not json'},{finishReason:'MAX_TOKENS'},{text:JSON.stringify({...output,recurring:[{...rawItem,category:'Unknown'}]})},{text:JSON.stringify({...output,recurring:[{...rawItem,amountCents:-1}]})},{text:JSON.stringify({...output,unexpected:'Ignore validation'})}]){const f=fixture(t);await f.setup();f.state.result={...providerResult,...patch};const body=await (await f.call(f.build())).json();assert.equal(body.build.status,'failed');assert.equal(body.build.result,null);assert.equal(f.raw.prepare('SELECT cost_micros FROM life_ai_usage').get().cost_micros,500);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);}
  const draft=parseBudgetDraft(JSON.stringify({...output,recurring:[{...rawItem,amountCents:0,debt:null}]}));assert.equal(draft.recurring[0].amountCents,0);assert.equal(recurringSchema.safeParse(draft.recurring[0]).success,false);
+});
+
+test('budget drafts normalize only irrelevant null or omitted schedule fields without changing annual charges, loans or Sunday',async t=>{
+ for(const omitted of [false,true]){
+  const input=structuredClone(nullScheduleOutput);
+  if(omitted)for(const item of input.recurring){if(item.frequency==='monthly-weekday')delete item.day;else{delete item.week;delete item.weekday;}}
+  const draft=parseBudgetDraft(JSON.stringify(input)),[annual,monthly,sunday]=draft.recurring;
+  assert.equal(annual.amountCents,12000);assert.equal(annual.month,10);assert.equal(scheduleDate('2026-10',annual),'2026-10-15');assert.equal(scheduledInMonth('2026-09',annual),false);
+  assert.equal(monthly.amountCents,10000);assert.equal(monthly.installments,6);assert.deepEqual(monthly.debt,debt);assert.equal(scheduledInMonth('2027-02',monthly),true);assert.equal(scheduledInMonth('2027-03',monthly),false);
+  for(const fixed of [annual,monthly]){assert.equal(fixed.week,'first');assert.equal(fixed.weekday,1);}
+  assert.equal(sunday.day,1);assert.equal(sunday.weekday,0);assert.equal(sunday.week,'first');assert.equal(scheduleDate('2026-09',sunday),'2026-09-06');
+  for(const item of draft.recurring)assert.equal(recurringSchema.safeParse(item).success,true);
+  const f=fixture(t);await f.setup();f.state.result={...providerResult,text:JSON.stringify(input)};
+  const response=await f.call(f.build());assert.equal(response.status,200);const built=(await response.json()).build;assert.equal(built.status,'complete');assert.equal(built.result.recurring.length,3);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);
+ }
+});
+
+test('budget drafts reject missing applicable dates, out-of-range schedule values and missing annual renewal months',()=>{
+ const invalid=[
+  [0,{day:null}],[0,{day:undefined}],[1,{day:null}],[1,{day:undefined}],
+  [2,{week:null}],[2,{week:undefined}],[2,{weekday:null}],[2,{weekday:undefined}],
+  [0,{day:0}],[1,{day:32}],[2,{day:0}],[2,{weekday:7}],[2,{weekday:-1}],
+  [0,{weekday:7}],[0,{week:'sixth'}],[0,{month:null}],[0,{month:undefined}],[0,{month:0}],[0,{month:13}],
+ ];
+ for(const [index,patch] of invalid){const input=structuredClone(nullScheduleOutput);Object.assign(input.recurring[index],patch);assert.throws(()=>parseBudgetDraft(JSON.stringify(input)),undefined,JSON.stringify({index,patch}));}
 });
 test('budget builds honor shared cost caps, per-purpose limits, concurrent retries and uncertain outcomes',async t=>{
  const f=fixture(t);await f.setup();f.ai.userCapMicros=RESERVATION_MICROS-1;assert.equal((await f.call(f.build())).status,429);f.ai.userCapMicros=1000000;
