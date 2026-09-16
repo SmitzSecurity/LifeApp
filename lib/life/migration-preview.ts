@@ -97,6 +97,12 @@ export function validateBackup(text:string):Backup{
    }
   }else if(r.kind==='ai-recovery'){
    const grant=resourceSchemas['ai-recovery'].parse(data);requireThat(r.resource_id===grant.sourceId,'invalid_id',at);requireThat((b.routineBuilds||[]).some(job=>job.request_id===(grant.purpose==='budget'?'budget:':'workout:')+grant.sourceId&&job.status===(grant.purpose==='budget'?'uncertain':'failed')&&(grant.purpose!=='budget'||!validate(z.record(z.unknown()),parseJSON(job.input_snapshot,at),at).recoveryOf)),'missing_recovery_source',at);
+   if(grant.operatorAcknowledgement){
+    const acknowledgement=grant.operatorAcknowledgement,source=(b.routineBuilds||[]).find(job=>job.request_id==='budget:'+acknowledgement.requestIds[0]),recovered=(b.routineBuilds||[]).find(job=>job.request_id==='budget:'+acknowledgement.requestIds[1]);
+    const held=(job:typeof source)=>!!job&&job.status==='uncertain'&&job.error_code==='provider_or_storage_unconfirmed'&&job.cost_micros===null&&job.reserved_micros===200000&&job.result_json===null&&job.provider_id===null&&job.input_tokens===null&&job.output_tokens===null&&job.thought_tokens===null&&!!job.finished_at&&job.created_at<=job.finished_at&&job.finished_at<=acknowledgement.acknowledgedAt;
+    const recoveries=(b.routineBuilds||[]).filter(job=>validate(z.record(z.unknown()),parseJSON(job.input_snapshot,at),at).recoveryOf===grant.sourceId);
+    requireThat(held(source)&&held(recovered)&&recoveries.length===1&&recoveries[0]===recovered&&source!.finished_at!<=recovered!.created_at&&recovered!.created_at<grant.expiresAt&&acknowledgement.acknowledgedAt<=r.updated_at,'invalid_operator_acknowledgement',at);
+   }
   }else if(r.kind==='visibility'){
    const v=resourceSchemas.visibility.parse(data);requireThat(r.resource_id===v.target+':'+v.id,'invalid_id',at);requireThat(v.target==='analysis'?b.reviews.some(r=>r.request_id===v.id):(b.routineBuilds||[]).some(r=>r.request_id===v.id),'missing_visibility_target',at);
   }else{

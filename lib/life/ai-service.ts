@@ -1,5 +1,5 @@
 import {visibleAnalysisSQL} from './record-deletion.ts';
-import {limitsForAI} from './ai-limits.ts';
+import {limitsForAI,spendingAdmission} from './ai-limits.ts';
 import { z } from 'zod/v3';
 import { profileSchema,dateSchema,todayIn,type Entry } from './domain.ts';
 import { completionIssues,cadenceSchema,type Cadence,type ReviewRecord } from './reviews.ts';
@@ -12,7 +12,7 @@ import { AUTOMATIC_POLICY, automaticAvailable, readAutomaticConsent } from './au
 import { buildReviewContext } from './review-context.ts';
 import { readResource } from './resource-service.ts';
 import type { Database } from './service.ts';
-import { AI_MODEL,PRICE_VERSION,PRICE_EXPIRES,RESERVATION_MICROS,MAX_INPUT_BYTES,systemInstruction,type AIProvider } from './ai-provider.ts';
+import { AI_MODEL,PRICE_VERSION,PRICE_EXPIRES,RESERVATION_MICROS,MAX_INPUT_BYTES,systemInstruction,AIRequestRejected,type AIProvider } from './ai-provider.ts';
 export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number;automaticEnabled?:boolean;ownerPrototype?:{userId:string;expiresAt:string}};
 export type ReportRow={deleted?:boolean;user_id:string;request_id:string;entry_date:string;cadence:Cadence;window_start:string|null;revision:number;source_version:number;predecessor_id:string|null;critique:string;status:string;input_snapshot:string;report_text:string|null;model:string;price_version:string;provider_id:string|null;input_tokens:number|null;output_tokens:number|null;thought_tokens:number|null;reserved_micros:number;cost_micros:number|null;created_at:string;finished_at:string|null;error_code:string|null};
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
@@ -68,23 +68,23 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  const snapshot=JSON.stringify({context,previousReview:previous?.deleted?null:previous?.report_text||null,...(previous?.deleted?{previousReviewExcluded:true}:{}),revisionRequest:critique||null,...(consent?{automaticConsent:{version:consent.version,policyVersion:periodic?PERIOD_POLICY:AUTOMATIC_POLICY,startDate:consent.startDate,acceptedAt:consent.acceptedAt}}:{})});
  if(new TextEncoder().encode(snapshot+systemInstruction).length>MAX_INPUT_BYTES)return json({error:'This day’s context exceeds the initial AI limit. It needs a larger-context review path.'},413);
  const revision=previous?previous.revision+1:1;
+ const spending=spendingAdmission(settings,userId,now,{user:'?1',month:'?13',day:'?16',reserve:'?11',accountCap:'?14',globalCap:'?15',owner:'?22'});
  // Atomic admission: duplicate keys, monthly reservations, unresolved attempts and
  // daily rate limits are checked in the same serialized SQLite insert.
  const admitted=await db.prepare(`INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,predecessor_id,critique,status,input_snapshot,model,price_version,reserved_micros,created_at,cadence,window_start)
  SELECT ?1,?2,?3,?4,?5,?6,?7,'generating',?8,?9,?10,?11,?12,?18,?19
- WHERE (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?13)+?11<=?14
- AND (SELECT COALESCE(SUM(COALESCE(cost_micros,reserved_micros)),0) FROM life_ai_usage WHERE created_at>=?13)+?11<=?15
+ WHERE ${spending.sql}
  AND (SELECT COUNT(*) FROM life_ai_usage WHERE user_id=?1 AND created_at>=?16)<${limits.dailyAttempts}
  AND NOT EXISTS(SELECT 1 FROM life_ai_usage WHERE error_code='cost_bound_exceeded')
  AND EXISTS(SELECT 1 FROM life_profiles WHERE user_id=?1 AND version=?17)
  AND (SELECT COUNT(*) FROM life_ai_reviews WHERE user_id=?1 AND cadence=?18 AND entry_date=?3 AND revision>1 AND created_at>=?16)<${limits.regenerations}
  AND (SELECT COALESCE(SUM(version),0) FROM life_entries WHERE user_id=?1 AND entry_date>=?19 AND entry_date<=?3)=?20
  AND (SELECT COUNT(*) FROM life_entries WHERE user_id=?1 AND entry_date>=?19 AND entry_date<=?3)=?21
- ${automatic?(periodic?`AND EXISTS(SELECT 1 FROM life_period_consent WHERE user_id=?1 AND enabled=1 AND version=?22 AND policy_version=?23 AND start_date<=?3)`:`AND (
-  EXISTS(SELECT 1 FROM life_automatic_consent WHERE user_id=?1 AND enabled=1 AND version=?22 AND policy_version=?23 AND start_date<=?3)
+ ${automatic?(periodic?`AND EXISTS(SELECT 1 FROM life_period_consent WHERE user_id=?1 AND enabled=1 AND version=?23 AND policy_version=?24 AND start_date<=?3)`:`AND (
+  EXISTS(SELECT 1 FROM life_automatic_consent WHERE user_id=?1 AND enabled=1 AND version=?23 AND policy_version=?24 AND start_date<=?3)
   AND EXISTS(SELECT 1 FROM life_daily_job_status WHERE user_id=?1 AND entry_date=?3 AND state='ready' AND source_version=?5)
  )`):''}
- ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,periodic?profile.version:entry.version,previous?.request_id||null,critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),limits.userCapMicros,settings.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,cadence,window.from,entries.reduce((n,e)=>n+e.version,0),entries.length,...(automatic?[automatic.consentVersion,periodic?PERIOD_POLICY:AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
+ ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,periodic?profile.version:entry.version,previous?.request_id||null,critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),limits.userCapMicros,spending.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,cadence,window.from,entries.reduce((n,e)=>n+e.version,0),entries.length,spending.ownerUserId,...(automatic?[automatic.consentVersion,periodic?PERIOD_POLICY:AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
  if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return json({report:publicReport(duplicate)},202);return json({error:'The analysis limit has been reached, or the saved context changed. Refresh first; if the limit remains, try again tomorrow.'},429);}
  try{
   const result=await settings.provider.generate(snapshot);
@@ -98,7 +98,13 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
    throw new Error('AI result could not be committed.');
   }
   return json({report:publicReport(row)});
- }catch{
+ }catch(error){
+  if(error instanceof AIRequestRejected){
+   const finished=new Date().toISOString();
+   const failed=await db.prepare("UPDATE life_ai_reviews SET status='failed',error_code='provider_request_rejected',cost_micros=0,input_tokens=0,output_tokens=0,thought_tokens=0,finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,requestId,finished).first();
+   if(!failed)await db.prepare("UPDATE life_deleted_ai_usage SET status='failed',error_code='provider_request_rejected',cost_micros=0,input_tokens=0,output_tokens=0,thought_tokens=0,finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,requestId,finished).first();
+   return json({error:error.message},422);
+  }
   // A timeout may have consumed provider tokens. Keep the reservation and NEVER
   // silently reissue an ambiguous request. No raw provider error or journal is logged.
   const uncertain=await db.prepare("UPDATE life_ai_reviews SET status='uncertain',error_code='provider_or_storage_unconfirmed',finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,requestId,new Date().toISOString()).first();

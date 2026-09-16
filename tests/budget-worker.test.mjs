@@ -9,6 +9,7 @@ import {validateBackup} from '../lib/life/migration-preview.ts';
 
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const output={notes:'Synthetic compiled budget draft.',categories:[{name:'Groceries',limitCents:40000}],recurring:[]};
+const outputMimeContract=JSON.parse(readFileSync('tests/fixtures/gemini-output-format.json','utf8'));
 function pdfDocument(){
  let pdf='%PDF-1.4\n';const offsets=[0],objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>','<< /Length 0 >>\nstream\n\nendstream'];
  objects.forEach((body,index)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${index+1} 0 obj\n${body}\nendobj\n`;});
@@ -17,13 +18,17 @@ function pdfDocument(){
  return {mimeType:'application/pdf',data:Buffer.from(pdf).toString('base64')};
 }
 
-async function fixture(t,{countTokens=100000}={}){
+async function fixture(t,{countTokens=100000,rejectGeneration=false}={}){
  const fetchMock=createFetchMock();fetchMock.disableNetConnect();const calls=[];
  const mock=fetchMock.get('https://generativelanguage.googleapis.com');
  // Drain large mocked request bodies before responding. A static mock reply
  // can reset Miniflare's Windows transport while it is still uploading.
- for(const operation of ['countTokens','generateContent'])mock.intercept({path:`/v1beta/models/${AI_MODEL}:${operation}`,method:'POST'}).reply(200,async options=>{
+ for(const operation of ['countTokens','generateContent'])mock.intercept({path:`/v1beta/models/${AI_MODEL}:${operation}`,method:'POST'}).reply(rejectGeneration&&operation==='generateContent'?400:200,async options=>{
   const body=JSON.parse(await new Response(options.body).text());calls.push({operation,body});
+  if(operation==='generateContent'){
+   assert.ok(outputMimeContract.enum.includes(body.generationConfig.responseFormat.text.mimeType),'REST output MIME must be a discovery enum, not a media MIME string');
+   if(rejectGeneration)return JSON.stringify({error:{code:400,status:'INVALID_ARGUMENT',message:'Synthetic request rejected'}});
+  }
   return JSON.stringify(operation==='countTokens'?{totalTokens:countTokens}:{responseId:'synthetic-compiled-budget',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:JSON.stringify(output)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100000,candidatesTokenCount:100,thoughtsTokenCount:0,totalTokenCount:100100}});
  }).persist();
  const secret=randomBytes(48).toString('base64url');
@@ -74,4 +79,15 @@ test('compiled budget preflight rejection returns 422 and a known zero-cost fail
  assert.equal(row.status,'failed');assert.equal(row.error_code,'input_preflight_rejected');assert.equal(row.cost_micros,0);assert.equal(row.input_tokens,0);assert.equal(row.output_tokens,0);
  const replay=await f.call({action:'budget-build',build},'?budget-build');assert.equal(replay.status,200);assert.equal((await replay.json()).build.status,'failed');assert.equal(f.calls.length,1);
  const list=await (await f.call(undefined,'?budget-builds')).json();assert.equal(list.blockedReason,null);
+});
+
+test('compiled explicit provider rejection is zero-cost, replay-safe and does not block fresh builds',{timeout:60000},async t=>{
+ const f=await fixture(t,{rejectGeneration:true}),build={requestId:randomUUID(),text:'Synthetic monthly budget $400.',month:f.month,consent:true};
+ const response=await f.call({action:'budget-build',build},'?budget-build');assert.equal(response.status,422);
+ const row=await f.db.prepare('SELECT status,cost_micros,error_code,input_tokens,output_tokens FROM life_routine_builds WHERE request_id=?1').bind('budget:'+build.requestId).first();
+ assert.deepEqual(row,{status:'failed',cost_micros:0,error_code:'provider_request_rejected',input_tokens:0,output_tokens:0});
+ assert.equal((await f.call({action:'budget-build',build},'?budget-build')).status,200);assert.equal(f.calls.length,1);
+ const list=await (await f.call(undefined,'?budget-builds')).json();assert.equal(list.blockedReason,null);
+ assert.equal((await f.call({action:'budget-build',build:{...build,requestId:randomUUID()}},'?budget-build')).status,422);assert.equal(f.calls.length,2);
+ assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
 });

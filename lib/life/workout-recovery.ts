@@ -1,7 +1,11 @@
 import {z} from 'zod/v3';
 import type {Database} from './service.ts';
 
-export const workoutRecoverySchema=z.object({sourceId:z.string().uuid(),expiresAt:z.string().datetime(),purpose:z.literal('budget').optional()}).strict();
+const operatorAcknowledgement=z.object({reason:z.literal('invalid_output_mime_enum'),requestIds:z.tuple([z.string().uuid(),z.string().uuid()]),acknowledgedAt:z.string().datetime().refine(value=>{try{return new Date(value).toISOString()===value;}catch{return false;}})}).strict();
+export const workoutRecoverySchema=z.object({sourceId:z.string().uuid(),expiresAt:z.string().datetime(),purpose:z.literal('budget').optional(),operatorAcknowledgement:operatorAcknowledgement.optional()}).strict().superRefine((grant,context)=>{
+ const acknowledgement=grant.operatorAcknowledgement;
+ if(acknowledgement&&(grant.purpose!=='budget'||acknowledgement.requestIds[0]!==grant.sourceId||acknowledgement.requestIds[1]===grant.sourceId))context.addIssue({code:'custom',message:'An operator acknowledgment must identify the budget source and its distinct consumed recovery.'});
+});
 // Grants are operator-issued, account-scoped resources. Admission consumes a
 // grant by recording recoveryOf on the new job in the same atomic INSERT.
 // Failed, hidden and uncertain recovery jobs all count as consumption.

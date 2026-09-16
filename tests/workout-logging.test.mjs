@@ -137,7 +137,7 @@ test('workout provider enforces JSON schema and fenced JSON keeps completed fact
  let body;
  const provider=geminiProvider('synthetic',async(url,options)=>{body=JSON.parse(options.body);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(written)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:10,totalTokenCount:110}});});
  await provider.generate('Synthetic completed workout','workout');
- assert.deepEqual(body.generationConfig.responseFormat.text,{mimeType:'application/json',schema:workoutOutputSchema});assert.equal(body.generationConfig.candidateCount,1);
+ assert.deepEqual(body.generationConfig.responseFormat.text,{mimeType:'APPLICATION_JSON',schema:workoutOutputSchema});assert.equal(body.generationConfig.candidateCount,1);
  const draft=parseWorkoutDraft('```json\n'+JSON.stringify(written)+'\n```',now.toISOString());assert.equal(draft.workout.sets.length,4);assert.equal(draft.workout.sets[0].warmup,true);assert.equal(draft.workout.sets[1].load,135);
  assert.throws(()=>parseWorkoutDraft('Here is your workout:\n'+JSON.stringify(written),now.toISOString()));
  assert.throws(()=>parseWorkoutDraft('```json\n'+JSON.stringify(written)+'\n``` trailing text',now.toISOString()));

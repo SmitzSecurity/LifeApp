@@ -7,7 +7,7 @@ import { handleLife } from '../lib/life/service.ts';
 import { DraftSync } from '../lib/life/draft-sync.ts';
 import {settingsForAI} from '../lib/life/ai-configuration.ts';
 import {limitsForAI} from '../lib/life/ai-limits.ts';
-import { geminiProvider,tokenCostMicros,AI_MODEL,MAX_OUTPUT_TOKENS,RESERVATION_MICROS } from '../lib/life/ai-provider.ts';
+import { geminiProvider,tokenCostMicros,AI_MODEL,MAX_OUTPUT_TOKENS,RESERVATION_MICROS,AIRequestRejected } from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-09T12:00:00Z');
 const profile={goal:'Synthetic goal: read consistently',timezone:'UTC',modules:['reflection'],habits:[],version:0};
 const entry=(date='2026-09-08')=>({date,journal:'Synthetic journal: read a chapter.',context:{},statuses:[],version:0,complete:true});
@@ -23,12 +23,35 @@ function fixture(provider={generate:async()=>result},caps={}){
 const review=(overrides={})=>({action:'ai',review:{date:'2026-09-08',requestId:randomUUID(),sourceVersion:1,predecessorId:null,critique:'',consent:true,...overrides}});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 
+test('Gemini structured output follows the REST discovery enum while ordinary analyses omit it',async()=>{
+ const contract=JSON.parse(readFileSync('tests/fixtures/gemini-output-format.json','utf8'));
+ assert.equal(contract.enum.includes('application/json'),false);
+ let body;const provider=geminiProvider('synthetic',async(url,init)=>{body=JSON.parse(init.body);return Response.json({candidates:[{content:{parts:[{text:'{}'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:1,candidatesTokenCount:1,totalTokenCount:2}});});
+ for(const purpose of ['budget','workout',undefined,'routine','training']){
+  await provider.generate('{}',purpose);
+  if(['budget','workout'].includes(purpose))assert.ok(contract.enum.includes(body.generationConfig.responseFormat.text.mimeType));
+  else assert.equal(body.generationConfig.responseFormat,undefined);
+ }
+});
+
+test('only explicit provider INVALID_ARGUMENT receipts settle rejected requests at zero cost',async()=>{
+ for(const [status,body,known] of [[400,{error:{code:400,status:'INVALID_ARGUMENT',message:'Private echoed content'}},true],[500,{error:{code:500,status:'INTERNAL'}},false],[400,{error:{code:400,status:'OTHER'}},false],[400,{error:{code:400,status:'INVALID_ARGUMENT'},usageMetadata:{totalTokenCount:1}},false]]){
+  const provider=geminiProvider('synthetic',async()=>Response.json(body,{status}));
+  await assert.rejects(provider.generate('{}','budget'),e=>{assert.equal(e instanceof AIRequestRejected,known);assert.doesNotMatch(e.message,/Private echoed content/);return true;});
+ }
+ let calls=0;const f=fixture(geminiProvider('synthetic',async()=>{calls++;return Response.json({error:{code:400,status:'INVALID_ARGUMENT'}},{status:400});}));
+ try{await f.setup();const request=review();assert.equal((await f.call(request)).status,422);assert.equal((await f.call(request)).status,200);assert.equal(calls,1);
+  assert.deepEqual({...f.raw.prepare('SELECT status,cost_micros,input_tokens,output_tokens,error_code FROM life_ai_usage').get()},{status:'failed',cost_micros:0,input_tokens:0,output_tokens:0,error_code:'provider_request_rejected'});
+ }finally{f.raw.close();}
+});
+
 const ownerPrototype={userId:'google:synthetic-owner',expiresAt:'2026-10-14T23:59:59.000Z'};
 function archivedUsage(f,id,n,{cost=100,at=now.toISOString(),error=null}={}){for(let i=0;i<n;i++)f.raw.prepare("INSERT INTO life_deleted_ai_usage(user_id,request_id,status,model,price_version,reserved_micros,cost_micros,created_at,error_code) VALUES(?,?,'failed','synthetic','synthetic',200000,?,?,?)").run(id,randomUUID(),cost,at,error);}
 test('prototype limits require the exact server-configured identity and expire without changing global settings',()=>{
  const env={LIFEAPP_AUTH_MODE:'google',LIFEAPP_AI_OWNER_USER_ID:ownerPrototype.userId,LIFEAPP_AI_OWNER_LIMITS_UNTIL:ownerPrototype.expiresAt};
  const settings=settingsForAI(env);
- assert.deepEqual(limitsForAI(settings,ownerPrototype.userId,now),{userCapMicros:5000000,dailyAttempts:25,builderAttempts:10,regenerations:5});
+ assert.deepEqual(limitsForAI(settings,ownerPrototype.userId,now),{userCapMicros:30000000,dailyAttempts:25,builderAttempts:10,regenerations:5});
+ assert.equal(limitsForAI(settings,ownerPrototype.userId,new Date('2026-10-01T00:00:00Z')).userCapMicros,31000000);
  for(const id of ['google:other','synthetic-owner','owner@example.test'])assert.equal(limitsForAI(settings,id,now).dailyAttempts,5);
  for(const override of [{LIFEAPP_AUTH_MODE:'sites'},{LIFEAPP_AI_OWNER_USER_ID:''},{LIFEAPP_AI_OWNER_LIMITS_UNTIL:'invalid'}])assert.equal(limitsForAI(settingsForAI({...env,...override}),ownerPrototype.userId,now).dailyAttempts,5);
  assert.equal(limitsForAI(settings,ownerPrototype.userId,new Date(ownerPrototype.expiresAt)).dailyAttempts,5);
@@ -44,20 +67,78 @@ test('owner daily analysis admission includes archived attempts and keeps other 
  assert.equal(f.raw.prepare('SELECT count(*) n FROM life_ai_usage WHERE user_id=?').get(ownerPrototype.userId).n,25);
  }finally{f.raw.close();}
 });
-test('owner regeneration allowance is five, expires, and cannot bypass the shared spending cap or breaker',async()=>{
+test('owner regeneration allowance is five and cannot bypass the cost breaker',async()=>{
  const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
  let response=await (await f.call(review(),ownerPrototype.userId)).json();
  for(let i=0;i<5;i++){const r=await f.call(review({predecessorId:response.report.id}),ownerPrototype.userId);assert.equal(r.status,200);response=await r.json();}
  assert.equal((await f.call(review({predecessorId:response.report.id}),ownerPrototype.userId)).status,429);
- const status=await (await f.call(undefined,ownerPrototype.userId,'?ai=1&date=2026-09-08')).json();assert.equal(status.regenerationsRemaining,0);assert.equal(status.usage.capMicros,5000000);assert.equal(status.ownerPrototype,undefined);
+ const status=await (await f.call(undefined,ownerPrototype.userId,'?ai=1&date=2026-09-08')).json();assert.equal(status.regenerationsRemaining,0);assert.equal(status.usage.capMicros,30000000);assert.equal(status.ownerPrototype,undefined);
  }finally{f.raw.close();}
  const g=fixture(undefined,{ownerPrototype});try{await g.setup(ownerPrototype.userId);
  archivedUsage(g,ownerPrototype.userId,1,{cost:1100000,at:'2026-09-01T00:00:00.000Z'});
  assert.equal((await g.call(review(),ownerPrototype.userId)).status,200);
  assert.equal((await g.call({action:'entry',entry:entry('2026-09-07')},ownerPrototype.userId)).status,200);
- g.settings.globalCapMicros=1200000;assert.equal((await g.call(review({date:'2026-09-07'}),ownerPrototype.userId)).status,429);
- g.settings.globalCapMicros=5000000;archivedUsage(g,'google:retired',1,{error:'cost_bound_exceeded'});assert.equal((await g.call(review({date:'2026-09-07'}),ownerPrototype.userId)).status,429);
+ archivedUsage(g,'google:retired',1,{error:'cost_bound_exceeded'});assert.equal((await g.call(review({date:'2026-09-07'}),ownerPrototype.userId)).status,429);
  }finally{g.raw.close();}
+});
+
+const budgetBuild=()=>({action:'budget-build',build:{requestId:randomUUID(),month:'2026-09',text:'Synthetic groceries allowance $300.',consent:true}});
+test('owner daily dollars include measured and archived unknown costs in analyses and budget builds',async()=>{
+ for(const request of [review,budgetBuild]){
+  const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+   archivedUsage(f,ownerPrototype.userId,1,{cost:600000});archivedUsage(f,ownerPrototype.userId,1,{cost:null});
+   const body=request();assert.equal((await f.call(body,ownerPrototype.userId)).status,200); // $0.80 + $0.20 exactly fits.
+   assert.equal((await f.call(body,ownerPrototype.userId)).status,200); // Exact replay spends nothing.
+   const next=request===review?review({date:'2026-09-07'}):budgetBuild();
+   if(request===review)assert.equal((await f.call({action:'entry',entry:entry('2026-09-07')},ownerPrototype.userId)).status,200);
+   assert.equal((await f.call(next,ownerPrototype.userId)).status,429); // $0.800225 + $0.20 does not.
+   const held=f.raw.prepare('SELECT reserved_micros,cost_micros FROM life_deleted_ai_usage WHERE cost_micros IS NULL').get();
+   assert.deepEqual({...held},{reserved_micros:200000,cost_micros:null});
+   assert.equal((await f.call(next,ownerPrototype.userId,'',new Date('2026-09-10T00:00:00.000Z'))).status,200);
+  }finally{f.raw.close();}
+ }
+});
+test('simultaneous owner analysis and budget reservations cannot cross the daily ceiling',async()=>{
+ const pending=deferred();let calls=0;const f=fixture({generate:async()=>{calls++;return pending.promise;}},{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+  archivedUsage(f,ownerPrototype.userId,1,{cost:800000});
+  const tasks=[f.call(review(),ownerPrototype.userId),f.call(budgetBuild(),ownerPrototype.userId)];
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(calls,1);
+  pending.reject(Error('Synthetic unknown outcome'));const responses=await Promise.all(tasks);assert.deepEqual(responses.map(r=>r.status).sort(),[429,502]);
+  assert.equal(f.raw.prepare('SELECT SUM(COALESCE(cost_micros,reserved_micros)) AS total FROM life_ai_usage').get().total,1000000);
+ }finally{f.raw.close();}
+});
+test('active owner pool preserves ordinary caps and has a bounded aggregate; expiry counts everyone again',async()=>{
+ const owner=ownerPrototype.userId,other='google:other';
+ for(const request of [review,budgetBuild]){
+  const f=fixture(undefined,{ownerPrototype});try{await f.setup(owner);await f.setup(other);
+   archivedUsage(f,owner,1,{cost:6000000,at:'2026-09-01T00:00:00.000Z'});
+   assert.equal((await f.call(request(),other)).status,200); // Owner usage does not exhaust the ordinary pool.
+   archivedUsage(f,other,1,{cost:800000});
+   const extra=request===review?review({date:'2026-09-07'}):budgetBuild();
+   if(request===review)await f.call({action:'entry',entry:entry('2026-09-07')},other);
+   assert.equal((await f.call(extra,other)).status,429); // Ordinary personal $1 remains.
+   f.settings.ownerPrototype={...ownerPrototype,expiresAt:now.toISOString()};
+   assert.equal((await f.call(request(),owner)).status,429); // Owner falls back to personal $1.
+   await f.setup('google:new');assert.equal((await f.call(request(),'google:new')).status,429); // Shared $5 includes all owner rows again.
+  }finally{f.raw.close();}
+  const g=fixture(undefined,{ownerPrototype});try{await g.setup(owner);await g.setup(other);
+   archivedUsage(g,'google:retired',1,{cost:4800001,at:'2026-09-01T00:00:00.000Z'});
+   assert.equal((await g.call(request(),other)).status,429); // Ordinary shared $5 is independent of owner headroom.
+   assert.equal((await g.call(request(),owner)).status,200);
+   archivedUsage(g,'google:retired',1,{cost:30000000,at:'2026-09-01T00:00:00.000Z'});
+   const next=request===review?review({date:'2026-09-07'}):budgetBuild();
+   if(request===review)await g.call({action:'entry',entry:entry('2026-09-07')},owner);
+   assert.equal((await g.call(next,owner)).status,429); // $35 aggregate, including retired usage.
+  }finally{g.raw.close();}
+ }
+});
+test('owner month headroom remains bounded even with prior-day accounting',async()=>{
+ for(const request of [review,budgetBuild]){
+  const f=fixture(undefined,{ownerPrototype});try{await f.setup(ownerPrototype.userId);
+   archivedUsage(f,ownerPrototype.userId,1,{cost:29800001,at:'2026-09-01T00:00:00.000Z'});
+   assert.equal((await f.call(request(),ownerPrototype.userId)).status,429);
+  }finally{f.raw.close();}
+ }
 });
 
 test('draft writer serializes saves and keeps typing that arrives during a request',async()=>{

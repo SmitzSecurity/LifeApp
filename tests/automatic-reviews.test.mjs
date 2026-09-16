@@ -60,6 +60,20 @@ test('automatic and manual original requests share one admission even across ove
   f.raw.close();
 });
 
+test('automatic owner analyses obey the same daily dollar reservation ceiling',async()=>{
+ for(const spent of [800000,800001]){
+  const f=fixture();try{
+   const owner='google:synthetic-owner';f.settings.ownerPrototype={userId:owner,expiresAt:'2026-10-14T23:59:59.000Z'};
+   await f.ready(owner);
+   f.raw.prepare("INSERT INTO life_deleted_ai_usage(user_id,request_id,status,model,price_version,reserved_micros,cost_micros,created_at) VALUES(?,?,'uncertain','synthetic','synthetic',200000,NULL,?)").run(owner,randomUUID(),now.toISOString());
+   f.raw.prepare("INSERT INTO life_deleted_ai_usage(user_id,request_id,status,model,price_version,reserved_micros,cost_micros,created_at) VALUES(?,?,'complete','synthetic','synthetic',200000,?,?)").run(owner,randomUUID(),spent-200000,now.toISOString());
+   await consumeDailyReviews(f.db,f.settings,()=>now);
+   assert.equal(f.calls(),spent===800000?1:0);
+   assert.equal(f.raw.prepare('SELECT COUNT(*) AS n FROM life_ai_reviews').get().n,spent===800000?1:0);
+  }finally{f.raw.close();}
+ }
+});
+
 test('atomic admission rejects opt-out, preference, entry and consent-policy races', async () => {
   for (const mutation of [
     raw => raw.exec('UPDATE life_automatic_consent SET enabled=0,version=version+1'),
