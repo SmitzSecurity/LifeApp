@@ -37,7 +37,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 - D1 persistence for profiles and dated entries; server identity from authenticated Google sessions; optimistic revisions prevent stale saves.
 - Historical habit snapshots preserve old names and choices. Archived habits remain visible on their saved days.
 - 36 standard habits, per-section goals, automatic timezone with advanced override.
-- Compact monthly budgets with inline category limits, contributing-transaction drill-down and transaction edits. Recurrence supports day-of-month or nth/last weekday; variable bills/income require estimates and show pending actual amounts. Forecasts and recorded totals remain distinct, with exact cents and duplicate occurrence protection. Long-term budget goals live in Settings.
+- Compact monthly budgets with inline category limits, transaction drill-down and edits. Recurrence supports weekly, biweekly, monthly, annual and custom schedules; variable bills/income retain estimates until confirmed. Credit-card reminders record transfers without counting purchases twice. An optional annual-bills fund tracks confirmed contributions and a monthly target. Forecasts and recorded totals remain distinct, with exact cents and duplicate occurrence protection. Long-term budget goals live in Settings.
 - Strength routines/splits, saved set-by-set logging, rest timers, corrections and history; cardio logs include duration, optional distance, effort and notes. Home shows four weeks of recorded budget and movement trends.
 - Daily, weekly, monthly and annual AI analysis with concise output, saved guidance, source-window validation and preserved earlier versions. Feedback can save for the future or save and regenerate. Atomic reservations, shared caps, archived accounting and two revisions per analysis per UTC day protect provider usage. Costs/models/tokens are absent from the reading UI but retained internally and in exports.
 - Home presents yesterday's analysis, today's log, latest period reports and activity trends. Analysis appears above an entry. Compact Responses, search, explicit Save/Cancel and dirty-state guards remain. Navigation is Home, Responses, Budget and Workouts, with Settings in the top-left menu. Delete account is at the bottom of Settings.
@@ -50,6 +50,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 This is a private web beta, not an app-store release. On September 9, 2026, the owner confirmed Google sign-in and check-in persistence on the deployed Cloudflare app, then supplied a screenshot of a completed Gemini review for a synthetic check-in with measured usage and no remaining reservation. Independent provider invoice reconciliation and live cross-account isolation checks remain outstanding. The old Sites app and its records remain separate until verified account/data cutover. See `docs/architecture.md` for the migration boundary and remaining capabilities.
 
 See [Budget builder and loans](docs/budget-builder-and-loans.md) for pasted-text/image drafts, finite recurring schedules, payoff estimates and their verification boundaries.
+See [Recurring budget workflow](docs/budget-recurring-workflow.md) for advanced schedules, explicit AI category selection, payment undo, credit-card reminders and the annual-bills sinking fund.
 
 ## Validation
 

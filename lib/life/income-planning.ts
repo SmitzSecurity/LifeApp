@@ -26,4 +26,5 @@ export function incomePlanError(grossCents:number,plan:IncomePlan){
  return null;
 }
 export const incomeAllocationId=(sourceId:string,kind:'saving'|'investing')=>sourceId.replace(/^due:/,'allocation:')+':'+kind;
-export const allocationIdPattern=/^allocation:\d{4}-(0[1-9]|1[0-2]):[0-9a-f-]{36}:(saving|investing)$/i;
+export const occurrenceIdPattern=/^due:\d{4}-(0[1-9]|1[0-2])(?:-(0[1-9]|[12]\d|3[01]))?:[0-9a-f-]{36}$/i;
+export const allocationIdPattern=/^allocation:\d{4}-(0[1-9]|1[0-2])(?:-(0[1-9]|[12]\d|3[01]))?:[0-9a-f-]{36}:(saving|investing)$/i;

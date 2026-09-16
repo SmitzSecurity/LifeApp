@@ -1,0 +1,11 @@
+{
+  "notes": "Synthetic draft. Pick a category for each expense. The card statement amount is unknown and must be entered when confirmed.",
+  "categories": [{"name":"Home bills","limitCents":50000},{"name":"food_groceries","limitCents":30000}],
+  "recurring": [
+    {"title":"Biweekly pay","kind":"income","amountCents":120000,"category":null,"day":null,"frequency":"biweekly","variable":false,"startDate":"2026-09-11"},
+    {"title":"Electricity","kind":"expense","amountCents":8000,"category":"Home bills","day":16,"frequency":"monthly-day","variable":true},
+    {"title":"Twice monthly delivery","kind":"expense","amountCents":2500,"category":"food_groceries","day":null,"frequency":"custom","custom":{"unit":"months","interval":1,"days":[1,15]},"variable":false,"startDate":"2026-09-01"},
+    {"title":"Card payment","kind":"transfer","amountCents":0,"category":null,"day":17,"paymentDueDay":20,"frequency":"monthly-day","variable":true},
+    {"title":"Annual membership","kind":"expense","amountCents":12000,"category":"Home bills","day":10,"month":12,"frequency":"annual","variable":false}
+  ]
+}

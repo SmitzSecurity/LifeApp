@@ -10,7 +10,7 @@ import {buildPeriodContext} from './period-context.ts';
 import { dailyJobStatus, dueDailyDate } from './scheduler.ts';
 import { AUTOMATIC_POLICY, automaticAvailable, readAutomaticConsent } from './automatic-consent.ts';
 import { buildReviewContext } from './review-context.ts';
-import { readResource } from './resource-service.ts';
+import { readResource,readSuppressedOccurrences } from './resource-service.ts';
 import type { Database } from './service.ts';
 import { AI_MODEL,PRICE_VERSION,PRICE_EXPIRES,RESERVATION_MICROS,MAX_INPUT_BYTES,systemInstruction,AIRequestRejected,type AIProvider } from './ai-provider.ts';
 export type AISettings={provider:AIProvider|null;enabled:boolean;userCapMicros:number;globalCapMicros:number;automaticEnabled?:boolean;ownerPrototype?:{userId:string;expiresAt:string}};
@@ -63,7 +63,8 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  const allowed=cadence==='weekly'?['daily']:cadence==='monthly'?['weekly','daily']:['monthly','weekly','daily'];
  const seen=new Set<string>();
  const evidence:ReviewRecord[]=prior.results.filter(r=>{const key=r.cadence+':'+r.entry_date;if(!allowed.includes(r.cadence)||seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>allowed.indexOf(a.cadence)-allowed.indexOf(b.cadence)).map(r=>({id:r.request_id,cadence:r.cadence,from:r.window_start||r.entry_date,through:r.entry_date,status:'complete',revision:r.revision,content:r.report_text}));
- const context=periodic?buildPeriodContext(profile,cadence,window.from,window.through,entries,activity,evidence):buildReviewContext({profile,from:input.date,through:input.date,entries:[entry],budget:budget||undefined,...activity});
+ const suppressedOccurrences=budget?await readSuppressedOccurrences(db,userId,month,now):[];
+ const context=periodic?buildPeriodContext(profile,cadence,window.from,window.through,entries,activity,evidence):buildReviewContext({profile,from:input.date,through:input.date,entries:[entry],budget:budget||undefined,suppressedOccurrences,...activity});
  const critique=input.predecessorId?(input.critique||'Regenerate using the current saved context and guidance.'):'';
  const snapshot=JSON.stringify({context,previousReview:previous?.deleted?null:previous?.report_text||null,...(previous?.deleted?{previousReviewExcluded:true}:{}),revisionRequest:critique||null,...(consent?{automaticConsent:{version:consent.version,policyVersion:periodic?PERIOD_POLICY:AUTOMATIC_POLICY,startDate:consent.startDate,acceptedAt:consent.acceptedAt}}:{})});
  if(new TextEncoder().encode(snapshot+systemInstruction).length>MAX_INPUT_BYTES)return json({error:'This day’s context exceeds the initial AI limit. It needs a larger-context review path.'},413);

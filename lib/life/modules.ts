@@ -1,6 +1,6 @@
 import {debtSchema} from './debt.ts';
-import {incomePlanSchema,incomeDetailsSchema,incomePlanError,calculateIncome,incomeAllocationId} from './income-planning.ts';
-import {scheduleDate,scheduledInMonth} from './budget-schedule.ts';
+import {incomePlanSchema,incomeDetailsSchema,incomePlanError,calculateIncome,incomeAllocationId,occurrenceIdPattern} from './income-planning.ts';
+import {scheduleDate,scheduledDatesInMonth,isAdvancedSchedule,occurrencePeriod,recurringFrequencySchema,customScheduleSchema,type CustomSchedule} from './budget-schedule.ts';
 import {workoutRecoverySchema} from './workout-recovery.ts';
 import { z } from 'zod/v3';
 import {muscleTargetsSchema} from './muscle-groups.ts';
@@ -9,12 +9,18 @@ export const monthSchema=z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const uuid=z.string().uuid(), title=z.string().trim().min(1).max(100);
 const cents=z.number().int().min(0).max(100_000_000);
 export const categorySchema=z.object({id:uuid,name:title,limitCents:cents,archived:z.boolean().default(false)}).strict();
-export function refineRecurringSchedule(r:{frequency:string;month?:number|null;debt?:unknown},c:z.RefinementCtx){
- if(r.frequency==='annual'&&r.month==null)c.addIssue({code:'custom',path:['month'],message:'Choose a month for the yearly payment.'});
- if(r.frequency==='annual'&&r.debt)c.addIssue({code:'custom',path:['debt'],message:'Loan payoff tracking requires monthly payments. Use a monthly schedule or remove loan tracking first.'});
+export function refineRecurringSchedule(r:{frequency:string;month?:number|null;debt?:unknown;custom?:CustomSchedule|null;startDate?:string|null;paymentDueDay?:number|null;kind?:string},c:z.RefinementCtx){
+ if((r.frequency==='annual'||r.frequency==='custom'&&r.custom?.unit==='years')&&r.month==null)c.addIssue({code:'custom',path:['month'],message:'Choose a month for the yearly payment.'});
+ if(!['monthly-day','monthly-weekday'].includes(r.frequency)&&r.debt)c.addIssue({code:'custom',path:['debt'],message:'Loan payoff tracking requires monthly payments. Use a monthly schedule or remove loan tracking first.'});
+ if(isAdvancedSchedule(r)&&!r.startDate)c.addIssue({code:'custom',path:['startDate'],message:'Choose a start date to anchor this schedule.'});
+ if(r.frequency==='custom'&&!r.custom)c.addIssue({code:'custom',path:['custom'],message:'Choose the custom repeat interval and dates.'});
+ if(r.frequency!=='custom'&&r.custom)c.addIssue({code:'custom',path:['custom'],message:'Custom repeat rules need a custom frequency.'});
+ if(r.paymentDueDay!=null&&(r.kind!=='transfer'||!['monthly-day','monthly-weekday'].includes(r.frequency)))c.addIssue({code:'custom',path:['paymentDueDay'],message:'A card payment deadline needs a monthly credit card reminder.'});
 }
-export const recurringSchema=z.object({id:uuid,title,kind:z.enum(['expense','income']),amountCents:cents.refine(n=>n>0),categoryId:z.string(),day:z.number().int().min(1).max(31),frequency:z.enum(['monthly-day','monthly-weekday','annual']).default('monthly-day'),month:z.number().int().min(1).max(12).optional(),week:z.enum(['first','second','third','fourth','last']).default('first'),weekday:z.number().int().min(0).max(6).default(1),startDate:dateSchema.optional(),endDate:dateSchema.optional(),installments:z.number().int().min(1).max(600).optional(),debt:debtSchema.optional(),incomePlan:incomePlanSchema.optional(),purged:z.boolean().optional(),variable:z.boolean().default(false),active:z.boolean().default(true),deleted:z.boolean().default(false)}).strict().superRefine((r,c)=>{
+export const recurringSchema=z.object({id:uuid,title,kind:z.enum(['expense','income','transfer']),amountCents:cents,categoryId:z.string(),day:z.number().int().min(1).max(31),frequency:recurringFrequencySchema.default('monthly-day'),custom:customScheduleSchema.optional(),month:z.number().int().min(1).max(12).optional(),week:z.enum(['first','second','third','fourth','last']).default('first'),weekday:z.number().int().min(0).max(6).default(1),startDate:dateSchema.optional(),endDate:dateSchema.optional(),installments:z.number().int().min(1).max(600).optional(),paymentDueDay:z.number().int().min(1).max(31).optional(),excludeFromAnnualFund:z.boolean().optional(),debt:debtSchema.optional(),incomePlan:incomePlanSchema.optional(),purged:z.boolean().optional(),variable:z.boolean().default(false),active:z.boolean().default(true),deleted:z.boolean().default(false)}).strict().superRefine((r,c)=>{
  refineRecurringSchedule(r,c);
+ if(r.kind!=='transfer'&&r.amountCents<=0)c.addIssue({code:'custom',path:['amountCents'],message:'Enter an amount greater than zero.'});
+ if(r.kind==='transfer'&&(r.categoryId!==''||r.incomePlan||r.debt))c.addIssue({code:'custom',message:'Credit card transfers have no expense category, income rules or loan tracking.'});
  if(r.incomePlan){const issue=r.kind!=='income'?'Income rules can only belong to recurring income.':incomePlanError(r.amountCents,r.incomePlan);if(issue)c.addIssue({code:'custom',path:['incomePlan'],message:issue});}
  if(r.endDate&&r.startDate&&r.endDate<r.startDate)c.addIssue({code:'custom',message:'The end date must follow the start date.'});
  if(r.installments&&!r.startDate)c.addIssue({code:'custom',message:'Choose a start date for the installment count.'});
@@ -24,7 +30,10 @@ export const budgetSchema=z.object({currency:z.literal('USD'),categories:z.array
  for(const list of [p.categories,p.recurring])if(new Set(list.map(x=>x.id)).size!==list.length)c.addIssue({code:'custom',message:'Each item needs its own ID.'});
  if(p.recurring.some(r=>r.kind==='expense'&&!p.categories.some(x=>x.id===r.categoryId)))c.addIssue({code:'custom',message:'Choose a category for every scheduled payment.'});
 });
-export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),voided:z.boolean(),deleted:z.boolean().default(false),planned:z.boolean().optional(),expectedDate:dateSchema.optional(),incomeDetails:incomeDetailsSchema.optional(),incomeSourceId:z.string().regex(/^due:\d{4}-(0[1-9]|1[0-2]):[0-9a-f-]{36}$/i).optional()}).strict().superRefine((t,c)=>{
+export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense','income','saving','investing','transfer']),amountCents:cents.refine(n=>n>0),categoryId:z.string().max(36),categoryName:z.string().max(100).default(''),note:z.string().trim().max(300),recurringId:uuid.nullable(),occurrenceDate:dateSchema.optional(),voided:z.boolean(),deleted:z.boolean().default(false),planned:z.boolean().optional(),expectedDate:dateSchema.optional(),incomeDetails:incomeDetailsSchema.optional(),incomeSourceId:z.string().regex(occurrenceIdPattern).optional(),annualFund:z.enum(['contribution','payment']).optional()}).strict().superRefine((t,c)=>{
+ if(t.annualFund==='contribution'&&(t.kind!=='saving'||t.recurringId)||t.annualFund==='payment'&&(t.kind!=='expense'||!t.recurringId))c.addIssue({code:'custom',path:['annualFund'],message:'Annual-fund contributions are savings transfers; payments must be linked annual expenses.'});
+ if(t.occurrenceDate&&(!t.recurringId||t.occurrenceDate.slice(0,7)!==t.date.slice(0,7)))c.addIssue({code:'custom',path:['occurrenceDate'],message:'Keep the recurring occurrence and actual payment in the same month.'});
+ if(t.kind==='transfer'&&(t.categoryId!==''||t.incomeDetails||t.incomeSourceId))c.addIssue({code:'custom',message:'Credit card transfers have no expense category or income rules.'});
  if(t.incomeDetails){const issue=t.kind!=='income'||!t.recurringId||t.planned?'Income details need confirmed recurring income.':incomePlanError(t.incomeDetails.grossCents,t.incomeDetails.plan);if(issue)c.addIssue({code:'custom',message:issue});else if(calculateIncome(t.incomeDetails.grossCents,t.incomeDetails.plan).netCents!==t.amountCents)c.addIssue({code:'custom',message:'Recorded income must equal the take-home amount.'});}
  if(t.incomeSourceId&&(!['saving','investing'].includes(t.kind)||t.recurringId||t.incomeDetails))c.addIssue({code:'custom',message:'Income allocations must be savings or investment transfers.'});
  if(t.recurringId&&(t.planned||t.expectedDate))c.addIssue({code:'custom',message:'Use the recurring schedule for expected payments; planned transactions are one-off items.'});
@@ -76,11 +85,14 @@ export function incomeAllocations(transactions:Saved<Transaction>[],month:string
  });
 }
 export function recurringDate(month:string,r:Budget['recurring'][number]){return scheduleDate(month,r);}
-export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],month:string){
+export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],month:string,suppressedOccurrences:readonly string[]=[]){
  const visible=transactions.filter(t=>!t.data.voided&&!t.data.deleted&&t.data.date.startsWith(month+'-'));
  const live=visible.filter(t=>!t.data.planned),planned=visible.filter(t=>t.data.planned);
  const total=(kind:Transaction['kind'])=>live.filter(t=>t.data.kind===kind).reduce((n,t)=>n+t.data.amountCents,0);
- const due=plan.recurring.filter(r=>r.active&&!r.deleted&&scheduledInMonth(month,r)&&(!r.debt||r.debt.balanceCents>0)).map(r=>({...r,date:recurringDate(month,r),id:occurrenceId(month,r.id),recorded:live.some(t=>t.data.recurringId===r.id),actualCents:live.filter(t=>t.data.recurringId===r.id).reduce((n,t)=>n+t.data.amountCents,0)}));
+ const due=plan.recurring.filter(r=>r.active&&!r.deleted&&(!r.debt||r.debt.balanceCents>0)).flatMap(r=>scheduledDatesInMonth(month,r).map(date=>{
+  const id=occurrenceId(occurrencePeriod(month,r,date),r.id),actual=live.find(t=>t.id===id);
+  return {...r,...(actual?{kind:actual.data.kind as typeof r.kind,categoryId:actual.data.categoryId,title:actual.data.note||r.title}:{}),date,id,recurringId:r.id,...(isAdvancedSchedule(r)?{occurrenceDate:date}:{}),...(r.paymentDueDay?{paymentDueDate:dueDate(month,r.paymentDueDay)}:{}),recorded:!!actual,actualCents:actual?.data.amountCents||0};
+ })).filter(r=>!suppressedOccurrences.includes(r.id));
  return {income:total('income'),expenses:total('expense'),saving:total('saving'),investing:total('investing'),cashFlow:total('income')-total('expense')-total('saving')-total('investing'),due,planned,categories:plan.categories.map(c=>{const spent=live.filter(t=>t.data.kind==='expense'&&t.data.categoryId===c.id).reduce((n,t)=>n+t.data.amountCents,0);const scheduled=due.filter(r=>r.kind==='expense'&&r.categoryId===c.id&&!r.recorded).reduce((n,r)=>n+r.amountCents,0)+planned.filter(t=>t.data.kind==='expense'&&t.data.categoryId===c.id).reduce((n,t)=>n+t.data.amountCents,0);return {...c,spent,remaining:c.limitCents-spent,scheduled,afterScheduled:c.limitCents-spent-scheduled};})};
 }
 export function nextSet(w:Workout){

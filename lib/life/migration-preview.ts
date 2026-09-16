@@ -88,7 +88,7 @@ export function validateBackup(text:string):Backup{
   if(r.kind==='budget')requireThat(monthSchema.safeParse(r.resource_id).success,'invalid_id',at);
   else if(r.kind==='transaction'){
    const t=data as Transaction;
-   requireThat(t.incomeSourceId?(t.kind==='saving'||t.kind==='investing')&&r.resource_id===incomeAllocationId(t.incomeSourceId,t.kind)&&t.incomeSourceId.slice(4,11)===r.period:t.recurringId?r.resource_id===occurrenceId(r.period,t.recurringId):z.string().uuid().safeParse(r.resource_id).success,'invalid_occurrence_id',at);
+   requireThat(t.incomeSourceId?(t.kind==='saving'||t.kind==='investing')&&r.resource_id===incomeAllocationId(t.incomeSourceId,t.kind)&&t.incomeSourceId.slice(4,11)===r.period:t.recurringId?r.resource_id===occurrenceId(t.occurrenceDate||r.period,t.recurringId):z.string().uuid().safeParse(r.resource_id).success,'invalid_occurrence_id',at);
    const p=resources.get('budget:'+r.period);
    if(t.kind==='expense'||t.recurringId){requireThat(p,'missing_budget',at);
     const budget=resourceSchemas.budget.safeParse(parseJSON(p.payload,at));requireThat(budget.success,'invalid_budget',at);

@@ -175,6 +175,17 @@
 .life-compact-theme .budget-month-metric .calendar-input-tile-copy{display:flex;flex-direction:column;min-width:0;gap:0}
 .life-compact-theme .budget-month-metric .calendar-input-tile-copy small{font-size:var(--ui-meta);color:var(--muted-foreground);font-weight:400}
 .life-compact-theme .budget-month-metric .calendar-input-trigger>svg{color:var(--muted-foreground)}
+.life-compact-theme .recurring-custom{border-block:1px solid var(--border);margin-block:8px;padding-block:6px}
+.life-compact-theme .recurring-custom-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end;margin-block:4px}
+.life-compact-theme .recurring-custom-row>button{min-height:44px;margin-bottom:7px;padding-inline:8px}
+.life-compact-theme .recurring-weekday-rule{grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto}
+.life-compact-theme .recurring-dialog .recurring-weekdays{display:flex;flex-wrap:wrap;gap:4px 12px;margin-block:8px}
+.life-compact-theme .recurring-weekdays legend{font-size:var(--ui-label);margin-bottom:4px}
+.life-compact-theme .recurring-weekdays .inline-check{min-height:44px;margin:0;font-size:var(--ui-label);gap:6px}
+.life-compact-theme .budget-undo-dialog>p{font-size:var(--ui-copy);line-height:1.5}
+.life-compact-theme .budget-undo-dialog>[data-slot=dialog-footer]{display:flex;flex-direction:row;gap:8px}
+.life-compact-theme .budget-undo-dialog>[data-slot=dialog-footer]>button{flex:1;min-height:44px;white-space:normal}
+.life-compact-theme .budget-workspace .forecast-totals>span>small{display:block;font-size:var(--ui-meta);color:var(--muted-foreground)}
 .life-compact-theme .budget-workspace .allowance-row[open]{padding-bottom:8px}
 .life-compact-theme .budget-workspace .allowance-row>.allowance-content{margin:2px 0 0 10px;padding:6px 0 4px 12px;border-top:0;border-left:2px solid var(--border);display:block}
 .life-compact-theme .budget-workspace .allowance-total{padding:0;margin:0 0 4px;border:0}
@@ -247,3 +258,28 @@
 .life-compact-theme .income-preview dl>div{display:flex;justify-content:space-between;gap:12px}
 .life-compact-theme .income-preview dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .life-compact-theme .income-preview .income-net{font-weight:600;border-top:1px solid var(--border);padding-top:6px}
+
+/* Annual bills remain a small summary; only confirmed records change the fund. */
+.life-compact-theme .compact-app .budget-workspace .annual-fund-card{margin-block:12px;padding:12px 14px}
+.life-compact-theme .annual-fund-card>.section-heading{margin-bottom:4px;gap:8px}
+.life-compact-theme .annual-fund-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px 18px;align-items:center;font-size:var(--ui-label)}
+.life-compact-theme .annual-fund-summary>span{min-width:0;color:var(--muted-foreground)}
+.life-compact-theme .annual-fund-summary strong{display:block;font-size:1.125rem;font-weight:600;line-height:1.4;color:var(--foreground);font-variant-numeric:tabular-nums}
+.life-compact-theme .annual-fund-summary strong.negative{color:var(--destructive)}
+.life-compact-theme .annual-fund-summary small{display:block;font-size:var(--ui-meta)}
+.life-compact-theme .annual-fund-summary>button{min-height:44px;white-space:normal;font-size:var(--ui-label)}
+.life-compact-theme .annual-fund-card>.field-hint{margin:8px 0 0;font-size:var(--ui-meta)}
+.life-compact-theme .annual-fund-dialog-body{overflow-y:auto;min-height:0;padding-inline:2px}
+.life-compact-theme .annual-fund-dialog .annual-fund-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.life-compact-theme .annual-fund-items{list-style:none;padding:0;margin:10px 0;font-size:var(--ui-label)}
+.life-compact-theme .annual-fund-items>li{display:flex;justify-content:space-between;gap:12px;padding-block:8px;border-bottom:1px solid var(--border)}
+.life-compact-theme .annual-fund-items>li>span{overflow-wrap:anywhere}
+.life-compact-theme .annual-fund-items>li>strong{white-space:nowrap;font-weight:500}
+.life-compact-theme .annual-fund-dialog>[data-slot=dialog-footer]{display:flex;flex-direction:row;gap:8px;padding-top:8px;border-top:1px solid var(--border);flex-shrink:0}
+.life-compact-theme .annual-fund-dialog>[data-slot=dialog-footer]>button{flex:1;min-height:44px;white-space:normal;font-size:var(--ui-label)}
+.life-compact-theme .budget-payment-dialog .inline-check{display:flex;align-items:center;gap:8px;min-height:44px;font-size:var(--ui-label);margin-block:6px}
+@media(max-width:700px){
+ .life-compact-theme .annual-fund-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .life-compact-theme .compact-app .budget-workspace .annual-fund-card{padding:10px}
+ .life-compact-theme .budget-workspace .budget-footer-actions{flex-wrap:wrap;gap:4px 16px}
+}

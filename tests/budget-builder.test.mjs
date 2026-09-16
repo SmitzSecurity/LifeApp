@@ -5,11 +5,12 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
 import {budgetSchema,recurringSchema,transactionSchema,budgetSummary,occurrenceId} from '../lib/life/modules.ts';
-import {scheduledInMonth,firstScheduledMonth,scheduleDate} from '../lib/life/budget-schedule.ts';
+import {scheduledInMonth,firstScheduledMonth,scheduleDate,scheduledDatesInMonth} from '../lib/life/budget-schedule.ts';
 import {debtEstimate} from '../lib/life/debt.ts';
 import {budgetBuildInput,parseBudgetDraft,budgetImageSchema,budgetBuildResult,budgetOutputSchema,budgetInstruction,BUDGET_UPLOAD_BYTES,BUDGET_TEXT_LIMIT} from '../lib/life/budget-build-schema.ts';
 import {geminiProvider,AI_MODEL,RESERVATION_MICROS,AIInputRejected} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
+import {beginBudgetReview,budgetReviewCategories,addBudgetReviewCategory,applyBudgetReviewAllowance,budgetReviewUnassigned,budgetReviewImport} from '../lib/life/budget-build-review.ts';
 const now=new Date('2026-09-14T12:00:00.000Z'),month='2026-09';
 const debt={originalBalanceCents:60000,balanceCents:60000,balanceDate:'2026-08-31',annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0};
 const rawItem={title:'Medical loan',kind:'expense',category:'Bills',amountCents:10000,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,startDate:'2026-09-01',endDate:null,installments:6,debt};
@@ -70,9 +71,10 @@ test('annual actual payments keep deterministic monthly occurrence IDs, reject o
   const response=await f.call({action:'resource',record:{kind:'transaction',...tx(annual,target+'-10',11999),version:0}},'a','',new Date('2029-01-01T12:00:00Z'));
   assert.equal(response.status,target==='2027-09'?200:409);
  }
- const changed={...annual,endDate:'2026-09-01'};assert.equal((await f.change({kind:'recurring',previous:annual,item:changed})).status,200);
+ assert.equal((await f.change({kind:'recurring',previous:annual,item:{...annual,endDate:'2026-09-01'}})).status,400);
+ const changed={...annual,endDate:'2026-09-10'};assert.equal((await f.change({kind:'recurring',previous:annual,item:changed})).status,200);
  assert.equal((await f.call(first)).status,200);records=(await (await f.call(null,'a','?kind=transaction&month=2026-09')).json()).records;
- totals=budgetSummary((await f.plan()).data,records,'2026-09');assert.equal(totals.expenses,11999);assert.equal(totals.due.length,0);assert.equal(records[0].id,occurrenceId('2026-09',annual.id));
+ totals=budgetSummary((await f.plan()).data,records,'2026-09');assert.equal(totals.expenses,11999);assert.equal(totals.due.length,1);assert.equal(totals.due[0].recorded,true);assert.equal(records[0].id,occurrenceId('2026-09',annual.id));
  assert.ok(validateBackup(await (await f.call(null,'a','?export',new Date('2029-01-01T12:00:00Z'))).text()));
 });
 test('annual AI drafts round-trip, adopt without division and preserve exact generation and item retries',async t=>{
@@ -90,7 +92,7 @@ test('annual AI drafts round-trip, adopt without division and preserve exact gen
  assert.throws(()=>parseBudgetDraft(JSON.stringify({...output,recurring:[{...annual,debt}]})));
  assert.equal(budgetBuildResult.safeParse({...draft,recurring:[{...draft.recurring[0],month:undefined}]}).success,false);
  assert.equal(Object.hasOwn(parseBudgetDraft(JSON.stringify({...output,recurring:[{...rawItem,month:null}]})).recurring[0],'month'),false);
- assert.ok(budgetOutputSchema.properties.recurring.items.properties.frequency.enum.includes('annual'));assert.match(budgetInstruction,/never divide it by 12/);
+ assert.ok(budgetOutputSchema.properties.recurring.items.properties.frequency.enum.includes('annual'));assert.match(budgetInstruction,/never divided by 12/);
 });
 test('expired forecasts disappear while confirmed actual spending survives unchanged',()=>{
  const r=loan({installments:1}),plan=budgetSchema.parse({currency:'USD',categories:[{id:r.categoryId,name:'Bills',limitCents:10000}],recurring:[r],goals:{spending:'',saving:'',investing:''}});
@@ -140,8 +142,8 @@ test('Gemini budget requests instruct the complete JSON shape without provider s
  let body;const provider=geminiProvider('synthetic-key',async(url,init)=>{assert.equal(url,`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent`);body=JSON.parse(init.body);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(output)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:100,totalTokenCount:200}});});
  await provider.generate('{}','budget',png);assert.match(body.systemInstruction.parts[0].text,/You organize a pasted budget/);assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(budgetOutputSchema)));assert.deepEqual(body.contents[0].parts[1],{inlineData:png});assert.equal(body.generationConfig.responseMimeType,undefined);assert.equal(body.generationConfig.responseJsonSchema,undefined);assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);
 });
-test('malformed, truncated or unknown-category responses never create a plan and retain measured usage',async t=>{
- for(const patch of [{text:'not json'},{finishReason:'MAX_TOKENS'},{text:JSON.stringify({...output,recurring:[{...rawItem,category:'Unknown'}]})},{text:JSON.stringify({...output,recurring:[{...rawItem,amountCents:-1}]})},{text:JSON.stringify({...output,unexpected:'Ignore validation'})}]){const f=fixture(t);await f.setup();f.state.result={...providerResult,...patch};const body=await (await f.call(f.build())).json();assert.equal(body.build.status,'failed');assert.equal(body.build.result,null);assert.equal(f.raw.prepare('SELECT cost_micros FROM life_ai_usage').get().cost_micros,500);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);}
+test('malformed, truncated or invalid-schedule responses never create a plan and retain measured usage',async t=>{
+ for(const patch of [{text:'not json'},{finishReason:'MAX_TOKENS'},{text:JSON.stringify({...output,recurring:[{...rawItem,frequency:'unknown'}]})},{text:JSON.stringify({...output,recurring:[{...rawItem,amountCents:-1}]})},{text:JSON.stringify({...output,unexpected:'Ignore validation'})}]){const f=fixture(t);await f.setup();f.state.result={...providerResult,...patch};const body=await (await f.call(f.build())).json();assert.equal(body.build.status,'failed');assert.equal(body.build.result,null);assert.equal(f.raw.prepare('SELECT cost_micros FROM life_ai_usage').get().cost_micros,500);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);}
  const draft=parseBudgetDraft(JSON.stringify({...output,recurring:[{...rawItem,amountCents:0,debt:null}]}));assert.equal(draft.recurring[0].amountCents,0);assert.equal(recurringSchema.safeParse(draft.recurring[0]).success,false);
 });
 
@@ -184,13 +186,13 @@ test('budget drafts accept omitted optional limits and debt metadata without inv
  }
 });
 
-test('present optional budget metadata stays strict and financial amounts, category references and variable flags remain required',()=>{
+test('present optional budget metadata stays strict and financial amounts and variable flags remain required',()=>{
  const invalid=[
   {startDate:''},{startDate:'09/01/2026'},{startDate:'2026-02-30'},{endDate:'not a date'},
   {installments:0},{installments:-1},{installments:1.5},{installments:601},{installments:'6'},
   {debt:{}},{debt:{...debt,originalBalanceCents:0}},{debt:{...debt,balanceCents:-1}},
   {debt:{...debt,annualRatePercent:'0'}},{debt:{...debt,balanceDate:'2026-02-30'}},{debt:{...debt,interestMethod:'unknown'}},{debt:{...debt,unrecognized:1}},
-  {amountCents:undefined},{amountCents:null},{category:undefined},{category:'Unknown'},{variable:undefined},{variable:null},
+  {amountCents:undefined},{amountCents:null},{variable:undefined},{variable:null},
  ];
  for(const patch of invalid){const input=structuredClone(nullScheduleOutput);Object.assign(input.recurring[1],patch);assert.throws(()=>parseBudgetDraft(JSON.stringify(input)),undefined,JSON.stringify(patch));}
  // A valid installment count without a start date remains an editable draft;
@@ -198,14 +200,107 @@ test('present optional budget metadata stays strict and financial amounts, categ
  for(const startDate of [undefined,null]){const input=structuredClone(nullScheduleOutput);input.recurring[1].startDate=startDate;const item=parseBudgetDraft(JSON.stringify(input)).recurring[1];assert.equal(item.installments,6);assert.equal(item.startDate,undefined);assert.equal(recurringSchema.safeParse(item).success,false);}
 });
 
-test('income drafts need no expense category while expenses require an existing category',()=>{
+test('AI expenses can remain unassigned while explicit legacy category references stay valid',()=>{
  for(const category of [null,undefined]){
   const income={...nullScheduleOutput.recurring[1],title:'Monthly income',kind:'income',amountCents:400000,category,startDate:null,installments:null,debt:null};
   const draft=parseBudgetDraft(JSON.stringify({notes:'Synthetic income',categories:[],recurring:[income]}));
   assert.equal(draft.categories.length,0);assert.equal(draft.recurring[0].categoryId,'');assert.equal(draft.recurring[0].amountCents,400000);assert.equal(draft.recurring[0].kind,'income');assert.equal(recurringSchema.safeParse(draft.recurring[0]).success,true);
  }
- for(const category of [null,undefined,'','  ','Unknown']){const input=structuredClone(nullScheduleOutput);input.recurring[0].category=category;assert.throws(()=>parseBudgetDraft(JSON.stringify(input)),undefined,String(category));}
+ for(const category of [null,undefined,'','  ']){const input=structuredClone(nullScheduleOutput);input.recurring[0].category=category;const result=parseBudgetDraft(JSON.stringify(input));assert.equal(result.recurring[0].categoryId,'');assert.equal(result.recurring[0].amountCents,12000);}
+ const input=structuredClone(nullScheduleOutput);input.recurring[0].category='Unknown';assert.equal(parseBudgetDraft(JSON.stringify(input)).recurring[0].categoryId,'');
 });
+
+test('unmatched model category text never creates a category or blocks generation, but cannot bypass review assignment',async t=>{
+ const f=fixture(t);await f.setup();f.state.result={...providerResult,text:JSON.stringify({...output,categories:[],recurring:[{...rawItem,category:'technical_unmatched_name'}]})};
+ const response=await f.call(f.build()),build=(await response.json()).build;assert.equal(response.status,200);assert.equal(build.status,'complete');assert.equal(build.result.categories.length,0);assert.equal(build.result.recurring[0].categoryId,'');
+ let review=beginBudgetReview(build.result,f.initial);assert.throws(()=>budgetReviewImport(review,month),/Choose a category/);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);
+ review={...review,recurring:review.recurring.map(r=>({...r,categoryId:f.initial.categories[0].id}))};const change=budgetReviewImport(review,month);assert.equal(change.categories.length,0);assert.equal(change.recurring[0].item.categoryId,f.initial.categories[0].id);assert.equal(change.recurring[0].item.amountCents,10000);
+});
+test('AI drafts preserve biweekly anchors, multi-date expenses, annual amounts and zero-amount card reminders',()=>{
+ const raw=JSON.parse(readFileSync('tests/fixtures/budget-workflow.json','utf8'));
+ const parsed=parseBudgetDraft(JSON.stringify(raw)),[income,electric,multi,card,annual]=parsed.recurring;
+ assert.equal(income.frequency,'biweekly');assert.equal(income.startDate,'2026-09-11');assert.equal(income.amountCents,120000);assert.equal(income.categoryId,'');
+ assert.deepEqual(scheduledDatesInMonth('2026-10',income),['2026-10-09','2026-10-23']);
+ assert.deepEqual(scheduledDatesInMonth('2026-09',multi),['2026-09-01','2026-09-15']);assert.equal(multi.amountCents,2500);
+ assert.equal(card.kind,'transfer');assert.equal(card.amountCents,0);assert.equal(card.variable,true);assert.equal(card.day,17);assert.equal(card.paymentDueDay,20);assert.equal(card.categoryId,'');
+ assert.equal(recurringSchema.safeParse(card).success,true);const actual={date:'2026-09-17',kind:'transfer',amountCents:0,categoryId:'',note:card.title,recurringId:card.id,voided:false};assert.equal(transactionSchema.safeParse(actual).success,false);assert.equal(transactionSchema.safeParse({...actual,amountCents:12345}).success,true);
+ assert.equal(annual.amountCents,12000);assert.equal(annual.month,12);assert.equal(annual.frequency,'annual');assert.equal(electric.variable,true);
+ assert.deepEqual(budgetBuildResult.parse(parsed),parsed);
+ const properties=budgetOutputSchema.properties.recurring.items.properties;
+ assert.ok(properties.kind.enum.includes('transfer'));for(const frequency of ['weekly','biweekly','custom'])assert.ok(properties.frequency.enum.includes(frequency));
+ assert.ok(properties.custom);assert.ok(properties.paymentDueDay);
+ assert.match(budgetInstruction,/every active credit card payment schedule/);assert.match(budgetInstruction,/stale balance is not its future amount/);assert.match(budgetInstruction,/not JSON paths or snake_case keys/);
+});
+
+test('AI custom schedules accept only applicable controls and never invent an anchor or date',()=>{
+ const base={...rawItem,debt:null,installments:null,category:null,frequency:'custom',day:null,startDate:'2026-09-01'};
+ const parse=patch=>parseBudgetDraft(JSON.stringify({notes:'Synthetic schedules',categories:[],recurring:[{...base,...patch}]})).recurring[0];
+ const week=parse({custom:{unit:'weeks',interval:2,weekdays:[0,2],days:null,weekdayRules:null}});
+ assert.deepEqual(week.custom,{unit:'weeks',interval:2,weekdays:[0,2]});assert.equal(week.day,1);assert.deepEqual(scheduledDatesInMonth('2026-09',week),['2026-09-01','2026-09-06','2026-09-15','2026-09-20','2026-09-29']);
+ const month=parse({custom:{unit:'months',interval:3,weekdayRules:[{week:'last',weekday:5}],weekdays:null,days:null}});
+ assert.deepEqual(month.custom,{unit:'months',interval:3,weekdayRules:[{week:'last',weekday:5}]});assert.deepEqual(scheduledDatesInMonth('2026-12',month),['2026-12-25']);
+ const year=parse({day:15,month:10,custom:{unit:'years',interval:2,weekdays:null,days:null,weekdayRules:null}});
+ assert.deepEqual(year.custom,{unit:'years',interval:2});assert.deepEqual(scheduledDatesInMonth('2028-10',year),['2028-10-15']);assert.deepEqual(scheduledDatesInMonth('2027-10',year),[]);
+ for(const frequency of ['weekly','biweekly'])assert.equal(parse({frequency,custom:null,day:null}).frequency,frequency);
+ const invalid=[
+  {frequency:'weekly',startDate:null},{frequency:'biweekly',startDate:undefined},{custom:{unit:'weeks',interval:1,weekdays:[1]},startDate:null},
+  {custom:null},{custom:{unit:'months',interval:0,days:[1]}},{custom:{unit:'months',interval:61,days:[1]}},{custom:{unit:'months',interval:1.5,days:[1]}},
+  {custom:{unit:'months',interval:1}},{custom:{unit:'months',interval:1,days:[1],weekdayRules:[{week:'first',weekday:1}]}},
+  {custom:{unit:'weeks',interval:1,weekdays:[7]}},{custom:{unit:'weeks',interval:1,weekdays:[1,1]}},{custom:{unit:'weeks',interval:1,weekdays:[1],days:[2]}},
+  {custom:{unit:'months',interval:1,days:[0]}},{custom:{unit:'months',interval:1,days:[32]}},{custom:{unit:'months',interval:1,days:[1,1]}},
+  {custom:{unit:'months',interval:1,weekdayRules:[{week:'fifth',weekday:1}]}},{custom:{unit:'years',interval:2},month:10,day:null},
+  {custom:{unit:'years',interval:2},day:15},{custom:{unit:'years',interval:2,days:[15]},day:15,month:10},
+  {frequency:'monthly-day',day:1,custom:{unit:'months',interval:1,days:[1]}},{frequency:'biweekly',debt},
+ ];
+ for(const patch of invalid)assert.throws(()=>parse(patch),undefined,JSON.stringify(patch));
+ for(const patch of [{kind:'expense',paymentDueDay:20},{kind:'transfer',frequency:'weekly',paymentDueDay:20},{kind:'transfer',frequency:'monthly-day',day:1,paymentDueDay:32},{kind:'transfer',frequency:'monthly-day',day:1,debt}])assert.throws(()=>parse({...patch,custom:null}),undefined,JSON.stringify(patch));
+});
+
+test('opening new or legacy AI reviews never assigns expense categories or imports model category names',()=>{
+ const existing={id:randomUUID(),name:'Bills',limitCents:90000,archived:false},initial=budgetSchema.parse({currency:'USD',categories:[existing],recurring:[],goals:{spending:'',saving:'',investing:''}});
+ const result=parseBudgetDraft(JSON.stringify({...output,categories:[...output.categories,{name:'technical_category_key',limitCents:12345}]}));
+ const original=structuredClone(result),review=beginBudgetReview(result,initial);
+ assert.equal(review.categories.length,0);assert.equal(review.recurring[0].categoryId,'');assert.equal(review.suggestions.length,2);assert.deepEqual(budgetReviewCategories(review),[existing]);
+ assert.equal(budgetReviewUnassigned(review).length,1);assert.throws(()=>budgetReviewImport(review,month),/Choose a category/);assert.deepEqual(result,original);assert.equal(initial.categories[0].limitCents,90000);
+ const legacy=budgetBuildResult.parse(result);legacy.recurring[0].categoryId=existing.id;
+ assert.equal(beginBudgetReview(legacy,initial).recurring[0].categoryId,'');
+});
+
+test('explicit existing category assignment changes no allowances and excluded expenses do not block adoption',()=>{
+ const existing={id:randomUUID(),name:'Household',limitCents:90000,archived:false},initial=budgetSchema.parse({currency:'USD',categories:[existing],recurring:[],goals:{spending:'',saving:'',investing:''}}),result=parseBudgetDraft(JSON.stringify(output));
+ let review=beginBudgetReview(result,initial);
+ assert.equal(budgetReviewUnassigned({...review,selected:[]}).length,0);assert.equal(budgetReviewImport({...review,selected:[]},month).recurring.length,0);
+ for(const categoryId of ['',randomUUID()])assert.throws(()=>budgetReviewImport({...review,recurring:review.recurring.map(r=>({...r,categoryId}))},month),/Choose a category/);
+ review={...review,recurring:review.recurring.map(r=>({...r,categoryId:existing.id}))};
+ const change=budgetReviewImport(review,month);assert.equal(change.categories.length,0);assert.equal(change.recurring[0].item.categoryId,existing.id);assert.equal(change.recurring[0].item.amountCents,10000);assert.deepEqual(change.initial,initial);
+ const archived={...review,initial:{...initial,categories:[{...existing,archived:true}]}};assert.throws(()=>budgetReviewImport(archived,month),/Choose a category/);
+});
+
+test('same-window category creation and optional allowance changes are explicit, reversible and keep model amounts separate',()=>{
+ const existing={id:randomUUID(),name:'Household',limitCents:90000,archived:false},initial=budgetSchema.parse({currency:'USD',categories:[existing],recurring:[],goals:{spending:'',saving:'',investing:''}}),result=parseBudgetDraft(JSON.stringify(output));
+ let review=beginBudgetReview(result,initial),itemId=review.recurring[0].id;
+ assert.throws(()=>addBudgetReviewCategory(review,' Household ','10',itemId),/already exists/);assert.throws(()=>addBudgetReviewCategory(review,'','10',itemId));
+ assert.throws(()=>applyBudgetReviewAllowance(review,'',60000),/Choose a category/);
+ review=addBudgetReviewCategory(review,'Health','150.00',itemId);const categoryId=review.categories[0].item.id;
+ assert.equal(review.recurring[0].categoryId,categoryId);assert.equal(review.recurring[0].id,itemId);assert.equal(review.categories[0].item.name,'Health');assert.equal(review.categories[0].item.limitCents,15000);assert.equal(budgetReviewUnassigned(review).length,0);
+ const before=structuredClone(review);review=applyBudgetReviewAllowance(review,existing.id,60000);
+ assert.equal(review.categories[1].previous.limitCents,90000);assert.equal(review.categories[1].item.limitCents,60000);assert.equal(initial.categories[0].limitCents,90000);assert.equal(before.categories.length,1);
+ review=applyBudgetReviewAllowance(review,existing.id,65000);assert.equal(review.categories.length,2);assert.equal(review.categories[1].previous.limitCents,90000);
+ const removed={...review,categories:review.categories.filter(c=>c.item.id!==categoryId)};assert.throws(()=>budgetReviewImport(removed,month),/Choose a category/);assert.equal(removed.recurring[0].id,itemId);
+ assert.equal(budgetReviewImport(review,month).recurring[0].item.amountCents,10000);
+});
+
+test('AI review adoption saves user-created categories and recurring items atomically with exact retries',async t=>{
+ const f=fixture(t);await f.setup();const result=parseBudgetDraft(JSON.stringify(output));
+ let review=beginBudgetReview(result,f.initial);review=addBudgetReviewCategory(review,'Health','250.00',review.recurring[0].id);
+ const change=budgetReviewImport(review,month),snapshot=JSON.stringify(change);
+ assert.equal(f.raw.prepare('SELECT count(*) n FROM life_resources').get().n,0);
+ for(let n=0;n<2;n++){const response=await f.change(change);assert.equal(response.status,200);assert.equal((await response.json()).record.version,1);assert.equal(JSON.stringify(change),snapshot);}
+ const plan=(await f.plan()).data;assert.deepEqual(plan.categories.map(c=>c.name),['Food','Health']);assert.equal(plan.recurring.length,1);assert.equal(plan.recurring[0].categoryId,plan.categories[1].id);assert.equal(plan.categories[1].limitCents,25000);
+ assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE kind='transaction'").get().n,0);
+ const reopened=beginBudgetReview(result,plan);assert.equal(reopened.selected.length,0);assert.equal(reopened.categories.length,0);assert.equal(reopened.recurring[0].categoryId,'');
+});
+
 test('budget builds honor shared cost caps, per-purpose limits, concurrent retries and uncertain outcomes',async t=>{
  const f=fixture(t);await f.setup();f.ai.userCapMicros=RESERVATION_MICROS-1;assert.equal((await f.call(f.build())).status,429);f.ai.userCapMicros=1000000;
  const request=f.build();await Promise.all([f.call(request),f.call(request)]);assert.equal(f.state.calls.length,1);assert.equal((await f.call(f.build())).status,200);assert.equal((await f.call(f.build())).status,429);

@@ -1,5 +1,5 @@
 import {z} from 'zod/v3';
-import {budgetSchema,categorySchema,recurringSchema,monthSchema,occurrenceId,type Budget,type Saved} from './modules.ts';
+import {budgetSchema,categorySchema,recurringSchema,monthSchema,type Budget,type Saved} from './modules.ts';
 import {readResource,saveResource} from './resource-service.ts';
 import type {Database} from './service.ts';
 import type {Profile} from './domain.ts';
@@ -53,7 +53,7 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
     if(!same(existing,edit.previous))return json({error:'This item changed in another session. Cancel and reopen it to use the latest values.',record:latest},409);
     if(change.kind==='import'&&!existing&&items.some(item=>edit.kind==='category'?'name' in item&&item.name.toLowerCase()===edit.item.name.toLowerCase():'title' in item&&item.title.toLowerCase()===edit.item.title.toLowerCase()))return json({error:'An item with this name already exists. Review the draft against the latest budget.',record:latest},409);
     if(edit.kind==='recurring'&&edit.previous&&(edit.previous.kind!==edit.item.kind||edit.previous.categoryId!==edit.item.categoryId)){
-     const payment=await readResource(db,userId,'transaction',occurrenceId(change.month,edit.item.id));
+     const payment=await db.prepare("SELECT 1 FROM life_resources WHERE user_id=?1 AND kind='transaction' AND period=?2 AND json_extract(payload,'$.recurringId')=?3 AND COALESCE(json_extract(payload,'$.planned'),0)=0 AND COALESCE(json_extract(payload,'$.voided'),0)=0 AND COALESCE(json_extract(payload,'$.deleted'),0)=0 LIMIT 1").bind(userId,change.month,edit.item.id).first();
      if(payment)return json({error:'This item has a recorded payment. Keep its type and category, or add a new recurring item.'},400);
     }
     if(edit.kind==='category')data={...data,categories:existing?data.categories.map(c=>c.id===edit.item.id?edit.item:c):[...data.categories,edit.item]};

@@ -1,4 +1,5 @@
 import {readDebtPayments} from './debt-service.ts';
+import {readAnnualFund,saveAnnualFundSettings} from './annual-fund.ts';
 import {BUDGET_UPLOAD_BYTES} from './budget-build-schema.ts';
 import {listTrash,changeTrash,trashState} from './trash.ts';
 import {setRecordDeleted} from './record-deletion.ts';
@@ -30,6 +31,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
  if(!userId)return json({error:'Sign in to open your journal.'},401);
  try{
   if(request.method==='GET'){
+   if(new URL(request.url).searchParams.has('annual-fund'))return await readAnnualFund(request,db,userId);
    if(new URL(request.url).searchParams.has('trash'))return await listTrash(db,userId,Number(new URL(request.url).searchParams.get('offset')||0));
    if(new URL(request.url).searchParams.has('training-summary'))return await readTrainingSummary(db,userId,now);
    if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
@@ -43,7 +45,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(new URL(request.url).searchParams.has('automatic'))return await automaticConsentStatus(db,userId,ai,now);
    if(new URL(request.url).searchParams.has('export'))return await exportAccount(db,userId,now);
    if(new URL(request.url).searchParams.has('ai')){const cadence=cadenceSchema.safeParse(new URL(request.url).searchParams.get('cadence')||'daily');if(!cadence.success)return json({error:'Choose an analysis period.'},400);return await listAI(db,userId,new URL(request.url).searchParams.get('date'),ai,now,cadence.data);}
-   if(new URL(request.url).searchParams.has('kind'))return await listResources(request,db,userId);
+   if(new URL(request.url).searchParams.has('kind'))return await listResources(request,db,userId,now);
    const date=new URL(request.url).searchParams.get('date');
    if(date){if(!dateSchema.safeParse(date).success)return json({error:'Choose a valid date.'},400);return json({entry:await getEntry(db,userId,date)});}
    const profile=await getProfile(db,userId);
@@ -77,6 +79,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   if(b.action==='ai')return await generateAI(db,userId,b.review,ai,now);
   if(b.action==='resource')return await saveResource(b.record,db,userId,await getProfile(db,userId),now);
   if(b.action==='budget-item')return await saveBudgetItem(b.change,db,userId,await getProfile(db,userId),now);
+  if(b.action==='annual-fund-settings')return await saveAnnualFundSettings(b.change,db,userId,now);
   if(b.action==='profile'){
    const parsed=profileSchema.safeParse(b.profile);
    if(!parsed.success)return json({error:parsed.error.issues[0]?.message||'Check your setup.'},400);

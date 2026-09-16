@@ -7,6 +7,7 @@ import {serializeSignedCookie} from 'better-call';
 import {AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 import {budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
+import {budgetSummary} from '../lib/life/modules.ts';
 
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const output={notes:'Synthetic compiled budget draft.',categories:[{name:'Groceries',limitCents:40000}],recurring:[]};
@@ -48,6 +49,37 @@ async function fixture(t,{countTokens=100000,rejectGeneration=false}={}){
  const setup=await call({action:'profile',profile:{goal:'Synthetic budget goal',timezone:'UTC',modules:['money'],habits:[],version:0}});assert.equal(setup.status,200,await setup.clone().text());
  return {mf,db,call,calls,userId,month:new Date(stamp).toISOString().slice(0,7)};
 }
+
+test('compiled multi-payday budget preserves undo, reassignment, card transfers and portable export',{timeout:60000},async t=>{
+ const f=await fixture(t),month=new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth()-1,1)).toISOString().slice(0,7);
+ const category=randomUUID(),other=randomUUID(),bill=randomUUID(),payday=randomUUID(),card=randomUUID();
+ const ok=async body=>{const response=await f.call(body),value=await response.json();assert.equal(response.status,200,JSON.stringify(value));return value.record;};
+ const save=({id,version,data})=>ok({action:'resource',record:{kind:'transaction',id,version,data}});
+ const blank={categoryName:'',note:'Synthetic payment',voided:false,deleted:false};
+ let plan=await ok({action:'resource',record:{kind:'budget',id:month,version:0,data:{currency:'USD',categories:[{id:category,name:'Bills',limitCents:50000},{id:other,name:'Home',limitCents:20000}],goals:{spending:'',saving:'',investing:''},recurring:[
+  {id:bill,title:'Weekly service',kind:'expense',amountCents:6000,categoryId:category,day:1,frequency:'weekly',startDate:month+'-01'},
+  {id:payday,title:'Biweekly income',kind:'income',amountCents:100000,categoryId:'',day:1,frequency:'biweekly',startDate:month+'-01',incomePlan:{withholdings:[{name:'Benefits',rule:{mode:'fixed',value:10000}}],saving:{mode:'percent',value:10}}},
+  {id:card,title:'Card statement',kind:'transfer',amountCents:0,categoryId:'',day:2,paymentDueDay:5,variable:true},
+ ]}}});
+ const first=await save({id:`due:${month}-01:${bill}`,version:0,data:{...blank,date:month+'-02',occurrenceDate:month+'-01',kind:'expense',amountCents:6000,categoryId:category,recurringId:bill}});
+ let second=await save({id:`due:${month}-08:${bill}`,version:0,data:{...blank,date:month+'-08',occurrenceDate:month+'-08',kind:'expense',amountCents:6000,categoryId:category,recurringId:bill}});
+ let removed=await save({...first,data:{...first.data,deleted:true}});
+ const previous=plan.data.recurring.find(r=>r.id===bill),change={kind:'recurring',month,previous,item:{...previous,categoryId:other}};
+ assert.equal((await f.call({action:'budget-item',change})).status,400,'An independently active occurrence still protects its category');
+ second=await save({...second,data:{...second.data,deleted:true}});
+ plan=await ok({action:'budget-item',change});
+ removed=await save({...removed,data:{...removed.data,categoryId:other,deleted:false}});
+ const replay=await save({...removed,version:removed.version-1});assert.equal(replay.version,removed.version,'Exact retries do not add another payment');
+ for(const day of ['01','15'])await save({id:`due:${month}-${day}:${payday}`,version:0,data:{...blank,date:month+'-'+day,occurrenceDate:month+'-'+day,kind:'income',amountCents:90000,categoryId:'',recurringId:payday,incomeDetails:{grossCents:100000,plan:plan.data.recurring.find(r=>r.id===payday).incomePlan}}});
+ await save({id:`due:${month}:${card}`,version:0,data:{...blank,date:month+'-02',kind:'transfer',amountCents:25000,categoryId:'',recurringId:card}});
+ const sourceId=`due:${month}-01:${payday}`;
+ await save({id:`allocation:${month}-01:${payday}:saving`,version:0,data:{...blank,date:month+'-01',kind:'saving',amountCents:9000,categoryId:'',recurringId:null,planned:true,expectedDate:month+'-01',incomeSourceId:sourceId}});
+ const response=await f.call(undefined,`?kind=transaction&month=${month}`),{records}=await response.json(),summary=budgetSummary(plan.data,records,month);
+ assert.equal(summary.expenses,6000);assert.equal(summary.income,180000);assert.equal(summary.saving,0);assert.equal(summary.cashFlow,174000);
+ assert.equal(summary.due.filter(r=>r.kind==='expense'&&r.recorded).length,1);assert.equal(summary.due.filter(r=>r.kind==='income'&&r.recorded).length,2);
+ const backup=await (await f.call(undefined,'?export=1')).text();assert.doesNotThrow(()=>validateBackup(backup));
+ assert.equal(f.calls.length,0,'This workflow makes no provider requests');
+});
 
 for(const scenario of [
  {name:'short text',text:'Groceries monthly allowance $400.',preflight:false},
