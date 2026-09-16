@@ -1,13 +1,17 @@
 /* Shared visual rhythm. Keep touch targets and native text zoom independent of
    the smaller type, card padding and gaps; never scale the viewport or hide copy. */
-.life-compact-theme{--ui-copy:.875rem;--ui-label:.8125rem;--ui-meta:.75rem;--ui-title:1rem;--ui-gap:12px}
+/* Typography uses inherited variables, so portals and native controls share the
+   account preference. The input floor keeps the smallest preset editable. */
+button,input,textarea,select{font-family:inherit}
+body.life-compact-theme :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),textarea,select,[data-slot=select-trigger],.calendar-input-trigger){font-size:max(16px,calc(1rem * var(--ui-text-scale,1)))!important}
+.life-compact-theme{--ui-copy:calc(.875rem * var(--ui-text-scale,1));--ui-label:calc(.8125rem * var(--ui-text-scale,1));--ui-meta:calc(.75rem * var(--ui-text-scale,1));--ui-title:calc(1rem * var(--ui-text-scale,1));--ui-gap:12px}
 .life-compact-theme .compact-app{font-size:var(--ui-copy);line-height:1.5}
 .life-compact-theme :is([data-slot=dialog-content],[data-slot=alert-dialog-content],.workout-panel){font-size:var(--ui-copy);line-height:1.5}
 .life-compact-theme [data-slot=button]{font-size:var(--ui-label);font-weight:500;line-height:1.35;min-height:44px;gap:6px;padding-inline:12px}
 .life-compact-theme [data-slot=button][data-size^=icon]{width:44px;height:44px;padding:10px;flex-shrink:0}
 .life-compact-theme .compact-field{font-size:var(--ui-label);font-weight:500;gap:6px;margin-block:10px}
 .life-compact-theme .compact-field :is(input:not([type=checkbox]):not([type=radio]):not([type=color]),select,textarea,[data-slot=select-trigger]),
-.life-compact-theme .calendar-input-trigger{font-size:1rem;font-weight:400;line-height:1.4}
+.life-compact-theme .calendar-input-trigger{font-size:calc(1rem * var(--ui-text-scale,1));font-weight:400;line-height:1.4}
 .life-compact-theme .compact-field textarea{padding:9px 10px}
 .life-compact-theme :is(.field-hint,.privacy-note,.builder-consent){font-size:var(--ui-meta);line-height:1.5}
 .life-compact-theme .inline-check{font-size:var(--ui-label);gap:8px;margin-block:10px;min-height:44px}
@@ -15,7 +19,7 @@
 .life-compact-theme .compact-app .section-heading{gap:8px;margin-bottom:12px}
 .life-compact-theme .compact-app .section-heading :is(h2,h3){font-size:var(--ui-title);line-height:1.4;font-weight:600;letter-spacing:0}
 .life-compact-theme .compact-app :is(.error,.notice){font-size:var(--ui-label);line-height:1.5;padding:10px 12px;margin:10px 0}
-.life-compact-theme :is([data-slot=dialog-title],[data-slot=alert-dialog-title]){font-size:1.0625rem;line-height:1.4;font-weight:600;letter-spacing:0}
+.life-compact-theme :is([data-slot=dialog-title],[data-slot=alert-dialog-title]){font-size:calc(1.0625rem * var(--ui-text-scale,1));line-height:1.4;font-weight:600;letter-spacing:0}
 .life-compact-theme :is([data-slot=dialog-description],[data-slot=alert-dialog-description]){font-size:var(--ui-label);line-height:1.5}
 .life-compact-theme .life-menu [data-slot=dropdown-menu-item]{font-size:var(--ui-copy);min-height:44px;gap:10px}
 .life-compact-theme .life-menu [data-slot=dropdown-menu-label]{font-size:var(--ui-title);padding:10px}
@@ -23,7 +27,7 @@
 /* Home and Responses share the same analysis surface, including empty states. */
 .life-compact-theme .home-dashboard{padding-top:16px;gap:16px}
 .life-compact-theme .today-invitation{gap:10px}
-.life-compact-theme .today-invitation h2{font-size:1.0625rem;line-height:1.4;font-weight:600;letter-spacing:-.01em}
+.life-compact-theme .today-invitation h2{font-size:calc(1.0625rem * var(--ui-text-scale,1));line-height:1.4;font-weight:600;letter-spacing:-.01em}
 .life-compact-theme .today-invitation p{font-size:var(--ui-meta);margin-top:3px}
 .life-compact-theme .today-invitation>[data-slot=button]{font-size:var(--ui-copy);min-height:44px;padding-inline:12px}
 .life-compact-theme .analysis-card:not(.training-analysis){padding:14px 16px;border-radius:8px}
@@ -37,7 +41,7 @@
 .life-compact-theme .analysis-copy{font-size:var(--ui-copy);line-height:1.6}
 /* Report HTML also serves email, so override its inline reading sizes only here. */
 .life-compact-theme .analysis-markdown p{line-height:1.6!important;margin-bottom:10px!important}
-.life-compact-theme .analysis-markdown :is(h3,h4,h5,h6){font-size:1rem!important;line-height:1.4!important;margin-top:16px!important;margin-bottom:8px!important}
+.life-compact-theme .analysis-markdown :is(h3,h4,h5,h6){font-size:calc(1rem * var(--ui-text-scale,1))!important;line-height:1.4!important;margin-top:16px!important;margin-bottom:8px!important}
 .life-compact-theme .analysis-markdown :is(ul,ol){padding-left:20px!important;margin-block:8px 12px!important}
 .life-compact-theme .analysis-markdown li{margin-block:4px!important}
 .life-compact-theme .analysis-markdown>:first-child{margin-top:0!important}
@@ -55,7 +59,7 @@
 .life-compact-theme .trend-cards{gap:10px;align-items:stretch}
 .life-compact-theme .trend-card{display:flex;flex-direction:column;padding:12px;border-radius:6px}
 .life-compact-theme .trend-card>span{font-size:var(--ui-copy);line-height:1.4;gap:6px;width:100%;min-width:0}
-.life-compact-theme .trend-card>strong{font-size:1rem;line-height:1.4;font-weight:600;margin:8px 0 4px}
+.life-compact-theme .trend-card>strong{font-size:calc(1rem * var(--ui-text-scale,1));line-height:1.4;font-weight:600;margin:8px 0 4px}
 .life-compact-theme .trend-card>small{font-size:var(--ui-meta);line-height:1.5}
 .life-compact-theme .trend-card .trend-chart{height:36px;margin-top:10px}
 
@@ -70,10 +74,10 @@
 .life-compact-theme .response-row-actions button svg{width:18px;height:18px}
 .life-compact-theme .compact-app .history-filters{padding-block:12px;gap:8px}
 .life-compact-theme .compact-app .history-filters label{font-size:var(--ui-label)}
-.life-compact-theme .compact-app .history-filters :is(input,select){font-size:1rem;min-height:44px;padding:8px}
+.life-compact-theme .compact-app .history-filters :is(input,select){font-size:calc(1rem * var(--ui-text-scale,1));min-height:44px;padding:8px}
 .life-compact-theme .response-page .response-field{font-size:var(--ui-label);gap:6px;margin-bottom:16px}
 .life-compact-theme .response-page .response-field:has(#response-date){max-width:200px}
-.life-compact-theme .response-page .journal-input textarea{font-size:1rem;line-height:1.5}
+.life-compact-theme .response-page .journal-input textarea{font-size:calc(1rem * var(--ui-text-scale,1));line-height:1.5}
 .life-compact-theme .response-page .response-habit{margin-block:16px}
 .life-compact-theme .response-page .response-habit-label{margin-bottom:6px;min-height:24px}
 .life-compact-theme .response-page .response-habit-label>span{font-size:var(--ui-copy)}

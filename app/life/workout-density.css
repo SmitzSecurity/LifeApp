@@ -63,14 +63,14 @@
 .life-compact-theme .training-workspace .gym-active .eyebrow{font-size:var(--ui-meta,.75rem);line-height:1.4;letter-spacing:.025em}
 .life-compact-theme .training-workspace .gym-active .section-heading small{font-size:var(--ui-meta,.75rem);line-height:1.45}
 .life-compact-theme .training-workspace .gym-active .rest-clock{min-width:0;width:88px}
-.life-compact-theme .training-workspace .gym-active .rest-clock strong{font-size:1.625rem;line-height:1.15;margin:3px 0;font-weight:600;letter-spacing:0}
+.life-compact-theme .training-workspace .gym-active .rest-clock strong{font-size:calc(1.625rem * var(--ui-text-scale,1));line-height:1.15;margin:3px 0;font-weight:600;letter-spacing:0}
 .life-compact-theme .training-workspace .gym-active .rest-clock>button{margin-top:4px;padding:6px 8px;min-height:44px;font-size:var(--ui-meta,.75rem)}
 .life-compact-theme .training-workspace .current-set{padding:10px;border-radius:6px}
-.life-compact-theme .training-workspace .current-set h2{font-size:1.0625rem;line-height:1.35;margin:3px 0 5px}
+.life-compact-theme .training-workspace .current-set h2{font-size:calc(1.0625rem * var(--ui-text-scale,1));line-height:1.35;margin:3px 0 5px}
 .life-compact-theme .training-workspace .current-set p{font-size:var(--ui-copy,.875rem);line-height:1.5;margin:4px 0}
 .life-compact-theme .training-workspace .current-set>.muted{font-size:var(--ui-meta,.75rem);margin-top:8px}
 .life-compact-theme .training-workspace .current-set .compact-field{font-size:var(--ui-label,.8125rem);margin:8px 0}
-.life-compact-theme .training-workspace .current-set .compact-field input{height:44px;min-height:44px;padding:8px;font-size:1rem}
+.life-compact-theme .training-workspace .current-set .compact-field input{height:44px;min-height:44px;padding:8px;font-size:calc(1rem * var(--ui-text-scale,1))}
 .life-compact-theme .training-workspace .current-set .inline-check{min-height:44px;font-size:var(--ui-label,.8125rem);margin:4px 0;gap:8px}
 .life-compact-theme .training-workspace .current-set .action-row{margin:6px 0 0}
 .life-compact-theme .training-workspace .gym-active>button{margin:6px 4px 0 0;font-size:var(--ui-label,.8125rem);padding-inline:8px}
@@ -78,7 +78,7 @@
 
 /* Keep the map readable, and give its equivalent text controls full touch targets. */
 .life-compact-theme .training-workspace .coverage-choice{gap:8px;margin-top:8px}
-.life-compact-theme .training-workspace .coverage-choice select{min-height:44px;padding:6px 8px;font-size:1rem}
+.life-compact-theme .training-workspace .coverage-choice select{min-height:44px;padding:6px 8px;font-size:calc(1rem * var(--ui-text-scale,1))}
 .life-compact-theme .training-workspace .coverage-choice small{font-size:var(--ui-meta,.75rem);line-height:1.4}
 .life-compact-theme .training-workspace .coverage-caption{margin:8px 0;font-size:var(--ui-meta,.75rem);line-height:1.5}
 .life-compact-theme .training-workspace .coverage-visual{gap:10px;margin-top:8px}
@@ -94,9 +94,9 @@
 .life-compact-theme .training-workspace .muscle-overview button strong{font-size:var(--ui-meta,.75rem);flex-shrink:0}
 .life-compact-theme .training-workspace .muscle-overview button i{width:4px;flex-shrink:0}
 .life-compact-theme .training-workspace .muscle-detail .compact-field{font-size:var(--ui-label,.8125rem);margin:2px 0 6px}
-.life-compact-theme .training-workspace .muscle-detail select{min-height:44px;font-size:1rem;padding:6px}
+.life-compact-theme .training-workspace .muscle-detail select{min-height:44px;font-size:calc(1rem * var(--ui-text-scale,1));padding:6px}
 .life-compact-theme .training-workspace .coverage-back{min-height:44px;font-size:var(--ui-meta,.75rem);margin:0;padding:4px 0}
-.life-compact-theme .training-workspace .volume-number{font-size:1.625rem;line-height:1.2;margin:6px 0}
+.life-compact-theme .training-workspace .volume-number{font-size:calc(1.625rem * var(--ui-text-scale,1));line-height:1.2;margin:6px 0}
 .life-compact-theme .training-workspace .volume-number small{font-size:var(--ui-meta,.75rem);line-height:1.4;margin-top:2px}
 .life-compact-theme .training-workspace .volume-equation{font-size:var(--ui-meta,.75rem);margin:6px 0;line-height:1.5}
 .life-compact-theme .training-workspace .muscle-detail :is(p.muted,small){font-size:var(--ui-meta,.75rem)}
@@ -107,19 +107,19 @@
 .life-compact-theme .training-workspace .map-legend{flex-wrap:wrap;gap:5px;margin:8px 0}
 .life-compact-theme .training-workspace .coverage-adjust{padding-top:8px;margin-top:8px}
 .life-compact-theme .training-workspace .coverage-adjust button{min-height:44px;font-size:var(--ui-label,.8125rem)}
-.life-compact-theme .training-workspace .coverage-adjust select{min-height:44px;font-size:1rem}
+.life-compact-theme .training-workspace .coverage-adjust select{min-height:44px;font-size:calc(1rem * var(--ui-text-scale,1))}
 
 /* Native workout tools share compact, legible fields rather than nested padded cards. */
 .life-compact-theme .workout-panel{padding:14px 16px;border-radius:10px;max-height:90dvh}
 .life-compact-theme .workout-panel>header{gap:8px;margin:0 0 8px;min-height:44px}
-.life-compact-theme .workout-panel>header h2{font-size:1.125rem;line-height:1.35;margin:0}
-.life-compact-theme .workout-panel>header>button{width:44px;height:44px;min-height:44px;font-size:1.5rem;padding:0}
+.life-compact-theme .workout-panel>header h2{font-size:calc(1.125rem * var(--ui-text-scale,1));line-height:1.35;margin:0}
+.life-compact-theme .workout-panel>header>button{width:44px;height:44px;min-height:44px;font-size:calc(1.5rem * var(--ui-text-scale,1));padding:0}
 .life-compact-theme .workout-panel>.module-card{padding:0;margin:0;border:0;background:transparent}
 .life-compact-theme .workout-panel .compact-field{font-size:var(--ui-label,.8125rem);font-weight:400;line-height:1.4;margin:8px 0;gap:6px}
-.life-compact-theme .workout-panel :is(input:not([type=checkbox]),select,textarea){font-size:1rem;font-weight:400;line-height:1.4}
+.life-compact-theme .workout-panel :is(input:not([type=checkbox]),select,textarea){font-size:calc(1rem * var(--ui-text-scale,1));font-weight:400;line-height:1.4}
 .life-compact-theme .workout-panel :is(input:not([type=checkbox]),select){height:44px;min-height:44px;padding:8px;max-width:100%}
 .life-compact-theme .workout-panel textarea{padding:8px 10px;min-height:76px}
-.life-compact-theme .workout-panel .calendar-input-trigger{font-size:1rem;height:44px;min-height:44px}
+.life-compact-theme .workout-panel .calendar-input-trigger{font-size:calc(1rem * var(--ui-text-scale,1));height:44px;min-height:44px}
 .life-compact-theme .workout-panel .form-grid{column-gap:10px}
 .life-compact-theme .workout-panel .inline-check{min-height:44px;gap:8px;margin:4px 0;font-size:var(--ui-label,.8125rem);font-weight:400;line-height:1.45}
 .life-compact-theme .workout-panel :is(.muted,.builder-notes,.training-guidance p){font-size:var(--ui-copy,.875rem);line-height:1.5;margin:8px 0}
@@ -136,7 +136,7 @@
 .life-compact-theme .workout-panel .exercise-focus .action-row{margin:6px 0 0}
 .life-compact-theme .workout-panel .muscle-assignment{gap:6px 10px}
 .life-compact-theme .workout-panel .muscle-assignment label{font-size:var(--ui-meta,.75rem);line-height:1.4}
-.life-compact-theme .workout-panel .muscle-assignment select{font-size:1rem;min-height:44px;padding:6px;margin-top:4px}
+.life-compact-theme .workout-panel .muscle-assignment select{font-size:calc(1rem * var(--ui-text-scale,1));min-height:44px;padding:6px;margin-top:4px}
 
 /* Do not make fieldsets the scroller: their special sizing can move the footer. */
 .life-compact-theme .workout-panel[open]:has(>.workout-panel-footer){display:flex;flex-direction:column;overflow:hidden}
