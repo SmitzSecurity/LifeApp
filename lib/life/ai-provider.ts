@@ -16,7 +16,13 @@ export type AIProvider={generate:(input:string,purpose?:'routine'|'workout'|'tra
 export class AIInputRejected extends Error {}
 // An explicit Google INVALID_ARGUMENT response means generation was rejected.
 // Network errors, server errors and missing receipts remain unknown outcomes.
-export class AIRequestRejected extends Error {}
+export class AIRequestRejected extends Error { diagnostic?:string; }
+// Temporary owner-only troubleshooting receipt. Never logged or stored; the
+// caller must independently verify the configured owner before returning it.
+function rejectionDiagnostic(error:unknown,key:string){
+ const raw=JSON.stringify(error)||'';
+ return raw.split(key).join('[redacted]').replace(/AIza[\w-]+/g,'[redacted]').slice(0,4000);
+}
 // Return only fixed categories. Provider descriptions can echo user input or
 // credentials and must never be returned, persisted or logged verbatim.
 export function rejectionCategory(message:unknown){
@@ -50,7 +56,10 @@ export function geminiProvider(key:string,fetcher:typeof fetch=fetch):AIProvider
  if(!response.ok){
   if(response.status===400){
    const error=await response.json().catch(()=>null) as {error?:{code?:number;status?:string;message?:unknown};usageMetadata?:unknown;candidates?:unknown}|null;
-   if(error?.error?.code===400&&error.error.status==='INVALID_ARGUMENT'&&!error.usageMetadata&&!error.candidates)throw new AIRequestRejected(`The AI service rejected this request before generating a result (${rejectionCategory(error.error.message)}). Nothing was added.`);
+   if(error?.error?.code===400&&error.error.status==='INVALID_ARGUMENT'&&!error.usageMetadata&&!error.candidates){
+    const rejected=new AIRequestRejected(`The AI service rejected this request before generating a result (${rejectionCategory(error.error.message)}). Nothing was added.`);
+    rejected.diagnostic=rejectionDiagnostic(error.error,key);throw rejected;
+   }
   }
   throw new Error(`AI provider could not complete the request (${response.status}).`);
  }
