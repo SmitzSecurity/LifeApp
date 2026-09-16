@@ -24,7 +24,6 @@
 .life-compact-theme .loan-builder-dialog>.loan-builder-actions{display:flex;flex-direction:row;flex-shrink:0;gap:8px;padding-top:10px;border-top:1px solid var(--border);margin:0}
 .life-compact-theme .loan-builder-actions>button{flex:1;min-width:0;min-height:44px;white-space:normal;font-size:var(--ui-label);padding:8px}
 .life-compact-theme .loan-builder-actions>.delete-item{color:var(--destructive)}
-.life-compact-theme .loan-add-menu [role=menuitem]{min-height:44px;padding:10px 12px}
 .life-compact-theme .budget-workspace .loan-card .loan-balance-label{margin-top:0}
 .life-compact-theme .budget-workspace .loan-card .loan-statement-parts{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:var(--ui-meta);color:var(--muted-foreground);margin-block:5px}
 .life-compact-theme .budget-workspace .loan-card>.loan-card-actions{margin-top:8px;display:flex;gap:8px}

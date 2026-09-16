@@ -2,7 +2,7 @@
 import {formatDate} from '@/lib/life/date-display';
 import {useEffect,useState} from 'react';
 import {Button} from '@/components/ui/button';
-import {ChevronDown,Sparkles} from 'lucide-react';
+import {ChevronDown,Pencil,Sparkles} from 'lucide-react';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
 import {debtEstimate} from '@/lib/life/debt';
 import {LOAN_PRESETS} from '@/lib/life/loan-presets';
@@ -19,7 +19,7 @@ export default function BudgetDebts({plan,today,transactions,onEdit,onAdd,onAI,o
  const [payments,setPayments]=useState<Saved<Transaction>[]>([]),[suppressedOccurrences,setSuppressedOccurrences]=useState<string[]>([]),[error,setError]=useState(''),[loaded,setLoaded]=useState(false);
  useEffect(()=>{let cancelled=false;setLoaded(false);setError('');request('?debt-payments&month='+plan.id).then(data=>{if(!cancelled){setPayments(data.records.map((r:Saved<Transaction>)=>({...r,data:transactionSchema.parse(r.data)})));setSuppressedOccurrences(data.suppressedOccurrences||[]);setLoaded(true);}}).catch(e=>{if(!cancelled)setError(e.message);});return()=>{cancelled=true;};},[plan.id,plan.version,transactions]);
  const loans=plan.data.recurring.filter(r=>!!r.debt&&(!r.deleted||dirtyItems['transaction-editor:loan-payment:'+r.id]));
- return <BudgetSection id="loans" title="Loans & payoff" className="module-card budget-debts" dirty={Object.entries(dirtyItems).some(([k,v])=>v&&k.startsWith('transaction-editor:loan-payment:'))} actions={onAI?<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" disabled={plan.data.recurring.length>=60}>+ Add loan<ChevronDown size={16} aria-hidden="true"/></Button></DropdownMenuTrigger><DropdownMenuContent className="loan-add-menu" align="end"><DropdownMenuItem onSelect={onAdd}>Manual build</DropdownMenuItem><DropdownMenuItem onSelect={onAI}><Sparkles size={16} aria-hidden="true"/>Build with AI</DropdownMenuItem></DropdownMenuContent></DropdownMenu>:<Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={onAdd}>+ Add loan</Button>}>
+ return <BudgetSection id="loans" title="Loans & payoff" className="module-card budget-debts" dirty={Object.entries(dirtyItems).some(([k,v])=>v&&k.startsWith('transaction-editor:loan-payment:'))} actions={onAI?<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" disabled={plan.data.recurring.length>=60}>+ Add loan<ChevronDown size={16} aria-hidden="true"/></Button></DropdownMenuTrigger><DropdownMenuContent className="life-menu" align="end"><DropdownMenuItem onSelect={onAdd}><Pencil aria-hidden="true"/><span>Manual Build</span></DropdownMenuItem><DropdownMenuItem onSelect={onAI}><Sparkles aria-hidden="true"/><span>AI Build</span></DropdownMenuItem></DropdownMenuContent></DropdownMenu>:<Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={onAdd}>+ Add loan</Button>}>
  {!loans.length&&<p className="field-hint">Choose a loan preset or use a statement to build with AI. Track a balance now and add payments when you’re ready.</p>}
  {error&&<p className="error" role="alert">{error}</p>}
  <div className="loan-grid">{loans.map(item=><LoanCard key={plan.id+item.id} {...{item,plan,today,payments,suppressedOccurrences,loaded,onEdit,onSave,onDirty}}/>)}</div>
