@@ -5,6 +5,7 @@ import {resolve,sep,extname} from 'node:path';
 import {randomBytes} from 'node:crypto';
 import {Miniflare,createFetchMock} from 'miniflare';
 import {AI_MODEL} from '../lib/life/ai-provider.ts';
+import {BUDGET_UPLOAD_BYTES} from '../lib/life/budget-build-schema.ts';
 import {serializeSignedCookie} from 'better-call';
 
 const assets=resolve('dist-standalone/client');
@@ -13,6 +14,9 @@ const secret=randomBytes(48).toString('base64url');
 const mock=createFetchMock();mock.disableNetConnect();
 const analysisFixture=process.argv.includes('--analysis');
 if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':generateContent',method:'POST'}).reply(200,async(options)=>{const instruction=JSON.parse(await new Response(options.body).text()).systemInstruction.parts[0].text;return JSON.stringify({responseId:'synthetic-browser-analysis',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:instruction.includes('You organize a pasted budget')?JSON.stringify({notes:'Synthetic budget draft. Confirm the amounts and dates before adding.',categories:[{name:'Bills',limitCents:50000},{name:'Groceries',limitCents:40000}],recurring:[{title:'Medical loan',kind:'expense',category:'Bills',amountCents:10000,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,startDate:new Date().toISOString().slice(0,7)+'-01',endDate:null,installments:6,debt:{originalBalanceCents:60000,balanceCents:60000,balanceDate:new Date(Date.now()-86400000).toISOString().slice(0,10),annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0}},{title:'Monthly salary',kind:'income',category:'',amountCents:400000,day:1,frequency:'monthly-weekday',week:'last',weekday:5,variable:false,startDate:null,endDate:null,installments:null,debt:null}]}):instruction.includes('You organize a completed workout')?JSON.stringify({notes:'Synthetic editable draft. Confirm completed sets.',name:'Written push',exercises:[{name:'Bench press',unit:'lb',reps:6,repMax:10,restSeconds:150,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:8,load:100,warmup:true},{reps:8,load:135,warmup:false},{reps:7,load:135,warmup:false}]},{name:'Custom cable press',unit:'lb',reps:8,repMax:12,restSeconds:120,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:12,load:30,warmup:false}]}]}):instruction.includes('You organize workout descriptions')?JSON.stringify({notes:'Synthetic draft. Choose starting loads before training.',routines:[{name:'Push day',preferences:'About 45 minutes',exercises:[{name:'Bench press',sets:3,reps:6,repMax:10,restSeconds:150,load:0,unit:'lb'},{name:'Lateral raise',sets:3,reps:12,repMax:20,restSeconds:90,load:0,unit:'lb'}]}]}):instruction.includes("LifeApp's training analysis assistant")?'### Your training this week\n\nYou logged five working sets across two sessions, with warm-ups kept separate. Your pressing work is contributing to chest and triceps coverage.\n\n### Next session\n\n- Keep the planned working sets after your warm-ups.\n- Compare loads and reps on the same movement before deciding to progress.':'### A steady rhythm\n\nYou made room for the things that matter, even on a full day. Reading and a short walk gave the day a steady rhythm.\n\n**The useful pattern is consistency:** small actions were easier to keep than a perfect plan. Your spending stayed within the categories you chose, and the upcoming electric bill is still an estimate.\n\n### Tomorrow\n\n- Protect one small block for your journal and movement. Keep it manageable, and adjust your plan when you have the actual bill amount.'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:120,thoughtsTokenCount:0,totalTokenCount:220}});}).persist();
+// Read the full outbound body before replying: a static mock can reset the
+// Windows Miniflare transport while a large document is still being uploaded.
+if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':countTokens',method:'POST'}).reply(200,async options=>{await new Response(options.body).arrayBuffer();return JSON.stringify({totalTokens:100000});}).persist();
 const calmFixture=process.argv.includes('--calm');
 const editingFixture=process.argv.includes('--editing');
 const dictationFixture=process.argv.includes('--dictation');
@@ -62,6 +66,11 @@ if(process.argv.includes('--workout-recovery')){
  await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'ai-recovery',sourceId,'',JSON.stringify({sourceId,expiresAt:new Date(stamp+86400000).toISOString()}),iso).run();
  await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'cardio',crypto.randomUUID(),iso.slice(0,7),JSON.stringify({date:iso.slice(0,10),activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'Synthetic saved cardio',voided:false}),iso).run();
 }
+if(process.argv.includes('--budget-recovery')){
+ const sourceId=crypto.randomUUID(),old=new Date(stamp-86400000).toISOString(),issued=new Date(stamp).toISOString();
+ await db.prepare("INSERT INTO life_routine_builds(user_id,request_id,status,input_snapshot,model,price_version,reserved_micros,created_at,finished_at,error_code) VALUES(?1,?2,'uncertain',?3,?4,'synthetic',200000,?5,?5,'provider_or_storage_unconfirmed')").bind(userId,'budget:'+sourceId,JSON.stringify({description:'Synthetic old budget',month:issued.slice(0,7),moneyGoals:{}}),AI_MODEL,old).run();
+ await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'ai-recovery',sourceId,'',JSON.stringify({purpose:'budget',sourceId,expiresAt:new Date(stamp+86400000).toISOString()}),issued).run();
+}
 const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-browser-token',secret,{secure:true,httpOnly:true,path:'/'})).split(';')[0];
 let loseEntryResponse=process.argv.includes('--unconfirmed-entry');
 const server=createServer(async(req,res)=>{
@@ -78,7 +87,7 @@ const server=createServer(async(req,res)=>{
   let body,entryWrite=false;
   if(req.method==='POST'&&(pathname==='/api/life'||calmFixture&&pathname==='/api/life/email')){
    const chunks=[];let size=0;
-   for await(const chunk of req){size+=chunk.length;if(size>(req.url.includes('budget-build')?1_500_000:65536)){res.writeHead(413);res.end();return;}chunks.push(chunk);}
+   for await(const chunk of req){size+=chunk.length;if(size>(req.url.includes('budget-build')?BUDGET_UPLOAD_BYTES:65536)){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
    entryWrite=parsed?.action==='entry';

@@ -9,7 +9,7 @@ import {formatDate,formatMonth,isCalendarDate} from '@/lib/life/date-display';
 type Props=Pick<AriaAttributes,'aria-label'|'aria-labelledby'|'aria-describedby'> & {
  label?:string;value:string;onValueChange:(value:string)=>void;id?:string;name?:string;
  min?:string;max?:string;disabled?:boolean;required?:boolean;clearable?:boolean;
- title?:string;className?:string;
+ title?:string;className?:string;variant?:'field'|'tile';
 };
 const localDate=(value:string)=>{
  const date=new Date(0);
@@ -24,7 +24,7 @@ const validValue=(value:string,type:'date'|'month')=>type==='date'?isCalendarDat
 // native date control differently. The actual picker keeps canonical ISO data.
 // Only a complete, in-range selection can call the parent; cancelling the
 // picker cannot leave a hidden invalid draft or save an earlier date by mistake.
-function CalendarInput({type,label:fieldLabel,value,onValueChange,id,name,min,max,disabled,required,clearable=false,title,className,...aria}:Props&{type:'date'|'month'}){
+function CalendarInput({type,label:fieldLabel,value,onValueChange,id,name,min,max,disabled,required,clearable=false,title,className,variant='field',...aria}:Props&{type:'date'|'month'}){
  const generatedId=useId(),controlId=id||generatedId,native=useRef<HTMLInputElement>(null),trigger=useRef<HTMLButtonElement>(null);
  const [open,setOpen]=useState(false),[choice,setChoice]=useState(value.slice(0,7));
  const today=dateValue(new Date()),shown=type==='date'?formatDate(value):formatMonth(value);
@@ -47,11 +47,12 @@ function CalendarInput({type,label:fieldLabel,value,onValueChange,id,name,min,ma
  }
  function openFallback(){if(!disabled&&!trigger.current?.matches(':disabled')){setChoice(selected.slice(0,7));setOpen(true);}}
  const label=aria['aria-label']||fieldLabel||(type==='date'?'Choose date':'Choose month');
- return <>{fieldLabel&&<label htmlFor={controlId}>{fieldLabel}</label>}<Popover open={open} onOpenChange={setOpen}>
-  <PopoverAnchor asChild><span className={`calendar-input ${className||''}`} style={{display:'block',position:'relative',width:'100%',minWidth:0}}>
+ const tile=variant==='tile';
+ return <>{fieldLabel&&!tile&&<label htmlFor={controlId}>{fieldLabel}</label>}<Popover open={open} onOpenChange={setOpen}>
+  <PopoverAnchor asChild><span className={`calendar-input${tile?' calendar-input-tile':''} ${className||''}`} style={{display:'block',position:'relative',width:'100%',minWidth:0,...(tile?{height:'100%'}:{})}}>
    <input ref={native} type={type} name={name} value={value} min={min} max={max} disabled={disabled} required={required} tabIndex={-1} aria-hidden="true" onInput={event=>change(event.currentTarget.value)} onChange={()=>{}} style={{position:'absolute',inset:0,opacity:0,pointerEvents:'none',width:'100%',height:'100%',minWidth:0}}/>
-   <button ref={trigger} id={controlId} type="button" className="calendar-input-trigger" aria-label={aria['aria-label']?`${aria['aria-label']}: ${value?shown:type==='date'?'MM/DD/YYYY':'MM/YYYY'}`:undefined} aria-labelledby={aria['aria-labelledby']} aria-describedby={aria['aria-describedby']} aria-haspopup="dialog" aria-expanded={open||undefined} disabled={disabled} title={title} onClick={openPicker} onKeyDown={event=>{if(event.key==='ArrowDown'){event.preventDefault();openFallback();}}} style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,width:'100%',minHeight:44,padding:'10px 12px',border:'1px solid var(--input)',borderRadius:4,background:'var(--card)',color:'var(--foreground)',font:'inherit',textAlign:'left'}}>
-    <span>{value?shown:type==='date'?'MM/DD/YYYY':'MM/YYYY'}</span><CalendarDays aria-hidden="true" size={18} style={{marginLeft:clearable&&!required&&value?36:0,flexShrink:0}}/>
+   <button ref={trigger} id={controlId} type="button" className="calendar-input-trigger" aria-label={aria['aria-label']?`${aria['aria-label']}: ${value?shown:type==='date'?'MM/DD/YYYY':'MM/YYYY'}`:undefined} aria-labelledby={aria['aria-labelledby']} aria-describedby={aria['aria-describedby']} aria-haspopup="dialog" aria-expanded={open||undefined} disabled={disabled} title={title} onClick={openPicker} onKeyDown={event=>{if(event.key==='ArrowDown'){event.preventDefault();openFallback();}}} style={{position:'relative',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,width:'100%',minHeight:44,padding:tile?'8px 12px':'10px 12px',border:tile?'0':'1px solid var(--input)',borderRadius:tile?6:4,background:'var(--card)',color:'var(--foreground)',font:'inherit',textAlign:'left',...(tile?{height:'100%'}:{})}}>
+    {tile?<span className="calendar-input-tile-copy"><small>{fieldLabel||label}</small><strong>{value?shown:type==='date'?'MM/DD/YYYY':'MM/YYYY'}</strong></span>:<span>{value?shown:type==='date'?'MM/DD/YYYY':'MM/YYYY'}</span>}<CalendarDays aria-hidden="true" size={18} style={{marginLeft:clearable&&!required&&value?36:0,flexShrink:0}}/>
    </button>
    {clearable&&!required&&value&&<button type="button" className="calendar-input-clear" aria-label={`Clear ${aria['aria-label']||type}`} disabled={disabled} onClick={()=>change('')} style={{position:'absolute',right:32,top:0,bottom:0,width:36,display:'grid',placeItems:'center',border:0,background:'transparent',color:'var(--muted-foreground)'}}><X aria-hidden="true" size={16}/></button>}
   </span></PopoverAnchor>

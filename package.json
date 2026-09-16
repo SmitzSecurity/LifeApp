@@ -8,7 +8,7 @@
   "scripts": {
     "dev": "node scripts/standalone.mjs dev",
     "build": "node scripts/standalone.mjs build",
-    "test": "npm run build && npm run test:source && node --test tests/standalone-worker.test.mjs",
+    "test": "npm run build && npm run test:source && node --test tests/standalone-worker.test.mjs tests/budget-worker.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern dist-standalone",
     "db:generate": "drizzle-kit generate",
     "standalone": "node scripts/standalone.mjs",
@@ -16,7 +16,7 @@
     "build:cloudflare": "node scripts/cloudflare.mjs build",
     "deploy:cloudflare": "node scripts/cloudflare.mjs deploy",
     "dev:standalone": "node scripts/standalone.mjs dev",
-    "test:source": "node --test tests/date-display.test.mjs tests/ai-sync.test.mjs tests/lifeapp.test.mjs tests/modules.test.mjs tests/reviews.test.mjs tests/google-auth.test.mjs tests/migration-preview.test.mjs tests/scheduler.test.mjs tests/automatic-reviews.test.mjs tests/migration-upgrade.test.mjs tests/account-deletion.test.mjs tests/cloudflare-build.test.mjs tests/history.test.mjs tests/email-reports.test.mjs tests/analysis-budget.test.mjs tests/budget-items.test.mjs tests/workout-improvements.test.mjs tests/muscle-volume.test.mjs tests/workout-logging.test.mjs tests/trash.test.mjs tests/appearance.test.mjs tests/budget-builder.test.mjs",
+    "test:source": "node --test tests/date-display.test.mjs tests/ai-sync.test.mjs tests/lifeapp.test.mjs tests/modules.test.mjs tests/reviews.test.mjs tests/google-auth.test.mjs tests/migration-preview.test.mjs tests/scheduler.test.mjs tests/automatic-reviews.test.mjs tests/migration-upgrade.test.mjs tests/account-deletion.test.mjs tests/cloudflare-build.test.mjs tests/history.test.mjs tests/email-reports.test.mjs tests/analysis-budget.test.mjs tests/budget-items.test.mjs tests/workout-improvements.test.mjs tests/muscle-volume.test.mjs tests/workout-logging.test.mjs tests/trash.test.mjs tests/appearance.test.mjs tests/budget-builder.test.mjs tests/budget-files.test.mjs tests/income-planning.test.mjs tests/budget-recovery.test.mjs",
     "migration:preview": "node scripts/migration-preview.mjs",
     "types:email": "node scripts/email-binding-types.mjs"
   },
@@ -25,6 +25,7 @@
     "@better-auth/drizzle-adapter": "1.7.3",
     "@hookform/resolvers": "^5.7.1",
     "@shadcn/react": "^0.3.0",
+    "@xmldom/xmldom": "0.9.12",
     "better-auth": "1.7.3",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
@@ -32,6 +33,7 @@
     "date-fns": "^4.4.0",
     "drizzle-orm": "0.45.2",
     "embla-carousel-react": "^8.6.0",
+    "fflate": "0.8.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^1.31.0",
     "markdown-it": "^15.0.2",

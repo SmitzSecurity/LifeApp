@@ -168,9 +168,13 @@
 /* Budget activity: names edit, right-aligned amounts confirm, and colors mark
    approaching/past due dates without adding a separate action column. */
 .life-compact-theme .compact-app .budget-workspace .budget-metrics{grid-template-columns:minmax(160px,1.15fr) repeat(4,minmax(0,1fr));align-items:stretch}
-.life-compact-theme .compact-app .budget-metrics>.budget-month-metric{margin:0;gap:2px;padding:5px 10px;justify-content:center}
-.life-compact-theme .budget-month-metric .calendar-input{min-height:44px;width:100%;padding:6px 8px}
-.life-compact-theme .budget-month-metric label{font-size:var(--ui-meta);color:var(--muted-foreground)}
+.life-compact-theme .compact-app .budget-metrics>.budget-month-metric{margin:0;padding:0;min-width:0}
+.life-compact-theme .budget-month-metric .calendar-input-tile{height:100%;width:100%;padding:0}
+.life-compact-theme .budget-month-metric .calendar-input-trigger{min-height:62px;cursor:pointer}
+.life-compact-theme .budget-month-metric .calendar-input-trigger:hover:not(:disabled){background:var(--secondary)}
+.life-compact-theme .budget-month-metric .calendar-input-tile-copy{display:flex;flex-direction:column;min-width:0;gap:0}
+.life-compact-theme .budget-month-metric .calendar-input-tile-copy small{font-size:var(--ui-meta);color:var(--muted-foreground);font-weight:400}
+.life-compact-theme .budget-month-metric .calendar-input-trigger>svg{color:var(--muted-foreground)}
 .life-compact-theme .budget-workspace .allowance-row[open]{padding-bottom:8px}
 .life-compact-theme .budget-workspace .allowance-row>.allowance-content{margin:2px 0 0 10px;padding:6px 0 4px 12px;border-top:0;border-left:2px solid var(--border);display:block}
 .life-compact-theme .budget-workspace .allowance-total{padding:0;margin:0 0 4px;border:0}
@@ -216,9 +220,10 @@
 .life-compact-theme .budget-payment-dialog .delete-item{color:var(--destructive)}
 @media(max-width:850px){
  .life-compact-theme .compact-app .budget-workspace .budget-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
- .life-compact-theme .compact-app .budget-metrics>.budget-month-metric{grid-column:1/-1;display:flex;flex-direction:row;justify-content:flex-start;align-items:center;padding:2px 10px;background:transparent;border:0}
- .life-compact-theme .budget-month-metric>div{display:flex;align-items:center;gap:10px;width:100%}
- .life-compact-theme .budget-month-metric .calendar-input{width:170px}
+ .life-compact-theme .compact-app .budget-metrics>.budget-month-metric{grid-column:1/-1;padding:0}
+ .life-compact-theme .budget-month-metric .calendar-input-trigger{min-height:44px}
+ .life-compact-theme .budget-month-metric .calendar-input-tile-copy{flex-direction:row;align-items:center;gap:12px}
+ .life-compact-theme .budget-month-metric .calendar-input-tile-copy strong{font-size:1rem!important}
 }
 @media(max-width:480px){
  .life-compact-theme .compact-app .budget-workspace .budget-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -231,3 +236,14 @@
  .life-compact-theme .budget-workspace .calendar-input-trigger{padding-inline:6px!important;gap:4px!important}
  .life-compact-theme .budget-workspace .calendar-input-trigger svg{width:16px;height:16px}
 }
+.life-compact-theme .income-plan-editor{border-top:1px solid var(--border);padding-top:8px;margin-top:8px}
+.life-compact-theme .income-rule-controls{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10px;align-items:end}
+.life-compact-theme .income-rule-name{display:flex;align-items:end;gap:6px}
+.life-compact-theme .income-rule-name>label{flex:1;min-width:0}
+.life-compact-theme .income-rule-name>button{min-height:44px;margin-bottom:7px;padding-inline:8px}
+.life-compact-theme .income-withholding{border-bottom:1px solid var(--border);padding-bottom:6px}
+.life-compact-theme .income-preview{font-size:var(--ui-label);margin-block:10px;padding:10px;background:var(--muted);border-radius:6px}
+.life-compact-theme .income-preview dl{margin:0;display:grid;gap:5px}
+.life-compact-theme .income-preview dl>div{display:flex;justify-content:space-between;gap:12px}
+.life-compact-theme .income-preview dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.life-compact-theme .income-preview .income-net{font-weight:600;border-top:1px solid var(--border);padding-top:6px}

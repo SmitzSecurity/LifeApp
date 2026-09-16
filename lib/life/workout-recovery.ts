@@ -1,7 +1,7 @@
 import {z} from 'zod/v3';
 import type {Database} from './service.ts';
 
-export const workoutRecoverySchema=z.object({sourceId:z.string().uuid(),expiresAt:z.string().datetime()}).strict();
+export const workoutRecoverySchema=z.object({sourceId:z.string().uuid(),expiresAt:z.string().datetime(),purpose:z.literal('budget').optional()}).strict();
 // Grants are operator-issued, account-scoped resources. Admission consumes a
 // grant by recording recoveryOf on the new job in the same atomic INSERT.
 // Failed, hidden and uncertain recovery jobs all count as consumption.
@@ -9,6 +9,7 @@ export function recoverySQL(user:string,source:string,stamp:string,description?:
  SELECT 1 FROM life_resources g JOIN life_routine_builds source
  ON source.user_id=g.user_id AND source.request_id='workout:' || g.resource_id
  WHERE g.user_id=${user} AND g.kind='ai-recovery' AND g.resource_id=${source}
+ AND json_extract(g.payload,'$.purpose') IS NULL
  AND json_extract(g.payload,'$.sourceId')=g.resource_id
  AND json_extract(g.payload,'$.expiresAt')>${stamp} AND g.updated_at<=${stamp}
  AND source.status='failed' AND source.cost_micros IS NOT NULL

@@ -6,10 +6,11 @@ import {Plus} from 'lucide-react';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription} from '@/components/ui/dialog';
 import {todayIn,type Profile} from '@/lib/life/domain';
 import {formatDate} from '@/lib/life/date-display';
-import {budgetSchema,transactionSchema,budgetSummary,occurrenceId,money,type Budget,type Transaction,type Saved} from '@/lib/life/modules';
+import {budgetSchema,transactionSchema,budgetSummary,incomeAllocations,occurrenceId,money,type Budget,type Transaction,type Saved} from '@/lib/life/modules';
 import type {BudgetItemChange} from '@/lib/life/budget-items';
 import BudgetBuilder from './budget-builder';
 import BudgetDebts from './budget-debts';
+import {calculateIncome} from '@/lib/life/income-planning';
 import {scheduledInMonth} from '@/lib/life/budget-schedule';
 import './budget-builder.css';
 import BudgetGoals from './budget-goals';
@@ -26,6 +27,7 @@ const blankPlan=():Budget=>budgetSchema.parse({currency:'USD',categories:['Housi
 export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Profile;onDirty:(v:boolean)=>void;onProfileSaved:(p:Profile)=>void}){
  const today=todayIn(profile.timezone),[month,setMonth]=useState(today.slice(0,7)),[plan,setPlan]=useState<Saved<Budget>|null>(null),[transactions,setTransactions]=useState<Saved<Transaction>[]>([]);
  const [quick,setQuick]=useState<Saved<Transaction>|null>(null),[recurring,setRecurring]=useState<{item:Recurring;previous:Recurring|null}|null>(null);
+ const [suppressedAllocations,setSuppressedAllocations]=useState<string[]>([]),allocationCache=useRef<Saved<Transaction>[]>([]);
  const [ordering,setOrdering]=useState(false),[building,setBuilding]=useState(false);
  const [loading,setLoading]=useState(false),[ready,setReady]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[dirtyItems,setDirtyItems]=useState<Record<string,boolean>>({}),[goalsDirty,setGoalsDirty]=useState(false);
  const planRef=useRef<Saved<Budget>|null>(null),loadSequence=useRef(0);
@@ -38,7 +40,7 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
   if(sequence!==loadSequence.current)return;
   const existing=current.records[0],earlier=(history.records as Saved<Budget>[]).filter(p=>p.id<month).sort((a,b)=>b.id.localeCompare(a.id))[0];
   planRef.current=null;acceptPlan(existing||{id:month,version:0,data:earlier?budgetSchema.parse(earlier.data):blankPlan()});
-  setTransactions(tx.records.map((t:Saved<Transaction>)=>({...t,data:transactionSchema.parse(t.data)})));resetQuick();setRecurring(null);setDirtyItems({});setNotice('');setReady(true);
+  setSuppressedAllocations(tx.suppressedAllocations||[]);allocationCache.current=[];setTransactions(tx.records.map((t:Saved<Transaction>)=>({...t,data:transactionSchema.parse(t.data)})));resetQuick();setRecurring(null);setDirtyItems({});setNotice('');setReady(true);
  }catch(e){if(sequence===loadSequence.current)setError((e as Error).message);}finally{if(sequence===loadSequence.current)setLoading(false);}}
  useEffect(()=>{void load();return()=>{loadSequence.current++;};},[month]);
  async function saveItem(change:BudgetItemChange):Promise<Saved<Budget>>{
@@ -64,11 +66,14 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
  // removes its recurrence. Its draft stays available to finish or cancel.
  const displayedDue=plan?budgetSummary({...plan.data,recurring:plan.data.recurring.map(r=>dueHasDraft(occurrenceId(month,r.id))?{...r,active:true,deleted:false,month:r.frequency==='annual'?Number(month.slice(5,7)):r.month,startDate:undefined,endDate:undefined,installments:undefined,debt:undefined}:r)},transactions,month).due:[];
  const txProps=plan?{plan,today,onSave:saveTransaction,onDirty:reportDirty}:null;
- const expected:ExpectedPayment[]=[...displayedDue,...transactions.filter(t=>!t.data.recurringId&&(t.data.planned||t.data.expectedDate)&&(!t.data.deleted&&!t.data.voided||dueHasDraft(t.id))).map(t=>({id:t.id,title:t.data.note||'Planned '+t.data.kind,kind:t.data.kind,amountCents:t.data.amountCents,categoryId:t.data.categoryId,date:t.data.expectedDate||t.data.date,variable:false,recorded:!t.data.planned&&!t.data.deleted&&!t.data.voided,actualCents:t.data.amountCents}))].sort(compareExpected);
- const renderExpected=(item:ExpectedPayment,scope?:string)=><ExpectedItem key={item.id} {...txProps!} scope={scope} due={item} source={plan!.data.recurring.find(x=>occurrenceId(month,x.id)===item.id)} transaction={transactions.find(t=>t.id===item.id)} onEditRecurring={editRecurring}/>;
+ const derivedAllocations=incomeAllocations(transactions,month,suppressedAllocations);
+ const keptAllocations=allocationCache.current.filter(t=>dueHasDraft(t.id)&&!transactions.some(x=>x.id===t.id)&&!derivedAllocations.some(x=>x.id===t.id));
+ allocationCache.current=[...derivedAllocations,...keptAllocations];const allTransactions=[...transactions,...allocationCache.current];
+ const expected:ExpectedPayment[]=[...displayedDue.map(due=>({...due,amountCents:due.incomePlan?calculateIncome(due.amountCents,due.incomePlan).netCents:due.amountCents})),...allTransactions.filter(t=>!t.data.recurringId&&(t.data.planned||t.data.expectedDate)&&(!t.data.deleted&&!t.data.voided||dueHasDraft(t.id))).map(t=>({id:t.id,title:t.data.note||'Planned '+t.data.kind,kind:t.data.kind,amountCents:t.data.amountCents,categoryId:t.data.categoryId,date:t.data.expectedDate||t.data.date,variable:false,recorded:!t.data.planned&&!t.data.deleted&&!t.data.voided,actualCents:t.data.amountCents}))].sort(compareExpected);
+ const renderExpected=(item:ExpectedPayment,scope?:string)=><ExpectedItem key={item.id} {...txProps!} scope={scope} due={item} source={plan!.data.recurring.find(x=>occurrenceId(month,x.id)===item.id)} transaction={allTransactions.find(t=>t.id===item.id)} onEditRecurring={editRecurring}/>;
  const unscheduled=plan?.data.recurring.filter(r=>!r.deleted&&!r.debt&&!displayedDue.some(d=>d.id===occurrenceId(month,r.id)))||[];
  return <section className="budget-workspace">
- <div className="metric-grid budget-metrics"><div className="budget-month-metric compact-field"><MonthInput label="Month" aria-label="Budget month" required value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onValueChange={month=>{if(month)setMonth(month);}}/></div>{[['Income',summary?.income],['Spent',summary?.expenses],['Saved / invested',summary?summary.saving+summary.investing:undefined],['Cash flow',summary?.cashFlow]].map(([label,value])=><div key={label}><small>{label}</small><strong>{ready?money(value as number):'—'}</strong></div>)}</div>
+ <div className="metric-grid budget-metrics"><div className="budget-month-metric"><MonthInput variant="tile" label="Month" aria-label="Budget month" required value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onValueChange={month=>{if(month)setMonth(month);}}/></div>{[['Income',summary?.income],['Spent',summary?.expenses],['Saved / invested',summary?summary.saving+summary.investing:undefined],['Cash flow',summary?.cashFlow]].map(([label,value])=><div key={label}><small>{label}</small><strong>{ready?money(value as number):'—'}</strong></div>)}</div>
  {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="budget-notice">{notice}</p>}
  {!ready?<Button disabled={loading} onClick={()=>void load()}>{loading?'Opening budget…':'Retry budget'}</Button>:plan&&summary&&txProps&&<div key={month}>
  <div className="budget-columns"><BudgetSection id="quick" title="Quick transaction" className="module-card quick-transaction" dirty={hasDirtyPrefix('transaction-editor:quick:')}>{quick&&<TransactionEditor key={quick.id} {...txProps} initial={quick} scope={'quick:'+quick.id} onCancel={resetQuick} onSaved={resetQuick}/>}</BudgetSection>
@@ -78,7 +83,7 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
  <BudgetDebts dirtyItems={dirtyItems} plan={plan} today={today} transactions={transactions} onEdit={editRecurring} onAdd={()=>addRecurring(true)} onSave={saveTransaction} onDirty={reportDirty}/>
  <div className="budget-columns budget-history"><BudgetSection id="history" title="Transaction history" className="module-card" dirty={hasDirtyPrefix('transaction-editor:history:')}>{!transactions.some(t=>!t.data.deleted&&(!t.data.planned||t.data.voided))&&<p className="muted">Your recorded transactions appear here.</p>}{transactions.filter(t=>!t.data.deleted&&(!t.data.planned||t.data.voided)||hasTransactionDraft('history:'+t.id)).sort((a,b)=>b.data.date.localeCompare(a.data.date)).map(t=><TransactionTile key={t.id} {...txProps} record={t} scope={'history:'+t.id}/>)}
  </BudgetSection>
- <BudgetSection id="expected" title="Expected income & expenses" className="module-card" dirty={hasDirtyPrefix('transaction-editor:due:')}><div className="forecast-totals"><span>Income <strong>{money(summary.due.filter(r=>!r.recorded&&r.kind==='income').reduce((n,r)=>n+r.amountCents,0)+transactions.filter(t=>t.data.planned&&!t.data.deleted&&!t.data.voided&&t.data.kind==='income').reduce((n,t)=>n+t.data.amountCents,0))}</strong></span><span>Expenses <strong>{money(summary.categories.reduce((n,c)=>n+c.scheduled,0))}</strong></span><Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={()=>addRecurring()}><Plus/>Add recurring item</Button></div>
+ <BudgetSection id="expected" title="Expected income & expenses" className="module-card" dirty={hasDirtyPrefix('transaction-editor:due:')}><div className="forecast-totals"><span>Income <strong>{money(summary.due.filter(r=>!r.recorded&&r.kind==='income').reduce((n,r)=>n+(r.incomePlan?calculateIncome(r.amountCents,r.incomePlan).netCents:r.amountCents),0)+transactions.filter(t=>t.data.planned&&!t.data.deleted&&!t.data.voided&&t.data.kind==='income').reduce((n,t)=>n+t.data.amountCents,0))}</strong></span><span>Expenses <strong>{money(summary.categories.reduce((n,c)=>n+c.scheduled,0))}</strong></span><Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={()=>addRecurring()}><Plus/>Add recurring item</Button></div>
  {!expected.length&&<p className="muted">No expected payments this month.</p>}{expected.map(r=>renderExpected(r))}
  {unscheduled.length>0&&<details className="unscheduled-recurring"><summary>Other recurring items <span>{unscheduled.length}</span></summary>{unscheduled.map(r=><div className="ledger-row" key={r.id}><button className="expected-item-title" onClick={()=>editRecurring(r)}><strong>{r.title}</strong><small>{recurringDescription(r)} · {!r.active?'Paused':!scheduledInMonth(month,r)?'Not due this month':'Schedule ended'}</small></button><span className="expected-amount"><strong>{money(r.amountCents)}</strong>{r.variable&&<small>Estimated</small>}</span></div>)}</details>}
  </BudgetSection></div>
@@ -98,7 +103,7 @@ function ExpectedItem({due,source,transaction,onEditRecurring,scope,...props}:{d
  function close(){if(!locked)setInitial(null);}
  function editActual(){
   setConfirming(!due.recorded);
-  setInitial(transaction||{id:due.id,version:0,data:transactionSchema.parse({date:due.date,kind:due.kind,amountCents:due.amountCents,categoryId:due.categoryId,categoryName:'',note:due.title,recurringId:source!.id,voided:false})});
+  setInitial(transaction||{id:due.id,version:0,data:transactionSchema.parse({date:due.date,kind:due.kind,amountCents:due.amountCents,categoryId:due.categoryId,categoryName:'',note:due.title,recurringId:source!.id,voided:false,...(source!.incomePlan?{incomeDetails:{grossCents:source!.amountCents,plan:source!.incomePlan}}:{})})});
  }
  function editName(){if(source)onEditRecurring(source);else if(transaction){setConfirming(false);setInitial(transaction);}}
  return <div className={`transaction-tile expected-item ${urgency}`}><div className="ledger-row"><button className="expected-item-title" aria-label={`Edit ${due.title}`} onClick={editName}><strong>{due.title}</strong><small>{formatDate(due.date)} · {due.kind} · {status}</small></button><button className="expected-amount" aria-label={`${due.recorded?'Edit payment for':'Confirm'} ${due.title}: ${money(due.recorded?due.actualCents:due.amountCents)}`} onClick={editActual}><strong>{money(due.recorded?due.actualCents:due.amountCents)}</strong>{due.variable&&!due.recorded&&<small>Estimated</small>}</button></div>

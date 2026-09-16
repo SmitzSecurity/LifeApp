@@ -1,4 +1,5 @@
 import {scheduledInMonth} from './budget-schedule.ts';
+import {incomeAllocationId,allocationIdPattern} from './income-planning.ts';
 import {trashState,retentionMs} from './trash.ts';
 import { z } from 'zod/v3';
 import { todayIn, type Profile } from './domain.ts';
@@ -18,7 +19,8 @@ export async function listResources(request:Request,db:Database,userId:string){
  const limit=kind.data==='transaction'?5001:kind.data==='workout'?101:121;
  const result=await db.prepare(`SELECT resource_id,payload,version,updated_at FROM life_resources WHERE user_id=?1 AND kind=?2${month?' AND period=?3':''} ORDER BY active_slot DESC, updated_at DESC LIMIT ${limit}`).bind(...(month?[userId,kind.data,month]:[userId,kind.data])).all<Row>();
  if(kind.data==='transaction'&&result.results.length===limit)return json({error:'This month exceeds the beta transaction limit. No partial budget totals are shown.'},413);
- return json({records:result.results.slice(0,limit-1).map(unpack),hasMore:result.results.length===limit});
+ const suppressedAllocations=kind.data==='transaction'?(await db.prepare("SELECT record_id FROM life_trash WHERE user_id=?1 AND kind='transaction' AND purged_at IS NOT NULL AND record_id LIKE ?2").bind(userId,'allocation:'+month+':%').all<{record_id:string}>()).results.map(row=>row.record_id):undefined;
+ return json({records:result.results.slice(0,limit-1).map(unpack),hasMore:result.results.length===limit,...(suppressedAllocations?{suppressedAllocations}:{})});
 }
 const envelope=z.object({kind:resourceKind,id:z.string().max(90),version:z.number().int().min(0),data:z.unknown()}).strict();
 export async function saveResource(body:unknown,db:Database,userId:string,profile:Profile|null,now:Date){
@@ -29,13 +31,13 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  const validation=resourceSchemas[kind].safeParse(parsed.data.data);
  if(!validation.success)return json({error:validation.error.issues[0]?.message||'Check this form.'},400);
  let data=validation.data;
- const validId=kind==='budget'?monthSchema.safeParse(id).success:z.string().uuid().safeParse(id).success||(kind==='transaction'&&/^due:\d{4}-(0[1-9]|1[0-2]):[0-9a-f-]{36}$/i.test(id));
+ const validId=kind==='budget'?monthSchema.safeParse(id).success:z.string().uuid().safeParse(id).success||(kind==='transaction'&&(/^due:\d{4}-(0[1-9]|1[0-2]):[0-9a-f-]{36}$/i.test(id)||allocationIdPattern.test(id)));
  if(!validId)return json({error:'Invalid record ID.'},400);
  const previous=await readResource(db,userId,kind,id);
  const trash=await trashState(db,userId,kind,id);
  if(trash?.purged_at||trash&&!(data as {deleted?:boolean}).deleted&&Date.parse(trash.deleted_at)+retentionMs<=now.valueOf())return json({error:'This item was permanently deleted or its restore period ended.'},410);
  const conflict=()=>json({error:'This record changed in another session. Your changes are still here. Reload the section before trying again.'},409);
- let period=kind==='budget'?id:'';
+ let period=kind==='budget'?id:'',allocationSourceVersion:number|undefined,incomePolicyGuard:{recurringId:string;policy:string|null}|undefined;
  if(kind==='workout-note'){
   const note=data as {date:string};period=note.date.slice(0,7);
   if(note.date>todayIn(profile.timezone,now))return json({error:'Choose today or an earlier workout date.'},400);
@@ -46,6 +48,16 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  }
  if(kind==='transaction'){
   const t=data as Transaction;period=t.date.slice(0,7);
+  if(previous&&previous.data.incomeSourceId!==t.incomeSourceId)return json({error:'Keep this transfer linked to its original income.'},400);
+  if(t.incomeSourceId){
+   if((t.kind!=='saving'&&t.kind!=='investing')||id!==incomeAllocationId(t.incomeSourceId,t.kind)||t.incomeSourceId.slice(4,11)!==period)return json({error:'Invalid income allocation.'},400);
+   if(!previous){
+    const source=await readResource(db,userId,'transaction',t.incomeSourceId);
+    if(!source||source.data.kind!=='income'||source.data.deleted||source.data.voided||source.data.planned||!source.data.incomeDetails?.plan[t.kind])return json({error:'This income allocation is no longer available. Reopen the budget.'},409);
+    allocationSourceVersion=source.version;
+   }
+  }else if(id.startsWith('allocation:'))return json({error:'Missing source income.'},400);
+  if(previous?.data.incomeDetails&&JSON.stringify(previous.data.incomeDetails.plan)!==JSON.stringify(t.incomeDetails?.plan))return json({error:'Saved income keeps its original withholding and transfer rules.'},400);
   if(!t.planned&&t.date>todayIn(profile.timezone,now))return json({error:'Actual payments need today or an earlier date. Save a future one-off payment as planned.'},400);
   if(previous?.data.planned&&t.planned!==true&&t.planned!==false)return json({error:'Confirm this planned payment before counting it as recorded.'},400);
   if(previous?.data.expectedDate&&!t.planned&&t.expectedDate!==previous.data.expectedDate)return json({error:'Keep the original expected date when confirming or correcting this payment.'},400);
@@ -59,6 +71,12 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    if(!recurring||recurring.kind!==t.kind||recurring.categoryId!==t.categoryId)return json({error:'This scheduled payment changed. Reload the monthly plan.'},409);
    if(!previous&&!scheduledInMonth(period,recurring))return json({error:'This payment is outside the saved schedule. Edit its schedule first.'},409);
    if(recurring.deleted&&!previous)return json({error:'This monthly item was deleted. Restore it in the monthly plan first.'},409);
+   if(t.incomeDetails&&!previous&&JSON.stringify(recurring.incomePlan)!==JSON.stringify(t.incomeDetails.plan))return json({error:'Income rules changed. Reopen the payment before confirming.'},409);
+   if(t.incomeDetails&&previous&&!previous.data.incomeDetails)return json({error:'Income rules apply when a new payment is confirmed.'},400);
+   if(!previous&&recurring.incomePlan&&!t.incomeDetails)return json({error:'Confirm the take-home amount and income rules before saving.'},400);
+   // Guard the policy itself, including its absence, rather than the whole
+   // monthly plan. Unrelated category edits must not invalidate confirmation.
+   if(!previous&&t.kind==='income')incomePolicyGuard={recurringId:t.recurringId,policy:recurring.incomePlan?JSON.stringify(recurring.incomePlan):null};
   }else if(id.startsWith('due:'))return json({error:'Missing scheduled occurrence.'},400);
   data={...t,...(t.planned?{expectedDate:t.expectedDate||t.date}:{}),categoryId:t.kind==='expense'?t.categoryId:'',categoryName:t.kind==='expense'?category!.name:''};
  }
@@ -87,9 +105,11 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  if(previous&&JSON.stringify(previous.data)===JSON.stringify(data))return json({record:previous});
  if((previous?.version||0)!==version)return conflict();
  const activeSlot=kind==='workout'&&!(data as Workout).finishedAt&&!(data as Workout).deleted?'active':null;
+ const insertGuard=allocationSourceVersion!==undefined?"EXISTS(SELECT 1 FROM life_resources WHERE user_id=?1 AND kind='transaction' AND resource_id=?9 AND version=?10)":incomePolicyGuard?"EXISTS(SELECT 1 FROM life_resources budget,json_each(budget.payload,'$.recurring') item WHERE budget.user_id=?1 AND budget.kind='budget' AND budget.resource_id=?4 AND json_extract(item.value,'$.id')=?9 AND json_extract(item.value,'$.kind')='income' AND COALESCE(json_extract(item.value,'$.deleted'),0)=0 AND json_extract(item.value,'$.incomePlan') IS ?10)":'true';
+ const guardParams=allocationSourceVersion!==undefined?[(data as Transaction).incomeSourceId,allocationSourceVersion]:incomePolicyGuard?[incomePolicyGuard.recurringId,incomePolicyGuard.policy]:[];
  try{
- const row=await db.prepare(`INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at,active_slot) VALUES(?1,?2,?3,?4,?5,1,?6,?7)
- ON CONFLICT(user_id,kind,resource_id) DO UPDATE SET period=excluded.period,payload=excluded.payload,version=life_resources.version+1,updated_at=excluded.updated_at,active_slot=excluded.active_slot WHERE life_resources.version=?8 RETURNING version`).bind(userId,kind,id,period,JSON.stringify(data),now.toISOString(),activeSlot,version).first<{version:number}>();
+ const row=await db.prepare(`INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at,active_slot) SELECT ?1,?2,?3,?4,?5,1,?6,?7 WHERE ${insertGuard}
+ ON CONFLICT(user_id,kind,resource_id) DO UPDATE SET period=excluded.period,payload=excluded.payload,version=life_resources.version+1,updated_at=excluded.updated_at,active_slot=excluded.active_slot WHERE life_resources.version=?8 RETURNING version`).bind(userId,kind,id,period,JSON.stringify(data),now.toISOString(),activeSlot,version,...guardParams).first<{version:number}>();
  if(!row)return conflict();return json({record:{id,data,version:row.version,updatedAt:now.toISOString()}});
  }catch(e){if(String(e).includes('UNIQUE constraint'))return conflict();throw e;}
 }

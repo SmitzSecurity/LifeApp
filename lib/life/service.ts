@@ -1,4 +1,5 @@
 import {readDebtPayments} from './debt-service.ts';
+import {BUDGET_UPLOAD_BYTES} from './budget-build-schema.ts';
 import {listTrash,changeTrash,trashState} from './trash.ts';
 import {setRecordDeleted} from './record-deletion.ts';
 import {generateTraining,personalExercises} from './training-ai.ts';
@@ -53,10 +54,10 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   const origin=request.headers.get('origin');
   if(request.headers.get('sec-fetch-site')==='cross-site'||(origin&&origin!==new URL(request.url).origin))return json({error:'Open LifeApp directly to save changes.'},403);
   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Expected JSON.'},415);
-  const budgetUpload=new URL(request.url).searchParams.has('budget-build'),limit=budgetUpload?1_500_000:65536;
-  if(Number(request.headers.get('content-length')||0)>limit)return json({error:'This entry or image is too large.'},413);
+  const budgetUpload=new URL(request.url).searchParams.has('budget-build'),limit=budgetUpload?BUDGET_UPLOAD_BYTES:65536;
+  if(Number(request.headers.get('content-length')||0)>limit)return json({error:'This entry or file is too large.'},413);
   const reader=request.body?.getReader(),chunks:Uint8Array[]=[];let size=0;
-  if(reader)for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>limit){await reader.cancel();return json({error:'This entry or image is too large.'},413);}chunks.push(part.value);}
+  if(reader)for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>limit){await reader.cancel();return json({error:'This entry or file is too large.'},413);}chunks.push(part.value);}
   const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}const bodyText=new TextDecoder().decode(bytes);
   let body:unknown;try{body=JSON.parse(bodyText)}catch{return json({error:'Invalid request.'},400);}
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);

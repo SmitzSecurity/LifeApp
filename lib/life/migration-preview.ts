@@ -1,5 +1,6 @@
-import {budgetSnapshotSchema,budgetBuildResult} from './budget-build-schema.ts';
+import {BUDGET_INPUT_BYTES,budgetSnapshotSchema,budgetBuildResult} from './budget-build-schema.ts';
 import {trashRowSchema} from './trash.ts';
+import {incomeAllocationId} from './income-planning.ts';
 import {workoutBuildResult,trainingResult} from './workout-ai-schema.ts';
 import {z} from 'zod/v3';
 import {dateSchema,habitSchema,profileSchema,moduleId,statusSchema} from './domain.ts';
@@ -24,7 +25,7 @@ const reviewRow=z.object({
  provider_id:z.string().max(500).nullable(),input_tokens:integer.nullable(),output_tokens:integer.nullable(),thought_tokens:integer.nullable(),
  reserved_micros:integer,cost_micros:integer.nullable(),created_at:timestamp,finished_at:timestamp.nullable(),error_code:z.string().max(200).nullable(),
 }).strict();
-const routineBuildRow=reviewRow.omit({entry_date:true,revision:true,source_version:true,predecessor_id:true,cadence:true,window_start:true,critique:true,report_text:true}).extend({request_id:z.string().regex(/^(?:routine|workout|training|budget):[0-9a-f-]{36}$/i),result_json:z.string().max(200000).nullable()}).strict();
+const routineBuildRow=reviewRow.omit({entry_date:true,revision:true,source_version:true,predecessor_id:true,cadence:true,window_start:true,critique:true,report_text:true}).extend({request_id:z.string().regex(/^(?:routine|workout|training|budget):[0-9a-f-]{36}$/i),input_snapshot:z.string().max(BUDGET_INPUT_BYTES),result_json:z.string().max(200000).nullable()}).strict().refine(r=>r.request_id.startsWith('budget:')?new TextEncoder().encode(r.input_snapshot).length<=BUDGET_INPUT_BYTES:r.input_snapshot.length<=48000);
 const emailData=z.object({consent:z.object({enabled:z.union([z.literal(0),z.literal(1)]),version,policy_version:z.string().max(100),recipient:z.string().email().max(254),enabled_at:timestamp,updated_at:timestamp}).strict().nullable(),
  deliveries:z.array(z.object({request_id:id,consent_version:version,state:z.enum(['pending','sending','sent','retry','failed','uncertain','cancelled']),attempts:integer,created_at:timestamp,next_attempt_at:timestamp,last_attempt_at:timestamp.nullable(),finished_at:timestamp.nullable(),message_id:z.string().max(500).nullable(),error_code:z.string().max(200).nullable()}).strict()).max(10000)}).strict();
 const backupSchema=z.object({format:z.literal('lifeapp-portable-v1'),exportedAt:timestamp,profile:row.nullable(),
@@ -87,7 +88,7 @@ export function validateBackup(text:string):Backup{
   if(r.kind==='budget')requireThat(monthSchema.safeParse(r.resource_id).success,'invalid_id',at);
   else if(r.kind==='transaction'){
    const t=data as Transaction;
-   requireThat(t.recurringId?r.resource_id===occurrenceId(r.period,t.recurringId):z.string().uuid().safeParse(r.resource_id).success,'invalid_occurrence_id',at);
+   requireThat(t.incomeSourceId?(t.kind==='saving'||t.kind==='investing')&&r.resource_id===incomeAllocationId(t.incomeSourceId,t.kind)&&t.incomeSourceId.slice(4,11)===r.period:t.recurringId?r.resource_id===occurrenceId(r.period,t.recurringId):z.string().uuid().safeParse(r.resource_id).success,'invalid_occurrence_id',at);
    const p=resources.get('budget:'+r.period);
    if(t.kind==='expense'||t.recurringId){requireThat(p,'missing_budget',at);
     const budget=resourceSchemas.budget.safeParse(parseJSON(p.payload,at));requireThat(budget.success,'invalid_budget',at);
@@ -95,7 +96,7 @@ export function validateBackup(text:string):Backup{
     if(t.recurringId)requireThat(budget.data.recurring.some(x=>x.id===t.recurringId),'missing_recurring_item',at);
    }
   }else if(r.kind==='ai-recovery'){
-   const grant=resourceSchemas['ai-recovery'].parse(data);requireThat(r.resource_id===grant.sourceId,'invalid_id',at);requireThat((b.routineBuilds||[]).some(job=>job.request_id==='workout:'+grant.sourceId&&job.status==='failed'),'missing_recovery_source',at);
+   const grant=resourceSchemas['ai-recovery'].parse(data);requireThat(r.resource_id===grant.sourceId,'invalid_id',at);requireThat((b.routineBuilds||[]).some(job=>job.request_id===(grant.purpose==='budget'?'budget:':'workout:')+grant.sourceId&&job.status===(grant.purpose==='budget'?'uncertain':'failed')&&(grant.purpose!=='budget'||!validate(z.record(z.unknown()),parseJSON(job.input_snapshot,at),at).recoveryOf)),'missing_recovery_source',at);
   }else if(r.kind==='visibility'){
    const v=resourceSchemas.visibility.parse(data);requireThat(r.resource_id===v.target+':'+v.id,'invalid_id',at);requireThat(v.target==='analysis'?b.reviews.some(r=>r.request_id===v.id):(b.routineBuilds||[]).some(r=>r.request_id===v.id),'missing_visibility_target',at);
   }else{

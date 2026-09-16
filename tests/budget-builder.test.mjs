@@ -7,8 +7,8 @@ import {handleLife} from '../lib/life/service.ts';
 import {budgetSchema,recurringSchema,transactionSchema,budgetSummary,occurrenceId} from '../lib/life/modules.ts';
 import {scheduledInMonth,firstScheduledMonth,scheduleDate} from '../lib/life/budget-schedule.ts';
 import {debtEstimate} from '../lib/life/debt.ts';
-import {budgetBuildInput,parseBudgetDraft,budgetImageSchema,budgetBuildResult,budgetOutputSchema,budgetInstruction} from '../lib/life/budget-build-schema.ts';
-import {geminiProvider,AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
+import {budgetBuildInput,parseBudgetDraft,budgetImageSchema,budgetBuildResult,budgetOutputSchema,budgetInstruction,BUDGET_UPLOAD_BYTES,BUDGET_TEXT_LIMIT} from '../lib/life/budget-build-schema.ts';
+import {geminiProvider,AI_MODEL,RESERVATION_MICROS,AIInputRejected} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 const now=new Date('2026-09-14T12:00:00.000Z'),month='2026-09';
 const debt={originalBalanceCents:60000,balanceCents:60000,balanceDate:'2026-08-31',annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0};
@@ -132,7 +132,7 @@ const hugePNG=Buffer.from(png.data,'base64');hugePNG.writeUInt32BE(9000,16);
 test('invalid or oversized image requests and missing consent fail before a reservation',async t=>{
  const f=fixture(t);await f.setup();for(const patch of [{consent:false},{text:'',image:undefined},{image:{mimeType:'image/svg+xml',data:png.data}},{image:{...png,data:'A'.repeat(1_400_004)}},{image:{...png,data:hugePNG.toString('base64')}}])assert.equal((await f.call(f.build(patch),'a','?budget-build')).status,400);
  assert.equal(f.state.calls.length,0);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_ai_usage').get().n,0);
- const huge=new Request('https://life.test/api/life?budget-build',{method:'POST',headers:{'Content-Type':'application/json'},body:' '.repeat(1_500_001)});assert.equal((await handleLife(huge,'a',f.db,now,f.ai)).status,413);
+ const huge=new Request('https://life.test/api/life?budget-build',{method:'POST',headers:{'Content-Type':'application/json'},body:' '.repeat(BUDGET_UPLOAD_BYTES+1)});assert.equal((await handleLife(huge,'a',f.db,now,f.ai)).status,413);
  assert.equal((await f.call({action:'profile',profile:{}},'a','?budget-build')).status,400);
 });
 test('Gemini budget requests use a fixed extraction instruction, JSON schema and inline image rather than arbitrary URLs',async()=>{
@@ -173,4 +173,69 @@ test('loan trash purges debt details but preserves payment references; AI draft 
  const trash=await (await f.call(null,'a','?trash')).json();assert.equal(trash.items[0].kind,'recurring');const row=trash.items[0];assert.equal((await f.call({action:'trash',change:{kind:row.kind,id:row.id,deletedAt:row.deletedAt,operation:'purge'}})).status,200);assert.equal((await f.plan()).data.recurring[0].debt,undefined);
  const request=f.build();const generated=await (await f.call(request)).json();await f.call({action:'record-deletion',change:{kind:'build',id:'budget:'+generated.build.id,deleted:true}});const list=await (await f.call(null,'a','?trash')).json(),build=list.items.find(i=>i.kind==='build');await f.call({action:'trash',change:{kind:'build',id:build.id,deletedAt:build.deletedAt,operation:'purge'}});
  assert.equal((await f.call(request)).status,410);assert.equal(f.raw.prepare('SELECT cost_micros FROM life_ai_usage').get().cost_micros,500);assert.ok(validateBackup(await (await f.call(null,'a','?export')).text()));
+});
+
+test('large budget documents retain every character and round-trip through exact retry and export',async t=>{
+ const f=fixture(t);await f.setup();const text='Synthetic monthly allowance $300.\n'.repeat(9800);
+ const request=f.build({text});assert.ok(text.length>320000);
+ const response=await f.call(request,'a','?budget-build');assert.equal(response.status,200);
+ assert.equal(f.state.calls[0].input.description,text.trim());assert.equal((await f.call(request,'a','?budget-build')).status,200);assert.equal(f.state.calls.length,1);
+ assert.ok(validateBackup(await (await f.call(null,'a','?export')).text()));
+ assert.equal((await f.call(f.build({text:'x'.repeat(BUDGET_TEXT_LIMIT+1)}),'a','?budget-build')).status,400);
+ assert.equal((await f.call(f.build({text:'界'.repeat(350000)}),'a','?budget-build')).status,413);
+});
+const pdf={mimeType:'application/pdf',data:Buffer.from('%PDF-1.7\nSynthetic fixture only\n%%EOF').toString('base64')};
+test('PDFs are signature bounded, mutually exclusive with images and fingerprinted for retries',async t=>{
+ const f=fixture(t);await f.setup();const request=f.build({text:'',document:pdf});assert.equal((await f.call(request,'a','?budget-build')).status,200);assert.deepEqual(f.state.calls[0].image,pdf);
+ const snapshot=f.raw.prepare('SELECT input_snapshot FROM life_routine_builds').get().input_snapshot;assert.match(snapshot,/application\/pdf/);assert.doesNotMatch(snapshot,/Synthetic fixture/);
+ assert.equal((await f.call(request,'a','?budget-build')).status,200);assert.equal(f.state.calls.length,1);
+ assert.equal((await f.call({...request,build:{...request.build,document:{...pdf,data:Buffer.from('%PDF-1.7\nChanged\n%%EOF').toString('base64')}}},'a','?budget-build')).status,409);
+ for(const patch of [{document:pdf,image:png},{document:{...pdf,data:Buffer.from('<html>Not a PDF</html>').toString('base64')}},{document:{...pdf,mimeType:'text/html'}}])assert.equal((await f.call(f.build(patch),'a','?budget-build')).status,400);
+ assert.ok(validateBackup(await (await f.call(null,'a','?export')).text()));
+});
+test('large/PDF inputs preflight complete token cost before generation, keeping existing reservation',async()=>{
+ for(const [text,attachment] of [['x'.repeat(320000),undefined],['{}',pdf]]){
+  const calls=[];const provider=geminiProvider('synthetic-key',async(url,init)=>{calls.push({url,body:JSON.parse(init.body)});return url.endsWith(':countTokens')?Response.json({totalTokens:170000}):Response.json({candidates:[{content:{parts:[{text:JSON.stringify(output)}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:170000,candidatesTokenCount:100,totalTokenCount:170100}});});
+  const result=await provider.generate(text,'budget',attachment);assert.equal(calls.length,2);assert.match(calls[0].url,/:countTokens$/);assert.equal(calls[0].body.generateContentRequest.contents[0].parts[0].text,text);
+  assert.deepEqual(calls[0].body.generateContentRequest.contents,calls[1].body.contents);assert.ok(result.costMicros<RESERVATION_MICROS);
+ }
+ for(const reply of [()=>Response.json({totalTokens:180001}),()=>new Response('no',{status:503}),()=>Response.json({totalTokens:-1}),()=>{throw Error('network');}]){
+  let calls=0;const provider=geminiProvider('synthetic',async url=>{calls++;assert.match(url,/:countTokens$/);return reply();});
+  await assert.rejects(provider.generate('{}','budget',pdf),AIInputRejected);assert.equal(calls,1);
+ }
+});
+test('known input preflight failures release only their own reservation and cannot become a permanent block',async t=>{
+ const f=fixture(t);await f.setup();f.state.hook=()=>{throw new AIInputRejected('Use a smaller file.');};
+ const request=f.build({document:pdf});assert.equal((await f.call(request,'a','?budget-build')).status,422);
+ const row=f.raw.prepare('SELECT status,cost_micros,error_code FROM life_ai_usage').get();assert.equal(row.status,'failed');assert.equal(row.cost_micros,0);assert.equal(row.error_code,'input_preflight_rejected');
+ assert.equal((await f.call(request,'a','?budget-build')).status,200);assert.equal(f.state.calls.length,1);
+ f.state.hook=null;assert.equal((await f.call(f.build(),'a','?budget-build')).status,200);
+});
+
+test('granted budget recovery works through HTTP once, retains old hold and restores building only after known outcome',async t=>{
+ const f=fixture(t);await f.setup();f.state.hook=()=>{throw Error('unconfirmed');};const old=f.build();await f.call(old);
+ const sourceId=old.build.requestId,stamp=now.toISOString();f.raw.prepare('INSERT INTO life_resources VALUES(?,?,?,?,?,1,?,NULL)').run('a','ai-recovery',sourceId,'',JSON.stringify({sourceId,purpose:'budget',expiresAt:'2026-09-16T12:00:00.000Z'}),stamp);
+ let list=await (await f.call(null,'a','?budget-builds')).json();assert.equal(list.recovery.sourceId,sourceId);assert.equal(list.blockedReason,null);
+ assert.equal((await f.call(f.build())).status,429);f.state.hook=null;const retry=f.build({recoveryOf:sourceId});
+ assert.equal((await f.call(retry)).status,200);assert.equal((await f.call(retry)).status,200);assert.equal(f.state.calls.length,2);
+ assert.equal((await f.call(f.build({recoveryOf:sourceId}))).status,429);
+ list=await (await f.call(null,'a','?budget-builds')).json();assert.equal(list.recovery,null);assert.equal(list.builds.find(b=>b.id===sourceId).resolvedBlocker,true);assert.equal(list.blockedReason,null);
+ const original=f.raw.prepare('SELECT status,cost_micros,reserved_micros FROM life_routine_builds WHERE request_id=?').get('budget:'+sourceId);assert.equal(original.status,'uncertain');assert.equal(original.cost_micros,null);assert.equal(original.reserved_micros,RESERVATION_MICROS);
+ assert.equal((await f.call(f.build())).status,429); // regular daily purpose limit still applies
+ assert.equal((await f.call(f.build(),'a','',new Date('2026-09-17T12:00:00Z'))).status,200); // even after grant expiry
+ assert.ok(validateBackup(await (await f.call(null,'a','?export')).text()));
+});
+test('unknown recovery or unrelated pending job blocks new builds without freeing either reservation',async t=>{
+ const f=fixture(t);await f.setup();f.state.hook=()=>{throw Error('unconfirmed');};const old=f.build();await f.call(old);const sourceId=old.build.requestId;
+ f.raw.prepare('INSERT INTO life_resources VALUES(?,?,?,?,?,1,?,NULL)').run('a','ai-recovery',sourceId,'',JSON.stringify({sourceId,purpose:'budget',expiresAt:'2026-09-16T12:00:00.000Z'}),now.toISOString());
+ assert.equal((await f.call(f.build({recoveryOf:sourceId}))).status,502);const list=await (await f.call(null,'a','?budget-builds')).json();assert.equal(list.recovery,null);assert.match(list.blockedReason,/unconfirmed/);
+ assert.equal((await f.call(f.build(),'a','',new Date('2026-09-15T12:00:00Z'))).status,429);assert.equal(f.raw.prepare('SELECT SUM(reserved_micros) n FROM life_ai_usage WHERE cost_micros IS NULL').get().n,RESERVATION_MICROS*2);
+});
+
+test('a budget recovery grant never hides or bypasses an unrelated pending build',async t=>{
+ const f=fixture(t);await f.setup();f.state.hook=()=>{throw Error('unconfirmed');};const old=f.build();await f.call(old);const sourceId=old.build.requestId,stamp=now.toISOString();
+ f.raw.prepare('INSERT INTO life_resources VALUES(?,?,?,?,?,1,?,NULL)').run('a','ai-recovery',sourceId,'',JSON.stringify({sourceId,purpose:'budget',expiresAt:'2026-09-16T12:00:00.000Z'}),stamp);
+ f.raw.prepare("INSERT INTO life_routine_builds(user_id,request_id,status,input_snapshot,model,price_version,reserved_micros,created_at) VALUES(?,?,'generating','{}',?,?,?,?)").run('a','routine:'+randomUUID(),AI_MODEL,'synthetic',RESERVATION_MICROS,stamp);
+ const listed=await (await f.call(null,'a','?budget-builds')).json();assert.equal(listed.recovery.sourceId,sourceId);assert.match(listed.blockedReason,/unconfirmed/);
+ assert.equal((await f.call(f.build({recoveryOf:sourceId}))).status,429);assert.equal(f.state.calls.length,1);
 });
