@@ -7,6 +7,7 @@ import { handleLife } from '../lib/life/service.ts';
 import { DraftSync } from '../lib/life/draft-sync.ts';
 import {settingsForAI} from '../lib/life/ai-configuration.ts';
 import {limitsForAI} from '../lib/life/ai-limits.ts';
+import {budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
 import { geminiProvider,tokenCostMicros,AI_MODEL,MAX_OUTPUT_TOKENS,RESERVATION_MICROS,AIRequestRejected,rejectionCategory } from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-09T12:00:00Z');
 const profile={goal:'Synthetic goal: read consistently',timezone:'UTC',modules:['reflection'],habits:[],version:0};
@@ -23,16 +24,17 @@ function fixture(provider={generate:async()=>result},caps={}){
 const review=(overrides={})=>({action:'ai',review:{date:'2026-09-08',requestId:randomUUID(),sourceVersion:1,predecessorId:null,critique:'',consent:true,...overrides}});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 
-test('Gemini structured output uses the documented MIME and JSON-schema fields without mixing format contracts',async()=>{
+test('budget instructs the full JSON shape while workout alone uses provider schema configuration',async()=>{
  const contract=JSON.parse(readFileSync('tests/fixtures/gemini-output-format.json','utf8'));
  assert.equal(contract.properties.responseMimeType.type,'string');assert.equal(contract.properties.responseJsonSchema.type,'any');
  let body;const provider=geminiProvider('synthetic',async(url,init)=>{body=JSON.parse(init.body);return Response.json({candidates:[{content:{parts:[{text:'{}'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:1,candidatesTokenCount:1,totalTokenCount:2}});});
  for(const purpose of ['budget','workout',undefined,'routine','training']){
   await provider.generate('{}',purpose);
   const config=body.generationConfig;assert.equal(config.responseFormat,undefined);assert.equal(config.responseSchema,undefined);
-  if(['budget','workout'].includes(purpose)){
+  if(purpose==='workout'){
    assert.equal(config.responseMimeType,'application/json');assert.ok(contract.properties.responseMimeType.supported.includes(config.responseMimeType));assert.equal(config.responseJsonSchema.type,'object');assert.ok(config.responseJsonSchema.properties);
   }else{assert.equal(config.responseMimeType,undefined);assert.equal(config.responseJsonSchema,undefined);}
+  if(purpose==='budget')assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(budgetOutputSchema)));
  }
 });
 

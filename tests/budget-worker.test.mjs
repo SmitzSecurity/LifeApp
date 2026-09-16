@@ -6,10 +6,10 @@ import {createHash,randomBytes,randomUUID} from 'node:crypto';
 import {serializeSignedCookie} from 'better-call';
 import {AI_MODEL,RESERVATION_MICROS} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
+import {budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
 
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const output={notes:'Synthetic compiled budget draft.',categories:[{name:'Groceries',limitCents:40000}],recurring:[]};
-const outputMimeContract=JSON.parse(readFileSync('tests/fixtures/gemini-output-format.json','utf8'));
 function pdfDocument(){
  let pdf='%PDF-1.4\n';const offsets=[0],objects=['<< /Type /Catalog /Pages 2 0 R >>','<< /Type /Pages /Kids [3 0 R] /Count 1 >>','<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R >>','<< /Length 0 >>\nstream\n\nendstream'];
  objects.forEach((body,index)=>{offsets.push(Buffer.byteLength(pdf));pdf+=`${index+1} 0 obj\n${body}\nendobj\n`;});
@@ -26,9 +26,8 @@ async function fixture(t,{countTokens=100000,rejectGeneration=false}={}){
  for(const operation of ['countTokens','generateContent'])mock.intercept({path:`/v1beta/models/${AI_MODEL}:${operation}`,method:'POST'}).reply(rejectGeneration&&operation==='generateContent'?400:200,async options=>{
   const body=JSON.parse(await new Response(options.body).text());calls.push({operation,body});
   if(operation==='generateContent'){
-   assert.equal(body.generationConfig.responseMimeType,'application/json');
-   assert.ok(outputMimeContract.properties.responseMimeType.supported.includes(body.generationConfig.responseMimeType),'REST responseMimeType must use a documented media MIME string');
-   assert.equal(body.generationConfig.responseJsonSchema.type,'object');assert.ok(body.generationConfig.responseJsonSchema.properties.recurring);
+   assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(budgetOutputSchema)));
+   assert.equal(body.generationConfig.responseMimeType,undefined);assert.equal(body.generationConfig.responseJsonSchema,undefined);
    assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);
    if(rejectGeneration)return JSON.stringify({error:{code:400,status:'INVALID_ARGUMENT',message:'Synthetic request rejected'}});
   }

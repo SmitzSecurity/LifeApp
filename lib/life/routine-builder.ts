@@ -62,9 +62,7 @@ export async function buildRoutines(db:Database,userId:string,body:unknown,setti
    const code=error instanceof AIRequestRejected?'provider_request_rejected':'input_preflight_rejected';
    const row=await db.prepare("UPDATE life_routine_builds SET status='failed',error_code=?4,cost_micros=0,input_tokens=0,output_tokens=0,thought_tokens=0,finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,id,finished,code).first();
    if(!row)await db.prepare("UPDATE life_deleted_ai_usage SET status='failed',error_code=?4,cost_micros=0,input_tokens=0,output_tokens=0,thought_tokens=0,finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,id,finished,code).first();
-   const owner=settings.ownerPrototype;
-   const diagnostic=error instanceof AIRequestRejected&&purpose==='budget'&&owner?.userId===userId&&now.valueOf()<Date.parse(owner.expiresAt)&&now.valueOf()<Date.parse('2026-09-17T00:00:00Z')?error.diagnostic:undefined;
-   return json({error:error.message+(diagnostic?' Owner diagnostic: '+diagnostic:'')},422);
+   return json({error:error.message},422);
   }
   const row=await db.prepare("UPDATE life_routine_builds SET status='uncertain',error_code='provider_or_storage_unconfirmed',finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,id,finished).first();
   if(!row)await db.prepare("UPDATE life_deleted_ai_usage SET status='uncertain',error_code='provider_or_storage_unconfirmed',finished_at=?3 WHERE user_id=?1 AND request_id=?2 AND status='generating' RETURNING request_id").bind(userId,id,finished).first();
