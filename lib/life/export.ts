@@ -13,7 +13,7 @@ export async function exportAccount(db:Database,userId:string,now:Date){
   if(estimatedBytes>8*1024*1024)return Response.json({error:'Your history needs a paginated export. No partial backup was produced.'},{status:413});
   const rows=await db.prepare(`SELECT * FROM ${table} WHERE user_id=?1 LIMIT 10001`).bind(userId).all<Record<string,unknown>>();
   if(rows.results.length>10000)return Response.json({error:'Your history needs a paginated export. No partial backup was produced.'},{status:413});
-  data[name]=rows.results.map(({user_id,...row})=>row);
+  data[name]=rows.results.map(source=>{const row={...source};delete row.user_id;return row;});
  }
  const consent=await db.prepare('SELECT enabled,version,policy_version,recipient,enabled_at,updated_at FROM life_email_consent WHERE user_id=?1').bind(userId).first();
  const count=await db.prepare('SELECT COUNT(*) AS n FROM life_email_outbox WHERE user_id=?1').bind(userId).first<{n:number}>();

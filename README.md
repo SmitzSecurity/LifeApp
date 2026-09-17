@@ -27,6 +27,8 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 
 ## Implemented
 
+- [Prelaunch hardening](docs/prelaunch-hardening.md): explicit save-conflict recovery, lost-acknowledgement safeguards, request limits, dependency patches and narrow-screen corrections, with remaining paid-onboarding decisions documented.
+
 - [Transaction capture](docs/transaction-import.md): a persistent Budget + opens manual logging or reviewed receipt/statement extraction, category suggestions and creation, duplicate checks and atomic multi-month imports; Settings has a stable Cancel/Save footer.
 
 - [Focused workout sessions](docs/workout-session-flow.md): editable session previews and muscle coverage, optional template saves, focused exercise/rest logging, skip set/rest, last-set performance across programs, licensed movement demonstrations and exercise guide links, finish/cancel choices with exact retries, automatic read-only reconciliation, and aligned training/Budget footer tools.

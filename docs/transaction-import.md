@@ -14,6 +14,8 @@ Saving submits one frozen reviewed batch to the bounded `?transaction-import` en
 
 The internal `transaction-import` receipt keeps IDs and hashes, not receipt images or transaction descriptions. It remains after individual transaction deletion to prevent replay; account deletion removes it with other resources. Export validation includes receipts and the new AI snapshot/result shape. No migration, runtime flag, cap, consent, Cron or production change is required. After use, do not roll back to code that rejects transaction build intents or import receipts.
 
+The prelaunch review adds Delete to completed or failed transaction drafts in Saved drafts. It uses the existing `budget:` build visibility action and seven-day Trash; restoring the draft preserves its source, extracted rows and accounting. Deleting a draft does not delete transactions already adopted from it. Generating or uncertain jobs do not expose this action. An unconfirmed deletion retains its exact build identity, a reachable Retry delete action and navigation/write locks; it never replays extraction or releases usage holds. A later authentication rejection cannot settle a previously unconfirmed extraction, import or deletion, so those exact retry snapshots remain available after a subsequent 401/403 response.
+
 Settings also uses a scrolling form above a persistent Cancel/Save footer. Automation & email stays with the fields. The former inline Settings saved label and save-success banner are removed; errors and existing settings save/cancel behavior remain.
 
 ## Verification

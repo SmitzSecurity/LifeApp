@@ -68,7 +68,7 @@ test('compiled multi-payday budget preserves undo, reassignment, card transfers 
  let removed=await save({...first,data:{...first.data,deleted:true}});
  const previous=plan.data.recurring.find(r=>r.id===bill),change={kind:'recurring',month,previous,item:{...previous,categoryId:other}};
  assert.equal((await f.call({action:'budget-item',change})).status,400,'An independently active occurrence still protects its category');
- second=await save({...second,data:{...second.data,deleted:true}});
+ second=await save({...second,data:{...second.data,deleted:true}});assert.equal(second.version,2);assert.equal(second.data.deleted,true);
  plan=await ok({action:'budget-item',change});
  removed=await save({...removed,data:{...removed.data,categoryId:other,deleted:false}});
  const replay=await save({...removed,version:removed.version-1});assert.equal(replay.version,removed.version,'Exact retries do not add another payment');

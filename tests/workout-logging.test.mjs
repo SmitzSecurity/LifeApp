@@ -5,12 +5,11 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
-import {renderReportMarkdown} from '../lib/life/report-markdown.ts';
-import {reportEmail} from '../lib/life/email-service.ts';
-import {exercisePresets,presetExercise,repTarget} from '../lib/life/exercise-presets.ts';
+import {presetExercise} from '../lib/life/exercise-presets.ts';
 import {exerciseSchema,workoutSchema,nextSet,structuredWorkoutSchema,workoutTotals} from '../lib/life/modules.ts';
-import {createWorkoutSession,extendWorkoutRest,skipCurrentSet,sameRoutinePlan} from '../lib/life/workout-session.ts';
-import {validateBackup,previewMigration} from '../lib/life/migration-preview.ts';
+import {createWorkoutSession,extendWorkoutRest,skipCurrentSet,sameRoutinePlan,definiteWorkoutRejection} from '../lib/life/workout-session.ts';
+import {copyRoutineDraft} from '../lib/life/routine-recovery.ts';
+import {validateBackup} from '../lib/life/migration-preview.ts';
 import {AI_MODEL,RESERVATION_MICROS,geminiProvider} from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-14T12:00:00.000Z');
 const description='Push / pull split, dumbbells and cables, muscle growth. About 45 minutes.';
@@ -32,7 +31,6 @@ function fixture(t){
 
 
 import {recordedVolume} from '../lib/life/muscle-volume.ts';
-import {consumeReportEmails} from '../lib/life/email-service.ts';
 
 const written={notes:'Check the unfamiliar movement.',name:'Written push',exercises:[{name:'Bench press',unit:'lb',reps:6,repMax:10,restSeconds:150,muscles:{direct:['forearms'],indirect:[]},logged:[{reps:8,load:100,warmup:true},{reps:8,load:135,warmup:false},{reps:7,load:135,warmup:false}]},{name:'Synthetic custom cable press',unit:'lb',reps:8,repMax:12,restSeconds:120,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:12,load:30,warmup:false}]}]};
 const write=(id=randomUUID())=>({action:'workout-build',build:{requestId:id,text:'Completed bench: warm-up 100 x 8, 135 x 8/7 lb; custom cable press 30 lb x 12.',consent:true}});
@@ -241,6 +239,59 @@ test('customized session snapshots add, remove and edit exercises without changi
  const result=await confirmed('workout',logged);assert.deepEqual(result.data.exercises,saved.data.exercises);
  assert.equal((await (await f.call(null,'a','?training-summary')).json()).current.sets,1);
  validateBackup(await (await f.call(null,'a','?export')).text());
+});
+
+test('stale program drafts recover as explicit copies or a reviewed saved version without overwriting concurrent edits',async t=>{
+ const f=fixture(t);await f.setup();
+ const save=(kind,{id,version,data})=>f.call({action:'resource',record:{kind,id,version,data}});
+ const confirmed=async(kind,record)=>{const response=await save(kind,record);assert.equal(response.status,200,await response.clone().text());return (await response.json()).record;};
+ const original=await confirmed('routine',{id:randomUUID(),version:0,data:{name:'Shared program',preferences:'Original preference',archived:false,exercises:[presetExercise('Bench press')]}});
+ const local={...structuredClone(original),data:{...structuredClone(original.data),name:'My edited program',exercises:original.data.exercises.map(exercise=>({...exercise,reps:7,repMax:11}))}};
+ const remote=await confirmed('routine',{...original,data:{...original.data,preferences:'Saved elsewhere',exercises:original.data.exercises.map(exercise=>({...exercise,sets:2}))}});
+ for(let i=0;i<2;i++)assert.equal((await save('routine',local)).status,409);
+ const latest=(await (await f.call(null,'a','?kind=routine')).json()).records.find(record=>record.id===original.id);
+ assert.equal(latest.version,remote.version);assert.equal(local.version,original.version);assert.equal(local.data.name,'My edited program');
+ const frozenCopy=copyRoutineDraft(local),copied=await confirmed('routine',frozenCopy);
+ assert.notEqual(copied.id,original.id);assert.notEqual(copied.data.exercises[0].id,original.data.exercises[0].id);assert.equal(copied.data.exercises[0].reps,7);assert.equal(copied.version,1);
+ assert.deepEqual(await confirmed('routine',frozenCopy),copied,'lost copy acknowledgement retries the same identity');
+ assert.deepEqual((await (await f.call(null,'a','?kind=routine')).json()).records.find(record=>record.id===original.id),remote);
+ const resumed={...structuredClone(latest),data:{...structuredClone(latest.data),name:'Edited after reviewing latest'}};
+ const saved=await confirmed('routine',resumed);assert.equal(saved.version,3);assert.equal(saved.data.preferences,'Saved elsewhere');assert.equal(saved.data.exercises[0].sets,2);
+ assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE kind='routine'").get().n,2);assert.equal(f.state.calls.length,0);
+});
+
+test('lost workout and template acknowledgements remain frozen through an authentication rejection',async t=>{
+ const f=fixture(t);await f.setup();
+ const template={id:randomUUID(),version:0,data:{name:'Frozen template',preferences:'',archived:false,exercises:[presetExercise('Bench press')]}};
+ const save=(kind,record,id='a')=>f.call({action:'resource',record:{kind,id:record.id,version:record.version,data:record.data}},id);
+ const savedTemplate=(await (await save('routine',template)).json()).record;
+ for(const [kind,record] of [['routine',copyRoutineDraft(savedTemplate)],['workout',createWorkoutSession(savedTemplate,'2026-09-14')]]){
+  const frozen=structuredClone(record),committed=await save(kind,record);assert.equal(committed.status,200);const saved=(await committed.json()).record;
+  // The first acknowledgement is lost; the next exact retry finds an expired session.
+  const rejected=await save(kind,record,null);assert.equal(rejected.status,401);
+  assert.equal(definiteWorkoutRejection(rejected.status,true,record.version),false);
+  assert.deepEqual(record,frozen);const retried=await save(kind,record);assert.equal(retried.status,200);assert.deepEqual((await retried.json()).record,saved);
+ }
+ for(const status of [400,401,403,409,410,413,429])assert.equal(definiteWorkoutRejection(status,true,1),false);
+ assert.equal(definiteWorkoutRejection(409,true,1,1),false);assert.equal(definiteWorkoutRejection(409,true,1,2),true);
+ assert.equal(definiteWorkoutRejection(401,true,1,2),false);assert.equal(definiteWorkoutRejection(400,false,1),true);
+ assert.equal(definiteWorkoutRejection(undefined,false,1),false);assert.equal(definiteWorkoutRejection(503,false,1),false);
+});
+
+test('a template conflict preserves an edited session for begin-without-save or save-as-new choices',async t=>{
+ const f=fixture(t);await f.setup();
+ const save=(kind,{id,version,data})=>f.call({action:'resource',record:{kind,id,version,data}});
+ const confirmed=async(kind,record)=>{const response=await save(kind,record);assert.equal(response.status,200,await response.clone().text());return (await response.json()).record;};
+ const template=await confirmed('routine',{id:randomUUID(),version:0,data:{name:'Template',preferences:'',archived:false,exercises:[presetExercise('Bench press')]}});
+ const preview={...structuredClone(template),data:{...structuredClone(template.data),name:'Edited session',exercises:template.data.exercises.map(exercise=>({...exercise,sets:4}))}};
+ const remote=await confirmed('routine',{...template,data:{...template.data,name:'Renamed elsewhere'}});
+ assert.equal((await save('routine',preview)).status,409);
+ const session=await confirmed('workout',createWorkoutSession(preview,'2026-09-14'));assert.equal(session.data.name,'Edited session');assert.equal(session.data.exercises[0].sets,4);
+ assert.equal((await (await f.call(null,'a','?kind=routine')).json()).records.find(record=>record.id===template.id).data.name,remote.data.name);
+ await confirmed('workout',{...session,data:{...session.data,finishedAt:now.toISOString()}});
+ const frozenCopy=copyRoutineDraft(preview,'Separate template'),savedCopy=await confirmed('routine',frozenCopy);
+ const next=await confirmed('workout',createWorkoutSession(savedCopy,'2026-09-14'));assert.equal(next.data.routineId,savedCopy.id);assert.equal(next.data.exercises[0].sets,4);
+ assert.deepEqual(await confirmed('routine',frozenCopy),savedCopy);assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE kind='routine'").get().n,2);
 });
 
 test('saving a customized preview to its template or a new template remains a separate versioned write',async t=>{

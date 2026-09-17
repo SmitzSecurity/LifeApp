@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogCancel} from '@/components/ui/alert-dialog';
 
@@ -7,7 +7,8 @@ export default function AccountSettings({disabled,onBusy,onDeleted,open:controll
  const [localOpen,setLocalOpen]=useState(false),[confirmation,setConfirmation]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const open=controlledOpen??localOpen;
  const setOpen=onOpenChange??setLocalOpen;
- useEffect(()=>{if(open){setConfirmation('');setError('');}},[open]);
+ const [previousOpen,setPreviousOpen]=useState(open);
+ if(previousOpen!==open){setPreviousOpen(open);if(open){setConfirmation('');setError('');}}
  async function remove(){
   if(confirmation!=='DELETE'||busy)return;
   setBusy(true);onBusy(true);setError('');

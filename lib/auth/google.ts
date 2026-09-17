@@ -5,6 +5,7 @@ import {drizzleAdapter} from '@better-auth/drizzle-adapter';
 import {drizzle,type AnyD1Database} from 'drizzle-orm/d1';
 import * as schema from '../../db/auth-schema.ts';
 import {googleConfig,permittedGoogleUser,type AuthEnvironment} from './config.ts';
+import {readBoundedText} from '../request-body.ts';
 export function createGoogleAuth(db:AnyD1Database,env:AuthEnvironment){
  const c=googleConfig(env);
  return betterAuth({
@@ -43,12 +44,15 @@ export async function handleGoogleAuth(request:Request,auth:ReturnType<typeof cr
  if(!allowed.includes(request.method+' '+path))return Response.json({error:'Not found'},{status:404});
  if(request.method==='POST'){
   if(request.headers.get('origin')!==googleConfig(env).origin||!request.headers.get('content-type')?.startsWith('application/json'))return Response.json({error:'Open LifeApp directly to continue.'},{status:403});
-  const text=await request.clone().text();if(new TextEncoder().encode(text).length>4096)return Response.json({error:'Request too large'},{status:413});
+  const read=await readBoundedText(request,4096);if(!read.ok)return Response.json({error:read.status===413?'Request too large':'Invalid request'},{status:read.status});
+  const text=read.text;
   let body;try{body=JSON.parse(text);}catch{return Response.json({error:'Invalid request'},{status:400});}
   if(!body||typeof body!=='object'||Array.isArray(body))return Response.json({error:'Invalid request'},{status:400});
   const params=typeof body.callbackURL==='string'&&body.callbackURL.startsWith('/?date=')?new URLSearchParams(body.callbackURL.slice(2)):null;
   const safeCallback=body.callbackURL==='/'||!!params&&body.callbackURL==='/'+savedDayQuery(params.get('date'),params.get('analysis'));
   if(path.endsWith('/sign-in/social')&&(body.provider!=='google'||!safeCallback||Object.keys(body).some(k=>!['provider','callbackURL'].includes(k))))return Response.json({error:'Use the Google sign-in button.'},{status:400});
+  // The original stream was bounded and consumed; pass only validated bytes on.
+  request=new Request(request.url,{method:request.method,headers:request.headers,body:text,redirect:request.redirect,signal:request.signal});
  }
  const response=await auth.handler(request),headers=new Headers(response.headers);
  headers.set('Cache-Control','private, no-store');headers.set('X-Content-Type-Options','nosniff');

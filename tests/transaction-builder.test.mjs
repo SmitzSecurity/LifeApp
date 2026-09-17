@@ -144,6 +144,23 @@ test('unknown transaction extraction retains the shared reservation and blocks f
  assert.ok(validateBackup(await (await f.call(null,'a','?export')).text()));
 });
 
+test('transaction draft deletion and Restore preserve source results, accounting and unrelated financial records',async t=>{
+ const f=fixture(t);await f.setup();await f.setup('b');await f.seed(month,[{id:categoryId,name:'Groceries',limitCents:30000}]);
+ const built=await (await f.call(f.build())).json(),id='budget:'+built.build.id;
+ const before=f.raw.prepare('SELECT input_snapshot,result_json,status FROM life_routine_builds WHERE request_id=?').get(id);
+ const usage=f.raw.prepare('SELECT * FROM life_ai_usage').all(),budget=f.raw.prepare("SELECT * FROM life_resources WHERE kind='budget'").all();
+ const remove={action:'record-deletion',change:{kind:'build',id,deleted:true}};
+ assert.equal((await f.call(remove,'b')).status,404);
+ assert.equal((await f.call(remove)).status,200);assert.equal((await f.call(remove)).status,200);
+ const summary=await (await f.call(null,'a','?budget-builds&summary=1')).json();assert.equal(summary.builds.find(row=>row.id===built.build.id).deleted,true);
+ const trash=await (await f.call(null,'a','?trash')).json(),item=trash.items.find(row=>row.id===id);assert.ok(item);assert.equal(item.kind,'build');
+ assert.equal((await f.call({action:'trash',change:{kind:item.kind,id,deletedAt:item.deletedAt,operation:'restore'}})).status,200);
+ assert.deepEqual(f.raw.prepare('SELECT input_snapshot,result_json,status FROM life_routine_builds WHERE request_id=?').get(id),before);
+ assert.deepEqual(f.raw.prepare('SELECT * FROM life_ai_usage').all(),usage);assert.deepEqual(f.raw.prepare("SELECT * FROM life_resources WHERE kind='budget'").all(),budget);
+ const restored=await (await f.call(null,'a','?budget-builds&summary=1')).json();assert.equal(restored.builds.find(row=>row.id===built.build.id).deleted,false);
+ assert.equal(f.state.calls.length,1);
+});
+
 test('exports retain transaction context and reject tampered cross-month category suggestions',async t=>{
  const f=fixture(t);await f.setup();await f.seed(month,[{id:categoryId,name:'Groceries',limitCents:30000}]);await f.call(f.build());
  const exported=await (await f.call(null,'a','?export')).text();assert.ok(validateBackup(exported));

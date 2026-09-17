@@ -1,6 +1,7 @@
 "use client";
 import {formatDate,formatMonth} from '@/lib/life/date-display';
 import {useCallback,useEffect,useRef,useState} from 'react';
+import Image from 'next/image';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter} from '@/components/ui/dialog';
 import {money,type Budget,type Saved} from '@/lib/life/modules';
@@ -12,7 +13,7 @@ import {Choice,request} from './shared';
 import RecurringDialog,{recurringDescription} from './budget-recurring';
 import LoanDialog from './loan-builder';
 import {useAIStatus} from './use-ai-status';
-import {CurrencyInput,useBudgetDirty,useItemSave,type DirtyReporter} from './budget-fields';
+import {CurrencyInput,useBudgetDirty,useItemSave,definiteBudgetRejection,type DirtyReporter} from './budget-fields';
 
 type Build={id:string;month?:string;intent?:'loans'|'transactions';status:string;deleted?:boolean;errorCode?:string|null;resolvedBlocker?:boolean;result:BudgetBuildResult|null};
 type Recovery={sourceId:string;expiresAt:string};
@@ -35,9 +36,9 @@ export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{inte
  const loanMode=intent==='loans';
  const [text,setText]=useState(''),[attachment,setAttachment]=useState<BudgetAttachment>(),[preparing,setPreparing]=useState(false),[busy,setBusy]=useState(false),[available,setAvailable]=useState(false),[loaded,setLoaded]=useState(false),[builds,setBuilds]=useState<Build[]>([]),[recovery,setRecovery]=useState<Recovery|null>(null),[blockedReason,setBlockedReason]=useState(''),[pending,setPending]=useState<Input|null>(null),[error,setError]=useState(''),[draft,setDraft]=useState<BudgetReview|null>(null),[editing,setEditing]=useState<Budget['recurring'][number]|null>(null),[nestedDirty,setNestedDirty]=useState(false),[newCategory,setNewCategory]=useState<NewCategory|null>(null),[allowanceTargets,setAllowanceTargets]=useState<Record<string,string>>({});
  const operation=useItemSave(onSave),locked=busy||preparing||operation.busy||!!pending||!!operation.pending;
- const mounted=useRef(true),generation=useRef(0),pendingRef=useRef<Input|null>(null),reviewed=useRef<string|null>(null);
+ const mounted=useRef(true),generation=useRef<object|null>(null),pendingRef=useRef<Input|null>(null),reviewed=useRef<string|null>(null);
  const closeLocked=operation.busy||!!operation.pending||busy&&!pending;
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;generation.current++;};},[]);
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;generation.current=null;};},[]);
  useBudgetDirty('budget-builder',locked||!!text||!!attachment||!!draft||nestedDirty,onDirty);
  const childDirty=useCallback((_id:string,value:boolean)=>setNestedDirty(value),[]);
  const status=useAIStatus<{builds:Build[];available:boolean;recovery?:Recovery;blockedReason?:string}>({
@@ -45,10 +46,10 @@ export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{inte
   shouldPoll:data=>data.builds.some(b=>b.status==='generating'&&!b.resolvedBlocker),
   onData:data=>{setBuilds(data.builds);setAvailable(data.available);setRecovery(data.recovery||null);setBlockedReason(data.blockedReason||'');setLoaded(true);
    const build=data.builds.find(b=>b.id===pendingRef.current?.requestId);
-   if(build&&!['generating'].includes(build.status)){generation.current++;pendingRef.current=null;setPending(null);setBusy(false);if(build.result)setError('');if(build.result&&reviewed.current!==build.id){reviewed.current=build.id;review(build);}else if(build.status==='failed')setError(old=>old||failedBuild(build));}
+   if(build&&!['generating'].includes(build.status)){generation.current=null;pendingRef.current=null;setPending(null);setBusy(false);if(build.result)setError('');if(build.result&&reviewed.current!==build.id){reviewed.current=build.id;review(build);}else if(build.status==='failed')setError(old=>old||failedBuild(build));}
   },
  });
- function close(){if(closeLocked)return;mounted.current=false;generation.current++;status.stop();onClose();}
+ function close(){if(closeLocked)return;mounted.current=false;generation.current=null;status.stop();onClose();}
  async function attach(file:File){setPreparing(true);setError('');try{const next=await prepareBudgetFile(file);if(mounted.current)setAttachment(next);}catch(e){if(mounted.current)setError((e as Error).message);}finally{if(mounted.current)setPreparing(false);}}
  async function pasteImage(){setPreparing(true);setError('');try{if(!navigator.clipboard?.read)throw Error('Paste the copied image into the text box, or attach the image file.');const items=await navigator.clipboard.read();const item=items.find(item=>item.types.some(type=>['image/png','image/jpeg','image/webp'].includes(type)));const type=item?.types.find(type=>['image/png','image/jpeg','image/webp'].includes(type));if(!item||!type)throw Error('Copy an image first, then paste again. You can also attach a file.');const blob=await item.getType(type);const next=await prepareBudgetFile(new File([blob],'Pasted image.'+(type==='image/jpeg'?'jpg':type.split('/')[1]),{type}));if(mounted.current)setAttachment(next);}catch(e){if(mounted.current)setError(e instanceof Error&&e.name==='NotAllowedError'?'Clipboard access was not available. Paste the copied image into the text box or attach a file.':(e as Error).message);}finally{if(mounted.current)setPreparing(false);}}
  function review(build:Build){
@@ -57,9 +58,9 @@ export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{inte
  }
  async function generate(){
   let input:Input;try{input=pending||{requestId:crypto.randomUUID(),text:budgetAttachmentText(text,attachment),month:plan.id,...(intent?{intent}:{}),consent:true as const,...(attachment?.image?{image:attachment.image}:{}),...(attachment?.document?{document:attachment.document}:{}),...(recovery?{recoveryOf:recovery.sourceId}:{})};}catch(e){setError((e as Error).message);return;}
-  const ticket=++generation.current;pendingRef.current=input;setPending(input);setBusy(true);setError('');
+  const ticket={};generation.current=ticket;pendingRef.current=input;setPending(input);setBusy(true);setError('');
   try{const result=await request('?budget-build',{action:'budget-build',build:input});if(!mounted.current||ticket!==generation.current)return;setBuilds(old=>[result.build,...old.filter(b=>b.id!==result.build.id).map(b=>input.recoveryOf===b.id?{...b,resolvedBlocker:true}:b)]);if(result.build.status!=='generating'){pendingRef.current=null;setPending(null);}if(input.recoveryOf)setRecovery(null);if(result.build.result&&reviewed.current!==result.build.id){reviewed.current=result.build.id;review(result.build);}else if(result.build.status==='failed')setError(failedBuild(result.build));}
-  catch(e){if(!mounted.current||ticket!==generation.current)return;setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500)){pendingRef.current=null;setPending(null);}}
+  catch(e){if(!mounted.current||ticket!==generation.current)return;setError((e as Error).message);if(definiteBudgetRejection((e as {status?:number}).status,!!pending)){pendingRef.current=null;setPending(null);}}
   finally{if(mounted.current&&ticket===generation.current){setBusy(false);void status.check();}}
 
  }
@@ -93,7 +94,7 @@ export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{inte
  </>:<>
  <label className="compact-field">{attachment?'Additional notes (optional)':loanMode?'Loan details':'Your budget'}<textarea rows={attachment?3:6} maxLength={BUDGET_TEXT_LIMIT} disabled={locked} value={text} onChange={e=>{setText(e.target.value);setError('');}} onPaste={e=>{if(locked)return;const file=Array.from(e.clipboardData.items).find(item=>item.type.startsWith('image/'))?.getAsFile();if(file){e.preventDefault();void attach(file);}}} placeholder={attachment?'Anything to clarify about these details…':loanMode?'Paste the balances, statement dates, rates and payment details for one or more loans. If repayment has not started, say so.':'Monthly take-home pay $4,000 on the last Friday.\nGroceries allowance $400. Electric bill about $80 on the second Monday.\nYearly streaming subscription $120 on 10/15.\nMedical loan: 6 payments of $100, 0% interest, starting October 1…'}/></label>
  <label className="budget-image-picker">{preparing?'Reading file…':loanMode?'Attach a loan file':'Attach a budget file'}<input type="file" accept={BUDGET_FILE_ACCEPT} disabled={locked} onChange={e=>{const file=e.target.files?.[0];if(file)void attach(file);e.target.value='';}}/></label><Button variant="secondary" disabled={locked} onClick={()=>void pasteImage()}>Paste image</Button>
- {attachment&&<div className="budget-file-preview"><div className="section-heading"><span style={{minWidth:0,overflowWrap:'anywhere'}}><strong>{attachment.name}</strong><small style={{display:'block'}}>{attachment.kind} · {Math.ceil(attachment.size/1024).toLocaleString()} KB{attachment.text?` · ${attachment.text.length.toLocaleString()} characters read`:''}</small></span><Button variant="ghost" disabled={locked} onClick={()=>{setAttachment(undefined);setError('');}}>Remove file</Button></div>{attachment.image&&<div className="budget-image-preview"><img src={`data:${attachment.image.mimeType};base64,${attachment.image.data}`} alt="Attached image to send for analysis"/></div>}{attachment.warnings.map(warning=><p key={warning} className="field-hint">{warning}</p>)}</div>}
+ {attachment&&<div className="budget-file-preview"><div className="section-heading"><span style={{minWidth:0,overflowWrap:'anywhere'}}><strong>{attachment.name}</strong><small style={{display:'block'}}>{attachment.kind} · {Math.ceil(attachment.size/1024).toLocaleString()} KB{attachment.text?` · ${attachment.text.length.toLocaleString()} characters read`:''}</small></span><Button variant="ghost" disabled={locked} onClick={()=>{setAttachment(undefined);setError('');}}>Remove file</Button></div>{attachment.image&&<div className="budget-image-preview"><Image unoptimized width={160} height={160} style={{width:'auto',height:'auto'}} src={`data:${attachment.image.mimeType};base64,${attachment.image.data}`} alt="Attached image to send for analysis"/></div>}{attachment.warnings.map(warning=><p key={warning} className="field-hint">{warning}</p>)}</div>}
  <p className="field-hint">Text, CSV, Excel (.xlsx), Word (.docx), PDF or an image. Documents up to 8 MB; PDF up to 4 MB; images up to 10 MB. You can also paste a screenshot.</p>
  <p className="builder-consent muted">Build with AI sends your text, the file’s extracted content or attached PDF/image, and your Money goal to Google Gemini. LifeApp keeps the extracted text and draft, not the original file. Check amounts and dates before saving.</p>
  {loaded&&!available&&<p>AI building is currently unavailable. You can still add budget items manually.</p>}

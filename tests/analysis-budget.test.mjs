@@ -43,7 +43,7 @@ test('closed calendar periods handle year boundaries, leap years and local sched
 test('monthly weekday schedules and required variable estimates survive old-plan normalization',()=>{
  const r=recurringSchema.parse({id:randomUUID(),title:'Electric bill',kind:'expense',amountCents:8000,categoryId:randomUUID(),day:31,variable:true,frequency:'monthly-weekday',week:'second',weekday:1});
  assert.equal(recurringDate('2026-09',r),'2026-09-14');assert.equal(recurringDate('2026-02',{...r,week:'last',weekday:5}),'2026-02-27');assert.equal(recurringDate('2024-02',{...r,week:'last',weekday:4}),'2024-02-29');assert.equal(recurringDate('2027-01',{...r,week:'first',weekday:1}),'2027-01-04');
- assert.equal(recurringDate('2026-02',{...r,frequency:'monthly-day'}),'2026-02-28');assert.equal(recurringSchema.safeParse({...r,amountCents:0}).success,false);const {amountCents,...missing}=r;assert.equal(recurringSchema.safeParse(missing).success,false);
+ assert.equal(recurringDate('2026-02',{...r,frequency:'monthly-day'}),'2026-02-28');assert.equal(recurringSchema.safeParse({...r,amountCents:0}).success,false);const missing={...r};delete missing.amountCents;assert.equal(recurringSchema.safeParse(missing).success,false);
  const old=recurringSchema.parse({id:r.id,title:r.title,kind:r.kind,amountCents:8000,categoryId:r.categoryId,day:31});assert.equal(old.variable,false);assert.equal(old.frequency,'monthly-day');
 });
 test('variable occurrence forecasts become actuals once, with inline-compatible exact retry and preserved references',async()=>{
@@ -199,6 +199,42 @@ test('plain regeneration preserves accounting identities and limits concurrent r
  for(let i=0;i<2;i++){const responses=await Promise.all([f.call(ai('daily','2026-09-13',{predecessorId:last.id})),f.call(ai('daily','2026-09-13',{predecessorId:last.id}))]);assert.equal(responses.filter(r=>r.status===200).length,1);last=(await (await f.call(undefined,'a','?ai=1&date=2026-09-13')).json()).reports[0];}
  assert.equal((await f.call(ai('daily','2026-09-13',{predecessorId:last.id}))).status,429);assert.equal(f.state.calls.length,3);assert.equal(f.raw.prepare('SELECT count(*) n FROM life_ai_reviews WHERE request_id=?').get(original).n,1);
  assert.equal((await (await f.call(undefined,'a','?ai=1&date=2026-09-13')).json()).regenerationsRemaining,0);
+ }finally{f.raw.close();}
+});
+test('regeneration retries retain their source, predecessor and normalized feedback',async()=>{
+ const f=fixture();try{
+  await f.setup();const original=(await (await f.call(ai())).json()).report;
+  const request=ai('daily','2026-09-13',{predecessorId:original.id,critique:'  Focus on consistency.  '});
+  const saved=(await (await f.call(request)).json()).report;
+  const retry=await f.call(request);assert.equal(retry.status,200);assert.equal((await retry.json()).report.id,saved.id);
+  for(const change of [{sourceVersion:2},{predecessorId:'another-analysis'},{critique:'Different feedback.'}]){
+   const response=await f.call({...request,review:{...request.review,...change}});assert.equal(response.status,409,JSON.stringify(change));
+  }
+  assert.equal(f.state.calls.length,2);assert.equal(f.raw.prepare('SELECT COUNT(*) n FROM life_ai_usage').get().n,2);
+  // The one original period identity remains stable after a saved entry changes.
+  assert.equal((await f.call(ai('daily','2026-09-13',{sourceVersion:999}))).status,200);assert.equal(f.state.calls.length,2);
+ }finally{f.raw.close();}
+});
+test('unknown regeneration retries preserve the original hold without accepting changed input',async()=>{
+ const f=fixture();try{
+  await f.setup();const original=(await (await f.call(ai())).json()).report;
+  f.settings.provider.generate=async snapshot=>{f.state.calls.push(JSON.parse(snapshot));throw Error('Synthetic unknown completion');};
+  const request=ai('daily','2026-09-13',{predecessorId:original.id});assert.equal((await f.call(request)).status,502);
+  const retry=await f.call(request);assert.equal(retry.status,200);assert.equal((await retry.json()).report.status,'uncertain');
+  assert.equal((await f.call({...request,review:{...request.review,critique:'Changed request'}})).status,409);
+  const held=f.raw.prepare('SELECT status,cost_micros,reserved_micros FROM life_ai_usage WHERE request_id=?').get(request.review.requestId);
+  assert.equal(held.status,'uncertain');assert.equal(held.cost_micros,null);assert.equal(held.reserved_micros,200000);assert.equal(f.state.calls.length,2);
+ }finally{f.raw.close();}
+});
+test('a different regeneration winning the same ID during admission is rejected',async()=>{
+ const f=fixture();try{
+  await f.setup();const original=(await (await f.call(ai())).json()).report;
+  const request=ai('daily','2026-09-13',{predecessorId:original.id,critique:'This request'});
+  f.state.beforeInsert=()=>f.raw.prepare(`INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,predecessor_id,critique,status,input_snapshot,model,price_version,reserved_micros,created_at,cadence,window_start)
+   SELECT user_id,?,entry_date,2,source_version,request_id,'Another request','generating',input_snapshot,model,price_version,reserved_micros,created_at,cadence,window_start FROM life_ai_reviews WHERE request_id=?`).run(request.review.requestId,original.id);
+  const response=await f.call(request);assert.equal(response.status,409);assert.equal(f.state.calls.length,1);
+  const held=f.raw.prepare('SELECT status,critique,cost_micros FROM life_ai_reviews WHERE request_id=?').get(request.review.requestId);
+  assert.equal(held.status,'generating');assert.equal(held.critique,'Another request');assert.equal(held.cost_micros,null);
  }finally{f.raw.close();}
 });
 test('daily, weekly, monthly and annual analyses share accounting but have independent original identities',async()=>{

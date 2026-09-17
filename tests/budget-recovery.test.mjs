@@ -80,8 +80,8 @@ test('known outcomes from other accounts, namespaces, or outside grant time cann
 test('budget recovery grants and larger document snapshots round-trip through backup without widening other namespaces',t=>{
  const f=fixture(t);f.job();f.issue();
  const {version,...profile}=profileSchema.parse({goal:'Synthetic goal',timezone:'UTC',modules:['money'],habits:[],version:1});
- const jobs=f.raw.prepare('SELECT * FROM life_routine_builds').all().map(({user_id,...row})=>({...row}));
- const resources=f.raw.prepare('SELECT * FROM life_resources').all().map(({user_id,...row})=>({...row}));
+ const jobs=f.raw.prepare('SELECT * FROM life_routine_builds').all().map(({user_id,...row})=>{assert.equal(user_id,'a');return {...row};});
+ const resources=f.raw.prepare('SELECT * FROM life_resources').all().map(({user_id,...row})=>{assert.equal(user_id,'a');return {...row};});
  const backup={format:'lifeapp-portable-v1',exportedAt:now,profile:{payload:JSON.stringify(profile),version,updated_at:created},entries:[],resources,reviews:[],routineBuilds:jobs};
  jobs[0].input_snapshot=JSON.stringify({description:'X'.repeat(100000),month:'2026-09',moneyGoals:{}});
  assert.deepEqual(validateBackup(JSON.stringify(backup)),backup);
@@ -103,7 +103,8 @@ function acknowledge(f,patch={}){
 }
 function backup(f){
  const {version,...profile}=profileSchema.parse({goal:'Synthetic goal',timezone:'UTC',modules:['money'],habits:[],version:1});
- return {format:'lifeapp-portable-v1',exportedAt:acknowledged,profile:{payload:JSON.stringify(profile),version,updated_at:created},entries:[],resources:f.raw.prepare('SELECT * FROM life_resources').all().map(({user_id,...r})=>({...r})),reviews:[],routineBuilds:f.raw.prepare('SELECT * FROM life_routine_builds').all().map(({user_id,...r})=>({...r}))};
+ const withoutAccount=({user_id,...row})=>{assert.equal(user_id,'a');return {...row};};
+ return {format:'lifeapp-portable-v1',exportedAt:acknowledged,profile:{payload:JSON.stringify(profile),version,updated_at:created},entries:[],resources:f.raw.prepare('SELECT * FROM life_resources').all().map(withoutAccount),reviews:[],routineBuilds:f.raw.prepare('SELECT * FROM life_routine_builds').all().map(withoutAccount)};
 }
 
 test('operator acknowledgment identifies exactly the two diagnosed requests, preserves held accounting and consumed grant',async t=>{

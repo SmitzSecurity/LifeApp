@@ -1,6 +1,7 @@
 import {googleConfig,permittedGoogleUser,type AuthEnvironment} from './config.ts';
 import type {createGoogleAuth} from './google.ts';
 import type {Database} from '../life/service.ts';
+import {readBoundedText} from '../request-body.ts';
 
 const FRESH_MS=10*60*1000;
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
@@ -10,8 +11,8 @@ export async function handleAccountDeletion(request:Request,auth:Pick<ReturnType
  if(request.method!=='POST')return json({error:'Not found'},404);
  if(request.headers.get('origin')!==googleConfig(env).origin||request.headers.get('sec-fetch-site')==='cross-site')return json({error:'Open LifeApp directly to delete your account.'},403);
  if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Send JSON'},415);
- const text=await request.text();
- if(new TextEncoder().encode(text).length>1024)return json({error:'Request too large'},413);
+ const read=await readBoundedText(request,1024);if(!read.ok)return json({error:read.status===413?'Request too large':'Invalid request'},read.status);
+ const text=read.text;
  let body;try{body=JSON.parse(text);}catch{return json({error:'Invalid request'},400);}
  if(!body||Array.isArray(body)||typeof body!=='object'||body.confirmation!=='DELETE'||Object.keys(body).some(k=>k!=='confirmation'))return json({error:'Type DELETE to confirm deleting your LifeApp account.'},400);
  const session=await auth.api.getSession({headers:request.headers});

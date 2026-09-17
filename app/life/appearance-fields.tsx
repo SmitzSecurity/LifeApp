@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useState} from 'react';
+import {useState} from 'react';
 import type {ColorKey} from '@/lib/life/appearance';
 
 export const colorGroups:{title:string;fields:[ColorKey,string][]}[]=[
@@ -14,7 +14,7 @@ export const relatedColors=(key:ColorKey):ColorKey[]=>{
  return pair||[key];
 };
 export function ColorField({label,value,onChange}:{label:string;value:string;onChange:(color:string)=>void}){
- const [text,setText]=useState(value),valid=/^#[0-9a-fA-F]{6}$/.test(text);
- useEffect(()=>setText(value),[value]);
+ const [text,setText]=useState(value),[previousValue,setPreviousValue]=useState(value),valid=/^#[0-9a-fA-F]{6}$/.test(text);
+ if(previousValue!==value){setPreviousValue(value);setText(value);}
  return <div className="color-field"><label><span>{label}</span><input type="color" aria-label={label+' color'} value={value} onChange={e=>{setText(e.target.value);onChange(e.target.value);}}/></label><input aria-label={label+' hex'} value={text} maxLength={7} spellCheck={false} aria-invalid={!valid} onChange={e=>{setText(e.target.value);if(/^#[0-9a-fA-F]{6}$/.test(e.target.value))onChange(e.target.value);}} onBlur={()=>{if(!valid)setText(value);}}/></div>;
 }

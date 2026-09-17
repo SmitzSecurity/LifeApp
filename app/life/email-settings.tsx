@@ -11,8 +11,8 @@ type State={consent:EmailConsent;available:boolean;sender:string|null;deliveries
 const labels:Record<string,string>={pending:'Waiting to send',sending:'Sending',sent:'Accepted by email service',retry:'Will retry delivery',failed:'Delivery needs attention',uncertain:'Delivery not confirmed',cancelled:'Cancelled'};
 export default function EmailSettings(){
  const [data,setData]=useState<State|null>(null),[agreed,setAgreed]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
- async function refresh(){try{setData(await request('/email'));setError('');}catch{setError('Email settings could not be loaded. Try again to check your saved choice.');}}
- useEffect(()=>{void refresh();},[]);
+ async function refresh(){try{const saved=await request('/email');setData(saved);setError('');}catch{setError('Email settings could not be loaded. Try again to check your saved choice.');}}
+ useEffect(()=>{let current=true;void request("/email").then(saved=>{if(current)setData(saved);}).catch(()=>{if(current)setError("Email settings could not be loaded. Try again to check your saved choice.");});return()=>{current=false;};},[]);
  async function save(enabled:boolean){
   if(!data||enabled&&!agreed)return;setBusy(true);setError('');
   try{setData(await request('/email',{enabled,version:data.consent.version,policyVersion:data.consent.policyVersion}));setAgreed(false);}

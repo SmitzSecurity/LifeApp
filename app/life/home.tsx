@@ -15,8 +15,8 @@ function Bars({values,label,movement=false}:{values:number[];label:string;moveme
 export default function Home({profile,entries,onDate,onPeriod,onSection,onBusy,onProfileSaved}:{profile:Profile;entries:Entry[];onDate:(date:string)=>void;onPeriod:(cadence:PeriodCadence,date:string)=>void;onSection:(section:string)=>void;onBusy:(busy:boolean)=>void;onProfileSaved:(profile:Profile)=>void}){
  const [data,setData]=useState<Dashboard|null>(null),[error,setError]=useState('');
  const today=todayIn(profile.timezone),yesterday=previousDay(today),prior=entries.find(e=>e.date===yesterday),current=entries.find(e=>e.date===today);
- async function load(){try{setData(await request('?dashboard=1'));setError('');}catch{setError('Your dashboard could not be loaded.');}}
- useEffect(()=>{void load();},[]);
+ async function load(){try{const saved=await request('?dashboard=1');setData(saved);setError('');}catch{setError('Your dashboard could not be loaded.');}}
+ useEffect(()=>{let current=true;void request('?dashboard=1').then(saved=>{if(current)setData(saved);}).catch(()=>{if(current)setError('Your dashboard could not be loaded.');});return()=>{current=false;};},[]);
  const trends=data?.trends||[],latest=trends.at(-1),hasMoney=trends.some(t=>t.transactions),hasMovement=trends.some(t=>t.strengthSessions+t.cardioSessions+(t.workoutNotes||0));
  return <div className="home-dashboard">
   <div className="today-invitation"><div><h2>A new day, a little perspective.</h2><p>{formatDate(today)}</p></div><Button onClick={()=>onDate(today)}><Plus/>{current?'Continue today’s log':'Start today’s log'}</Button></div>

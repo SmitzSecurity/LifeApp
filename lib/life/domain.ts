@@ -43,7 +43,7 @@ export function todayIn(timezone:string,now=new Date()):string{
  return ["year","month","day"].map(k=>parts.find(p=>p.type===k)!.value).join("-");
 }
 export function activeHabits(p:Profile):Habit[]{return p.habits.filter(h=>!h.archived&&p.modules.includes(h.module));}
-export function emptyEntry(p:Profile,date:string):Entry{return{date,complete:false,journal:"",context:{},habits:activeHabits(p).map(({archived,...h})=>({...h,status:"unrecorded"})),version:0};}
+export function emptyEntry(p:Profile,date:string):Entry{return{date,complete:false,journal:"",context:{},habits:activeHabits(p).map(h=>({id:h.id,title:h.title,module:h.module,status:"unrecorded"})),version:0};}
 export function score(habits:Pick<RecordedHabit,"status">[]){
 const done=habits.filter(h=>h.status==="done").length,missed=habits.filter(h=>h.status==="missed").length,exempt=habits.filter(h=>h.status==="exempt").length;
 const eligible=done+missed,unrecorded=habits.length-eligible-exempt;

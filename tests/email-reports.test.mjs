@@ -15,6 +15,13 @@ const deliveryNow=new Date('2026-09-10T12:00:00.000Z');
 const now=new Date('2026-09-09T12:00:00.000Z'),before=new Date('2026-09-08T12:00:00.000Z'),date='2026-09-08';
 const providerResult={text:'Synthetic full report <script>alert("no")</script> & reflection',inputTokens:100,outputTokens:40,thoughtTokens:10,costMicros:225,providerId:'synthetic',modelVersion:'synthetic',finishReason:'STOP'};
 const clockedTests=new WeakSet();
+test('email consent stops oversized chunked bodies before a database read',async()=>{
+ let pulls=0,cancelled=false;
+ const body=new ReadableStream({pull(controller){pulls++;controller.enqueue(new Uint8Array(512));},cancel(){cancelled=true;}},{highWaterMark:0});
+ const request=new Request('https://life.test/api/life/email',{method:'POST',headers:{Origin:'https://life.test','Content-Type':'application/json'},body,duplex:'half'});
+ const response=await handleEmailSettings(request,'google:synthetic',{prepare(){throw Error('Must not read storage');}},{},now);
+ assert.equal(response.status,413);assert.equal(cancelled,true);assert.ok(pulls<=5);
+});
 function fixture(t,send=async()=>({messageId:'synthetic-mail-id'})){
  // AI completion uses the wall clock. Keep it before the fixture's delivery
  // tick so these tests do not expire when the real calendar advances.

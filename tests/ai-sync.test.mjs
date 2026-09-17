@@ -5,6 +5,12 @@ import { readFileSync,readdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { handleLife } from '../lib/life/service.ts';
 import { DraftSync } from '../lib/life/draft-sync.ts';
+import {profileSchema} from '../lib/life/domain.ts';
+import {profileSaveAcknowledged,reviewProfileChanges} from '../lib/life/profile-recovery.ts';
+import {definiteClientRejection} from '../lib/life/write-retry.ts';
+import {runInNewContext} from 'node:vm';
+import {transpileModule,ModuleKind,JsxEmit} from 'typescript';
+import * as jsx from 'react/jsx-runtime';
 import {settingsForAI} from '../lib/life/ai-configuration.ts';
 import {limitsForAI} from '../lib/life/ai-limits.ts';
 import {budgetOutputSchema} from '../lib/life/budget-build-schema.ts';
@@ -23,6 +29,67 @@ function fixture(provider={generate:async()=>result},caps={}){
 }
 const review=(overrides={})=>({action:'ai',review:{date:'2026-09-08',requestId:randomUUID(),sourceVersion:1,predecessorId:null,critique:'',consent:true,...overrides}});
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
+
+test('later authentication rejections cannot settle an earlier unknown client write',()=>{
+ for(const status of [undefined,500,503])for(const pending of [false,true])assert.equal(definiteClientRejection(status,pending),false);
+ for(const status of [401,403]){assert.equal(definiteClientRejection(status,false),true);assert.equal(definiteClientRejection(status,true),false);}
+ for(const status of [400,404,409,422,429])for(const pending of [false,true])assert.equal(definiteClientRejection(status,pending),true);
+});
+
+// Exercise real component button handlers with React hook and network adapters.
+// The adapter only mounts effects and retains hook slots; no production service
+// or provider is called, and no separate browser runtime is needed.
+function retryComponent(file,seed){
+ const slots=[],effects=[],writes=[];let cursor=0,statusConfig,tree,attempt=0;
+ const react={
+  useState(initial){const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},
+  useRef(initial){const i=cursor++;return slots[i]??(slots[i]={current:initial});},
+  useEffect(fn,deps){const i=cursor++,previous=slots[i];if(!previous||deps.some((value,index)=>!Object.is(value,previous[index]))){slots[i]=deps;effects.push(fn);}},
+  useLayoutEffect(fn,deps){react.useEffect(fn,deps);},
+  useCallback(fn,deps){const i=cursor++,previous=slots[i];if(!previous||deps.some((value,index)=>!Object.is(value,previous.deps[index])))slots[i]={deps,fn};return slots[i].fn;},
+  useContext(){return true;}
+ };
+ async function write(body){
+  writes.push(structuredClone(body));const status=[503,401,403,200][attempt++];
+  if(status!==200)throw Object.assign(Error('Synthetic lost acknowledgement or expired login'),{status});
+  if(body.action==='resource')return {...body.record,version:1};
+  if(body.action==='routine-build'||body.action==='training-analysis')return {build:{id:body.build.requestId,status:'complete',createdAt:now.toISOString(),result:null}};
+  return {profile:profileSchema.parse({...profile,version:2})};
+ }
+ const adapters={react,'react/jsx-runtime':jsx,'@/lib/life/write-retry':{definiteClientRejection},'@/lib/life/domain':{todayIn:()=> '2026-09-16'},'@/lib/life/date-display':{formatDate:value=>value,formatTimestampDate:value=>value},'@/lib/life/exercise-presets':{repTarget:()=> '6–10'},'./shared':{
+  request:async(path,body)=>body?write(body):{records:[]},saveRecord:(kind,record)=>write({action:'resource',kind,record}),useUnsaved(){},useWorkoutCancel:fn=>fn,WorkoutToolVisible:'visible'
+ },'./use-ai-status':{useAIStatus:config=>{statusConfig=config;return {delayed:true,error:'',check:async()=>{},stop(){}};}}};
+ const code=transpileModule(readFileSync('app/life/'+file+'.tsx','utf8'),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText,output={};
+ runInNewContext(code,{exports:output,crypto:{randomUUID},require:name=>adapters[name]||new Proxy({},{get:(_,key)=>String(key)})});
+ const props={profile:profileSchema.parse({...profile,version:1}),date:'2026-09-16',cadence:'weekly',synced:true,onDirty(){},onReview(){},onBusy(){},onProfileSaved(){},onSettings(){}};
+ function render(){cursor=0;tree=output.default(props);while(typeof tree?.type==='function')tree=tree.type(tree.props);for(const effect of effects.splice(0))effect();return tree;}
+ function text(node){if(typeof node==='string'||typeof node==='number')return String(node);return [node?.props?.children].flat(Infinity).map(child=>child&&typeof child==='object'?text(child):typeof child==='string'?child:'').join('');}
+ function findNode(predicate,node){if(!node||typeof node!=='object')return null;if(predicate(node))return node;for(const child of [node.props?.children].flat(Infinity)){const found=findNode(predicate,child);if(found)return found;}return null;}
+ const find=predicate=>findNode(predicate,tree);
+ function button(label){const node=find(node=>!!node.props?.onClick&&(node.props['aria-label']===label||text(node)===label));assert.ok(node,'Missing '+label+' in '+file);return node;}
+ render();if(statusConfig)statusConfig.onData(seed);render();
+ return {writes,props,render,find,button,async click(label){const node=button(label);assert.ok(!node.props.disabled,label+' should be enabled');await node.props.onClick();await new Promise(resolve=>setImmediate(resolve));render();}};
+}
+
+test('cardio, routine, training, analysis and feedback handlers retain exact requests through expired-login retries',async t=>{
+ const report={id:'saved-analysis',date:'2026-09-16',cadence:'weekly',from:'2026-09-14',revision:1,sourceVersion:1,status:'complete',text:'Synthetic analysis'};
+ const training={id:'saved-training',status:'complete',createdAt:now.toISOString(),result:{text:'Synthetic training analysis'}};
+ const cases=[
+  {file:'cardio',seed:null,start:'Save',retry:'Retry cardio save',setup:async f=>f.click('Log cardio')},
+  {file:'routine-builder',seed:{builds:[],available:true},start:'Build with AI',retry:'Retry this build',setup:async f=>{f.find(node=>node.type==='textarea').props.onChange({target:{value:'Synthetic push and pull routine'}});f.render();}},
+  {file:'training-analysis',seed:{builds:[],available:true},start:'Analyze this week',retry:'Retry this analysis'},
+  {file:'training-analysis',seed:{builds:[training],available:true},start:'Delete',retry:'Retry delete',setup:async f=>f.click('Past training analyses')},
+  {file:'ai-review',seed:{reports:[report],available:true,regenerationsRemaining:3},start:'Regenerate',retry:'Retry this analysis'},
+  {file:'ai-review',seed:{reports:[report],available:true,regenerationsRemaining:3},start:'Delete',retry:'Retry delete'},
+  {file:'ai-review',seed:{reports:[report],available:true,regenerationsRemaining:3},start:'Save for future',retry:'Retry save',setup:async f=>{await f.click('Feedback');f.find(node=>node.type==='textarea').props.onChange({target:{value:'Synthetic guidance to preserve'}});f.render();}}
+ ];
+ for(const scenario of cases)await t.test(scenario.file+' '+scenario.start,async()=>{
+  const f=retryComponent(scenario.file,scenario.seed);await scenario.setup?.(f);await f.click(scenario.start);
+  assert.equal(f.writes.length,1);f.props.profile={...f.props.profile,version:99};f.render();
+  await f.click(scenario.retry);await f.click(scenario.retry);await f.click(scenario.retry);
+  assert.equal(f.writes.length,4);for(const write of f.writes)assert.deepEqual(write,f.writes[0]);
+ });
+});
 
 test('budget instructs the full JSON shape while workout alone uses provider schema configuration',async()=>{
  const contract=JSON.parse(readFileSync('tests/fixtures/gemini-output-format.json','utf8'));
@@ -202,6 +269,62 @@ test('server acknowledges a lost draft response without a second write; rejects 
  assert.equal(f.raw.prepare('SELECT version FROM life_entries').get().version,2);
  assert.equal((await f.call({...body,entry:{...body.entry,journal:'Different'}})).status,409);
  assert.equal((await f.call({...body,entry:{...body.entry,mutationId:randomUUID()}})).status,409);f.raw.close();
+});
+
+test('definite response conflicts keep local text and need an explicit review before a new save',async()=>{
+ const calls=[],initial={...entry(),habits:[],version:1,complete:false};let conflict=true;
+ const writer=new DraftSync(initial,async(snapshot,id)=>{calls.push({snapshot,id});if(conflict)throw Object.assign(Error('Changed elsewhere'),{status:409});return {...snapshot,version:snapshot.version+1};},()=>{});
+ writer.edit({...initial,journal:'My unsaved journal'});await assert.rejects(writer.commit(true));
+ assert.equal(writer.status,'conflict');assert.equal(writer.entry.journal,'My unsaved journal');
+ await assert.rejects(writer.commit(true));assert.equal(calls.length,1);
+ const saved={...initial,version:2,journal:'Other device journal'};
+ writer.resolveConflict(saved,true);assert.equal(calls.length,1);assert.equal(writer.status,'waiting');assert.equal(writer.entry.version,2);assert.equal(writer.entry.journal,'My unsaved journal');
+ conflict=false;await writer.commit(true);assert.equal(writer.status,'saved');assert.equal(calls[1].snapshot.version,2);assert.notEqual(calls[0].id,calls[1].id);
+});
+
+test('response conflict review preserves new saved habits, matches local choices by ID and cannot overwrite Trash',async()=>{
+ const one={id:randomUUID(),title:'Read',module:'reflection',status:'done'},two={id:randomUUID(),title:'Walk',module:'fitness',status:'missed'};
+ const initial={...entry(),habits:[one],version:1,complete:false};
+ const writer=new DraftSync(initial,async()=>{throw Object.assign(Error('Conflict'),{status:409});},()=>{});
+ writer.edit({...initial,journal:'Keep me'});await assert.rejects(writer.flush());
+ const latest={...initial,version:2,habits:[{...one,title:'Updated read',status:'missed'},two]};writer.resolveConflict(latest,true);
+ assert.deepEqual(writer.entry.habits,[{...one,title:'Updated read'},two]);
+ await assert.rejects(writer.flush());assert.throws(()=>writer.resolveConflict({...latest,deleted:true},true),/Restore/);assert.equal(writer.entry.journal,'Keep me');
+ writer.resolveConflict({...latest,deleted:true},false);assert.equal(writer.status,'saved');assert.equal(writer.entry.deleted,true);
+});
+
+test('a rejected response can be corrected while server failures keep exact pending input',async()=>{
+ const sent=[],initial={...entry(),habits:[],complete:false};let code=400;
+ const writer=new DraftSync(initial,async(snapshot,id)=>{sent.push({snapshot,id});if(code)throw Object.assign(Error('Rejected'),{status:code});return {...snapshot,version:1};},()=>{});
+ writer.edit({...initial,journal:'Invalid'});await assert.rejects(writer.flush());assert.equal(writer.status,'rejected');
+ writer.edit({...writer.entry,journal:'Corrected'});code=503;await assert.rejects(writer.flush());assert.notEqual(sent[0].id,sent[1].id);assert.equal(writer.status,'error');
+ code=0;await writer.flush();assert.deepEqual(sent[1],sent[2]);assert.equal(writer.entry.journal,'Corrected');
+});
+
+test('authentication rejection on an unknown response retry cannot release the original mutation',async()=>{
+ const sent=[],initial={...entry(),habits:[],complete:false};let attempt=0;
+ const writer=new DraftSync(initial,async(snapshot,id)=>{sent.push({snapshot,id});attempt++;if(attempt<3)throw Object.assign(Error('Unconfirmed'),{status:attempt===1?503:401});return {...snapshot,version:1};},()=>{});
+ writer.edit({...initial,journal:'Save exactly once'});await assert.rejects(writer.flush());await assert.rejects(writer.flush());assert.equal(writer.status,'error');
+ await writer.flush();assert.deepEqual(sent[0],sent[1]);assert.deepEqual(sent[1],sent[2]);
+});
+
+test('lost settings acknowledgement is recognized only by newer exact normalized values',()=>{
+ const submitted=profileSchema.parse({...profile,goal:'  My goal  ',version:3});
+ assert.equal(profileSaveAcknowledged(submitted,{...submitted,goal:'My goal',version:4}),true);
+ assert.equal(profileSaveAcknowledged(submitted,{...submitted,version:3}),false);
+ assert.equal(profileSaveAcknowledged(submitted,{...submitted,goal:'Changed elsewhere',version:4}),false);
+ assert.equal(profileSaveAcknowledged(submitted,null),false);
+ const reordered=Object.fromEntries(Object.entries(submitted).reverse());assert.equal(profileSaveAcknowledged(submitted,{...reordered,version:4}),true);
+});
+
+test('explicit settings conflict review keeps edited sections and preserves unrelated remote settings and new habits',()=>{
+ const habit={id:randomUUID(),title:'Read',module:'reflection',archived:false},newHabit={id:randomUUID(),title:'Walk',module:'fitness',archived:false};
+ const base=profileSchema.parse({...profile,habits:[habit],version:1});
+ const local={...base,goal:'My goal',habits:[{...habit,title:'Read 20 minutes'}]};
+ const saved={...base,goal:'Other goal',timezone:'America/New_York',habits:[habit,newHabit],version:2};
+ const review=reviewProfileChanges(base,local,saved);
+ assert.equal(review.draft.version,2);assert.equal(review.draft.goal,'My goal');assert.equal(review.draft.timezone,'America/New_York');assert.deepEqual(review.draft.habits,[{...habit,title:'Read 20 minutes'},newHabit]);
+ assert.deepEqual(review.conflicts,['main goal','habits']);assert.equal(local.version,1);assert.equal(saved.goal,'Other goal');
 });
 test('explicit Save commits completion and text together; unchanged Save does not create a revision',async()=>{
  const sent=[],initial={...entry(),habits:[],complete:false};

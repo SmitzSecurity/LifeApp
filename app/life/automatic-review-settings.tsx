@@ -10,9 +10,9 @@ type State = { consent: AutomaticConsent; available: boolean; schedule: { enable
 export default function AutomaticReviewSettings({ setupDirty }: { setupDirty: boolean }) {
   const [data, setData] = useState<State | null>(null), [agreed, setAgreed] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('');
   async function refresh() {
-    try { setData(await request('?automatic=1')); } catch { setError('Automatic review settings are unavailable. Refresh to check your saved choice.'); }
+    try { const saved=await request('?automatic=1'); setData(saved); } catch { setError('Automatic review settings are unavailable. Refresh to check your saved choice.'); }
   }
-  useEffect(() => { void refresh(); }, []);
+  useEffect(()=>{let current=true;void request('?automatic=1').then(saved=>{if(current)setData(saved);}).catch(()=>{if(current)setError('Automatic review settings are unavailable. Refresh to check your saved choice.');});return()=>{current=false;};},[]);
   async function save(enabled: boolean) {
     if (!data || (enabled && !agreed)) return;
     setBusy(true); setError('');

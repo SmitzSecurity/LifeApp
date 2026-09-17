@@ -16,8 +16,8 @@ export default function WorkoutNotes({profile,onDirty,onSaved}:{profile:Profile;
  const operation=useItemSave((record:Saved<WorkoutNote>)=>saveRecord('workout-note',record)),locked=listening||operation.busy||!!operation.pending;
  useUnsaved(!!form.data.text||form.data.minutes!==null||form.data.date!==today||form.version>0||locked,onDirty);
  const cancel=useWorkoutCancel(()=>{setForm(fresh(today));setNotice('');operation.setError('');},operation.busy||!!operation.pending);
- async function load(){try{const result=await request('?kind=workout-note');setRecords(result.records);setLoadError('');}catch{setLoadError('Workout notes could not be loaded.');}}
- useEffect(()=>{void load();},[]);
+ function load(cancelled=()=>false){return request('?kind=workout-note').then(result=>{if(cancelled())return;setRecords(previous=>[...previous,...result.records.filter((record:Saved<WorkoutNote>)=>!previous.some(saved=>saved.id===record.id))]);setLoadError('');}).catch(()=>{if(!cancelled())setLoadError('Workout notes could not be loaded.');});}
+ useEffect(()=>{let cancelled=false;void load(()=>cancelled);return()=>{cancelled=true;};},[]);
  function edit(patch:Partial<WorkoutNote>){setForm({...form,data:{...form.data,...patch}});setNotice('');operation.setError('');}
  async function save(record=form){const saved=await operation.submit(operation.pending||record);if(saved){setRecords(previous=>[saved,...previous.filter(n=>n.id!==saved.id)]);setForm(fresh(today));onSaved?.();setNotice(saved.data.deleted?'Workout moved to Trash.':saved.data.structured?'Workout saved. Confirmed sets now count toward muscle coverage; its exercises are available as personal presets.':'Workout note saved. It will inform your analyses.');}}
  return <section className="module-card workout-notes" aria-label="Workout notes"><h3>Write your workout</h3><p className="muted">Log it in your own words. Sets, weights, a walk, or simply how training felt.</p>

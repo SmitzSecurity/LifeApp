@@ -20,3 +20,10 @@
  .life-compact-theme .workout-panel .routine-editor-grid:has(.routine-sort-list) aside>.compact-field{display:flex;width:100%}
  .life-compact-theme .workout-panel .routine-editor-grid:has(.routine-sort-list) aside>button{margin-left:0}
 }
+.routine-conflict{display:grid;gap:12px;padding:16px;margin-bottom:16px;border:1px solid var(--border);border-radius:10px;background:var(--card);min-width:0}
+.routine-conflict p,.routine-conflict h3{margin:0}
+.routine-conflict summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}
+.routine-conflict ol{padding-left:20px;display:grid;gap:10px}
+.routine-conflict li span{display:block;color:var(--muted-foreground)}
+.routine-conflict .action-row{flex-wrap:wrap}
+.routine-conflict button{height:auto;min-height:44px;white-space:normal}

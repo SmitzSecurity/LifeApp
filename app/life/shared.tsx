@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useRef } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { ResourceKind, Saved } from '@/lib/life/modules';
 import {assertFiniteNumbers} from '@/lib/life/numeric-draft';
@@ -14,7 +14,8 @@ export const WorkoutCancellation=createContext<{register:(discard:()=>void,block
 // X, Escape and Cancel all use the same discard action. In-flight or unconfirmed
 // saves retain their exact retry payload rather than pretending to undo a write.
 export function useWorkoutCancel(discard:()=>void,blocked=false){
- const context=useContext(WorkoutCancellation),latest=useRef(discard);latest.current=discard;
- useEffect(()=>context?.register(()=>latest.current(),blocked),[context?.register,blocked]);
+ const context=useContext(WorkoutCancellation),latest=useRef(discard),register=context?.register;
+ useLayoutEffect(()=>{latest.current=discard;},[discard]);
+ useEffect(()=>register?.(()=>latest.current(),blocked),[register,blocked]);
  return ()=>{if(!blocked){if(context)context.close();else latest.current();}};
 }

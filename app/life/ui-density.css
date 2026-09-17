@@ -88,6 +88,14 @@ body.life-compact-theme :is(input:not([type=checkbox]):not([type=radio]):not([ty
 .life-compact-theme .response-page .completion-help{font-size:var(--ui-meta);line-height:1.5;margin-block:8px}
 .life-compact-theme .response-page .response-save-buttons button{font-size:var(--ui-copy)}
 .life-compact-theme .feedback-dialog{padding:18px;gap:12px}
+.response-conflict-dialog{display:flex;flex-direction:column;max-height:calc(100dvh - 32px);overflow:hidden}
+.response-conflict-fields{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0;overflow-y:auto;max-height:50dvh}
+.response-conflict-fields label{display:grid;gap:6px}
+.response-conflict-fields textarea{width:100%;min-height:100px;padding:10px;border:1px solid var(--input);border-radius:6px;background:var(--input-background);color:var(--foreground);resize:vertical}
+.response-conflict-fields p{margin:4px 0}
+.life-compact-theme .response-conflict-dialog [data-slot=dialog-footer]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex-shrink:0;gap:8px}
+.response-conflict-dialog [data-slot=dialog-footer]>button{white-space:normal;min-width:0}
+.response-conflict-dialog [data-slot=dialog-close]{top:4px;right:4px;width:44px;height:44px;display:flex;align-items:center;justify-content:center}
 .life-compact-theme .feedback-dialog .compact-field{margin-block:4px}
 
 @media(max-width:600px){

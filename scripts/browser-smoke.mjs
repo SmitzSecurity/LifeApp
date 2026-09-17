@@ -35,6 +35,7 @@ const calmFixture=process.argv.includes('--calm');
 const editingFixture=process.argv.includes('--editing');
 const dictationFixture=process.argv.includes('--dictation');
 const lightFixture=process.argv.includes('--light'),largeTextFixture=process.argv.includes('--large-text');
+const onboardingFixture=process.argv.includes('--onboarding');
 const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],fetchMock:mock,
  bindings:{...(analysisFixture?{LIFEAPP_AI_ENABLED:'true',LIFEAPP_AI_PAID_PROJECT:'true',GEMINI_API_KEY:'synthetic',LIFEAPP_REVIEW_PLANNER_ENABLED:'true',LIFEAPP_AUTOMATIC_REVIEWS_ENABLED:'true'}:{}),LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com',LIFEAPP_EMAIL_ENABLED:calmFixture?'true':'false'},
  email:calmFixture?{send_email:[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com'],destination_address:'smoke@example.test'}]}:undefined,
@@ -46,9 +47,9 @@ const stamp=Date.now(),id='browser-smoke',userId='google:'+id;
 await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic browser fixture','smoke@example.test',stamp).run();
 await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('smoke-session',stamp+3600000,'synthetic-browser-token',stamp,id).run();
 await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('smoke-account','smoke-google-sub','google',id,stamp).run();
-await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(lightFixture||largeTextFixture?{appearance:{mode:lightFixture?'light':'oled',custom:{oled:{},light:{}},...(largeTextFixture?{typography:{font:'system',scale:130}}:{})}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
+if(!onboardingFixture)await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(lightFixture||largeTextFixture?{appearance:{mode:lightFixture?'light':'oled',custom:{oled:{},light:{}},...(largeTextFixture?{typography:{font:'system',scale:130}}:{})}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
 const historyFixture=process.argv.includes('--history');
-for(let days=1;days<=(historyFixture?400:2);days++){
+for(let days=1;days<=(!onboardingFixture?(historyFixture?400:2):0);days++){
  const date=new Date(stamp-days*86400000).toISOString().slice(0,10);
  await db.prepare('INSERT INTO life_entries VALUES(?1,?2,?3,1,?4)').bind(userId,date,JSON.stringify({date,complete:!historyFixture||days%3!==0,journal:(historyFixture&&days%5===0?'Synthetic reading session ':'Synthetic preserved check-in ')+days,context:{},habits:[]}),new Date(stamp).toISOString()).run();
 }
@@ -104,9 +105,16 @@ let loseRoutineResponse=process.argv.includes('--unconfirmed-routine');
 let loseWorkoutResponse=process.argv.includes('--unconfirmed-workout');
 let loseWorkoutEndResponse=process.argv.includes('--unconfirmed-workout-end');
 let loseTransactionImportResponse=process.argv.includes('--unconfirmed-transaction-import');
+let loseProfileResponse=process.argv.includes('--profile-save-unknown');
+let conflictEntry=process.argv.includes('--response-conflict');
+let conflictProfile=process.argv.includes('--profile-conflict');
+let conflictRoutine=process.argv.includes('--routine-conflict');
+let failDebtRead=process.argv.includes('--debt-read-failure');
+let loseDraftDelete=process.argv.includes('--unconfirmed-transaction-draft-delete');
 const server=createServer(async(req,res)=>{
  try{
   const pathname=new URL(req.url,'http://localhost').pathname;
+  if(failDebtRead&&req.method==='GET'&&new URL(req.url,'http://localhost').searchParams.has('debt-payments')){failDebtRead=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic temporary debt read failure.'}));return;}
   if(dictationFixture&&req.method==='GET'&&pathname==='/__fixture/dictation.js'){
    res.writeHead(200,{'Content-Type':'text/javascript'});res.end(readFileSync('scripts/fixtures/dictation.js'));return;
   }
@@ -115,19 +123,33 @@ const server=createServer(async(req,res)=>{
    const count=await db.prepare('SELECT count(*) n FROM life_entries').first();
    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({count:count.n,entries:entries.results}));return;
   }
-  let body,entryWrite=false,aiWrite=false,routineWrite=false,workoutWrite=false,workoutEndWrite=false,transactionImportWrite=false;
+  let body,entryWrite=false,profileWrite=false,aiWrite=false,routineWrite=false,workoutWrite=false,workoutEndWrite=false,transactionImportWrite=false,draftDelete=false;
   if(req.method==='POST'&&(pathname==='/api/life'||calmFixture&&pathname==='/api/life/email')){
    const chunks=[];let size=0;
    for await(const chunk of req){size+=chunk.length;if(size>(req.url.includes('budget-build')?BUDGET_UPLOAD_BYTES:req.url.includes('transaction-import')?262144:65536)){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
    entryWrite=parsed?.action==='entry';
+   profileWrite=parsed?.action==='profile';
+   draftDelete=parsed?.action==='record-deletion'&&parsed?.change?.kind==='build'&&parsed?.change?.id?.startsWith('budget:')&&parsed?.change?.deleted===true;
    transactionImportWrite=parsed?.action==='transaction-import';
    aiWrite=['ai','budget-build','routine-build','training-analysis'].includes(parsed?.action);
    routineWrite=parsed?.action==='resource'&&parsed?.record?.kind==='routine';
    workoutWrite=parsed?.action==='resource'&&parsed?.record?.kind==='workout';
    workoutEndWrite=workoutWrite&&!!(parsed.record.data?.finishedAt||parsed.record.data?.deleted);
    if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource','budget-item','transaction-import','annual-fund-settings','record-deletion','trash',...(analysisFixture?['ai','budget-build','routine-build','workout-build','training-analysis','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
+   if(conflictEntry&&entryWrite&&parsed.entry.version>0){
+    conflictEntry=false;
+    await db.prepare("UPDATE life_entries SET version=version+1,payload=json_set(payload,'$.journal','Synthetic response saved on another device'),updated_at=?3 WHERE user_id=?1 AND entry_date=?2").bind(userId,parsed.entry.date,new Date().toISOString()).run();
+   }
+   if(conflictProfile&&profileWrite&&parsed.profile.version>0){
+    conflictProfile=false;
+    await db.prepare("UPDATE life_profiles SET version=version+1,payload=json_set(payload,'$.goal','Synthetic settings saved on another device'),updated_at=?2 WHERE user_id=?1").bind(userId,new Date().toISOString()).run();
+   }
+   if(conflictRoutine&&routineWrite&&parsed.record.version>0){
+    conflictRoutine=false;
+    await db.prepare("UPDATE life_resources SET version=version+1,payload=json_set(payload,'$.name','Synthetic program saved on another device'),updated_at=?3 WHERE user_id=?1 AND kind='routine' AND resource_id=?2").bind(userId,parsed.record.id,new Date().toISOString()).run();
+   }
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
   const file=resolve(assets,'.'+decodeURIComponent(pathname));
@@ -143,6 +165,8 @@ const server=createServer(async(req,res)=>{
   if(body!==undefined){headers.set('Origin','https://life.test');headers.set('Content-Type','application/json');}
   if(aiWrite&&process.argv.includes('--slow-ai'))await new Promise(resolve=>setTimeout(resolve,8000));
   const response=await mf.dispatchFetch('https://life.test'+req.url,{method:req.method,body,headers,redirect:'manual'});
+  if(loseDraftDelete&&draftDelete&&response.ok){loseDraftDelete=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost draft deletion acknowledgement.'}));return;}
+  if(loseProfileResponse&&profileWrite&&response.ok){loseProfileResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost settings acknowledgement.'}));return;}
   if(aiWrite&&process.argv.includes('--lose-ai-response')&&response.ok){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost AI acknowledgement.'}));return;}
   if(loseTransactionImportResponse&&transactionImportWrite&&response.ok){loseTransactionImportResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost transaction import acknowledgement. Retry the same save.'}));return;}
   if(loseEntryResponse&&entryWrite&&response.ok){loseEntryResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost acknowledgement. Retry the same save.'}));return;}

@@ -7,7 +7,7 @@ import type {EmailEnvironment} from '../lib/life/email-configuration';
 import {unsubscribeReportEmails} from '../lib/life/email-service';
 import {savedDayQuery} from '../lib/life/saved-day-link';
 type Env=Parameters<typeof worker.fetch>[1]&AIEnvironment&EmailEnvironment;
-export default {
+const standaloneWorker={
  async scheduled(controller:{scheduledTime:number},env:Env){
   try{await scheduledDailyReviews(env,controller.scheduledTime);}finally{
    if(env.DB&&env.LIFEAPP_AUTH_MODE==='google')await purgeExpiredTrash(env.DB,new Date(controller.scheduledTime));
@@ -32,3 +32,5 @@ export default {
   return response;
  }
 };
+
+export default standaloneWorker;

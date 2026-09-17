@@ -7,7 +7,7 @@ import {handleLife} from '../lib/life/service.ts';
 import {budgetSchema,recurringSchema,transactionSchema,budgetSummary,occurrenceId} from '../lib/life/modules.ts';
 import {scheduledInMonth,firstScheduledMonth,scheduleDate,scheduledDatesInMonth} from '../lib/life/budget-schedule.ts';
 import {debtEstimate} from '../lib/life/debt.ts';
-import {budgetBuildInput,parseBudgetDraft,budgetImageSchema,budgetBuildResult,budgetOutputSchema,budgetInstruction,BUDGET_UPLOAD_BYTES,BUDGET_TEXT_LIMIT} from '../lib/life/budget-build-schema.ts';
+import {parseBudgetDraft,budgetBuildResult,budgetOutputSchema,budgetInstruction,BUDGET_UPLOAD_BYTES,BUDGET_TEXT_LIMIT} from '../lib/life/budget-build-schema.ts';
 import {geminiProvider,AI_MODEL,RESERVATION_MICROS,AIInputRejected} from '../lib/life/ai-provider.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 import {beginBudgetReview,budgetReviewCategories,addBudgetReviewCategory,applyBudgetReviewAllowance,budgetReviewUnassigned,budgetReviewImport} from '../lib/life/budget-build-review.ts';
@@ -18,7 +18,7 @@ const output={notes:'Check the dates and payment amount.',categories:[{name:'Bil
 const nullScheduleOutput=JSON.parse(readFileSync('tests/fixtures/budget-null-schedules.json','utf8'));
 const providerResult={text:JSON.stringify(output),inputTokens:100,outputTokens:150,thoughtTokens:0,costMicros:500,providerId:'synthetic',modelVersion:AI_MODEL,finishReason:'STOP'};
 const png={mimeType:'image/png',data:'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jbeQAAAAASUVORK5CYII='};
-function loan(patch={}){const {category,endDate,...base}=rawItem;return recurringSchema.parse({...base,id:randomUUID(),categoryId:randomUUID(),...patch});}
+function loan(patch={}){const base={...rawItem};delete base.category;delete base.endDate;return recurringSchema.parse({...base,id:randomUUID(),categoryId:randomUUID(),...patch});}
 function tx(item,date,amount=10000,patch={}){return {id:occurrenceId(date.slice(0,7),item.id),version:1,data:transactionSchema.parse({date,amountCents:amount,kind:'expense',categoryId:item.categoryId,note:item.title,recurringId:item.id,voided:false,...patch})};}
 function fixture(t){
  const raw=new DatabaseSync(':memory:');t.after(()=>raw.close());for(const file of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+file,'utf8'));
