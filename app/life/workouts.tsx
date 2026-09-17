@@ -4,7 +4,7 @@ import CardioLog from "./cardio";
 import WorkoutNotes from './workout-notes';
 import RoutineBuilder from './routine-builder';
 import {presetExercise,repTarget,trainingSources} from '@/lib/life/exercise-presets';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { ChevronDown, Pencil, Sparkles } from 'lucide-react';
@@ -28,6 +28,9 @@ import './workouts.css';
 import './workout-flow.css';
 const newExercise=presetExercise;
 const newRoutine=():Saved<Routine>=>({id:crypto.randomUUID(),version:0,data:{name:'My workout',preferences:'',exercises:[newExercise()],archived:false}});
+const subscribeCapabilities=()=>()=>{};
+const vibrationAvailable=()=>typeof navigator.vibrate==='function';
+const serverVibration=()=>false;
 export default function Workouts({profile,onDirty,active:visible=true,refreshKey=0}:{refreshKey?:number;active?:boolean;profile:Profile;onDirty:(v:boolean)=>void}){
  const [previews,setPreviews]=useState<Record<string,Saved<Routine>>>({});
  const [sessionDraft,setSessionDraft]=useState<Saved<Routine>|null>(null),[sessionDraftError,setSessionDraftError]=useState(''),[sessionExerciseId,setSessionExerciseId]=useState<string|undefined>();
@@ -45,14 +48,15 @@ export default function Workouts({profile,onDirty,active:visible=true,refreshKey
  async function refreshSummary(){const ticket=++summaryEpoch.current;try{const next=await request('?training-summary');if(ticket!==summaryEpoch.current)return;setSummary(next);setSummaryError('');}catch{if(ticket!==summaryEpoch.current)return;setSummary(null);setSummaryError('Weekly totals could not be loaded.');}}
  function openEditor(r:Saved<Routine>,exercise?:string){if(routine){setPanel('editor');setRoutineError('Finish or cancel the current program draft first.');return;}const draft=structuredClone(r);if(exercise&&draft.data.exercises.length<30)draft.data.exercises.push(newExercise(exercise));setEditorExerciseId(exercise?draft.data.exercises.at(-1)?.id:undefined);setRoutine(draft);setRoutineDirty(!!exercise||draft.version===0);setRoutineError('');setRoutineConflict(undefined);setPanel('editor');}
 
- const [routines,setRoutines]=useState<Saved<Routine>[]>([]),[sessions,setSessions]=useState<Saved<Workout>[]>([]),[routine,setRoutine]=useState<Saved<Routine>|null>(null),[routineDirty,setRoutineDirty]=useState(false),[setDirty,setSetDirty]=useState(false),[busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reps,setReps]=useState(''),[load,setLoad]=useState(''),[clock,setClock]=useState(Date.now()),[vibration,setVibration]=useState(false),[supportsVibration,setSupportsVibration]=useState(false),[pending,setPending]=useState<Saved<Workout>|null>(null),[editingSet,setEditingSet]=useState<{exerciseId:string;setNumber:number}|null>(null);
+ const [routines,setRoutines]=useState<Saved<Routine>[]>([]),[sessions,setSessions]=useState<Saved<Workout>[]>([]),[routine,setRoutine]=useState<Saved<Routine>|null>(null),[routineDirty,setRoutineDirty]=useState(false),[setDirty,setSetDirty]=useState(false),[busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[reps,setReps]=useState(''),[load,setLoad]=useState(''),[clock,setClock]=useState(Date.now),[vibration,setVibration]=useState(false),[pending,setPending]=useState<Saved<Workout>|null>(null),[editingSet,setEditingSet]=useState<{exerciseId:string;setNumber:number}|null>(null);
+ const supportsVibration=useSyncExternalStore(subscribeCapabilities,vibrationAvailable,serverVibration);
  const alerted=useRef<string|null>(null),active=sessions.find(s=>!s.data.finishedAt&&!s.data.deleted),current=active?nextSet(active.data):null;
  // The tab stays mounted: a set draft may travel around the app with its session.
  // Actual pending writes and independent editors keep their existing navigation lock.
  useUnsaved(trainingBusy||notesDirty||builderDirty||cardioDirty||routineDirty||!!sessionDraft||(busy&&loaded)||!!pending||!!routinePending||!!startPending,onDirty);
  const previewDirty=Object.values(previews).some(draft=>!sameRoutinePlan(draft.data,routines.find(r=>r.id===draft.id)?.data));
  useEffect(()=>{if(!setDirty&&!previewDirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue='';};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn);},[setDirty,previewDirty]);
- readGuard.current=busy||!!pending||!!routinePending||!!startPending||!!sessionDraft||previewDirty||setDirty||routineDirty;
+ useLayoutEffect(()=>{readGuard.current=busy||!!pending||!!routinePending||!!startPending||!!sessionDraft||previewDirty||setDirty||routineDirty;},[busy,pending,routinePending,startPending,sessionDraft,previewDirty,setDirty,routineDirty]);
  async function reload(discardSetDraft=false){
   const blocked=()=>discardSetDraft?busy||!!pending||!!routinePending||!!startPending||!!sessionDraft||routineDirty:readGuard.current;
   if(readLock.current||writeLock.current||blocked())return;
@@ -65,8 +69,8 @@ export default function Workouts({profile,onDirty,active:visible=true,refreshKey
    void refreshSummary();
   }catch(e){if(ticket===dataEpoch.current)setError((e as Error).message);}finally{readLock.current=false;if(initial||discardSetDraft)setBusy(false);}
  }
- reloadLatest.current=reload;
- useEffect(()=>{void reloadLatest.current();setSupportsVibration(typeof navigator.vibrate==='function');},[refreshKey]);
+ useLayoutEffect(()=>{reloadLatest.current=reload;});
+ useEffect(()=>{void reloadLatest.current();},[refreshKey]);
  // Returning to Workouts and the browser reconciles read-only state. Never
  // replace an entered set, pending write or program draft with a background read.
  useEffect(()=>{
@@ -77,7 +81,8 @@ export default function Workouts({profile,onDirty,active:visible=true,refreshKey
   return()=>{window.removeEventListener('focus',reconcile);document.removeEventListener('visibilitychange',reconcile);clearInterval(timer);};
  },[visible]);
  const currentKey=active?.id+':'+current?.exercise.id+':'+current?.setNumber+':'+current?.workingSetNumber;
- useEffect(()=>{setReps(String(current?.exercise.reps??0));setLoad(String(current?.exercise.load??0));setSetDirty(false);setEditingSet(null);setWarmup(false);},[currentKey]);
+ const [draftKey,setDraftKey]=useState(currentKey);
+ if(draftKey!==currentKey){setDraftKey(currentKey);setReps(String(current?.exercise.reps??0));setLoad(String(current?.exercise.load??0));setSetDirty(false);setEditingSet(null);setWarmup(false);}
  function chime(){const context=audioContext.current;if(!context||context.state!=='running')return;const tone=context.createOscillator(),gain=context.createGain(),now=context.currentTime;tone.type='sine';tone.frequency.value=660;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.12,now+.02);gain.gain.exponentialRampToValueAtTime(.001,now+.45);tone.connect(gain);gain.connect(context.destination);tone.start(now);tone.stop(now+.5);tone.onended=()=>{tone.disconnect();gain.disconnect();};}
  async function toggleSound(){if(sound){setSound(false);return;}try{const context=audioContext.current||new AudioContext();audioContext.current=context;await context.resume();if(context.state!=='running')throw new Error();setSound(true);chime();}catch{setError('Sound is unavailable in this browser.');}}
  function toggleVibration(){if(!supportsVibration)return;setVibration(value=>!value);if(!vibration)navigator.vibrate(100);}
@@ -166,13 +171,13 @@ export default function Workouts({profile,onDirty,active:visible=true,refreshKey
  }
  const remaining=restRemaining(active?.data.restUntil||null,clock),target=editingSet&&active?{exercise:active.data.exercises.find(e=>e.id===editingSet.exerciseId)!,setNumber:editingSet.setNumber}:current;
  const performanceKey=active&&current&&!editingSet?`${active.id}:${current.exercise.id}:${current.workingSetNumber}`:'';
+ const performanceQuery=active&&current&&!editingSet?`?exercise-performance&workoutId=${active.id}&exerciseId=${current.exercise.id}&workingSetNumber=${current.workingSetNumber}`:'';
  useEffect(()=>{
-  if(!performanceKey||!visible||!active||!current)return;
+  if(!performanceQuery||!visible)return;
   let cancelled=false;
-  setPerformance({key:performanceKey,value:null,loading:true,unavailable:false});
-  void request(`?exercise-performance&workoutId=${active.id}&exerciseId=${current.exercise.id}&workingSetNumber=${current.workingSetNumber}`).then(data=>{if(!cancelled)setPerformance({key:performanceKey,value:data.performance,loading:false,unavailable:false});}).catch(()=>{if(!cancelled)setPerformance({key:performanceKey,value:null,loading:false,unavailable:true});});
+  void request(performanceQuery).then(data=>{if(!cancelled)setPerformance({key:performanceKey,value:data.performance,loading:false,unavailable:false});}).catch(()=>{if(!cancelled)setPerformance({key:performanceKey,value:null,loading:false,unavailable:true});});
   return()=>{cancelled=true;};
- },[performanceKey,visible]);
+ },[performanceKey,performanceQuery,visible]);
  const selected=routines.find(r=>r.id===selectedId&&!r.data.archived)||routines.find(r=>!r.data.archived);
  const selectedPreview=selected?(previews[selected.id]||selected):undefined;
  const previewChanged=!!selected&&!!selectedPreview&&!sameRoutinePlan(selected.data,selectedPreview.data);

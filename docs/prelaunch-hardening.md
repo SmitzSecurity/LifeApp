@@ -33,7 +33,7 @@ Relevant maintainer notices: [Next.js Windows server advisory](https://github.co
 
 ## Repeatable verification
 
-The final review passes 429 source tests and 22 compiled Worker integration tests (451 total), TypeScript, a clean `npm ci`, the production-configured Cloudflare build and its deployment dry run. The compiled checks cover Google sign-in, account isolation, imports, scheduling, email acceptance, deletion and Trash purge. The dry run does not publish the review changes.
+The final review passes 444 source tests and 22 compiled Worker integration tests (466 total), TypeScript, a clean `npm ci`, the production-configured Cloudflare build and its deployment dry run. The compiled checks cover Google sign-in, account isolation, imports, scheduling, email acceptance, deletion and Trash purge. The dry run does not publish the review changes.
 
 Browser checks covered desktop and 320px layouts with 130% text: response/profile/program conflict recovery, lost-save acknowledgement recovery, clean first setup, Trash restoration without deep-link navigation, invalid recurring-draft deletion, transaction-draft Delete/Restore, stacked date controls and loan-read Retry. Workout checks confirmed one saved program copy after an exact retry, the inline preview Edit action, cross-program previous performance, set skipping, rest extension, navigation/reload persistence and finishing with only the logged set counted. Final tested pages had no console warnings/errors. All browser records were synthetic.
 
@@ -41,7 +41,9 @@ Use the disposable loopback fixture in `scripts/browser-smoke.mjs`, with synthet
 
 Verification uses no owner-account deletion, production record writes, real camera/microphone recordings or paid AI calls. Physical mobile keyboards, native camera capture, vibration and delivery to a new customer's mailbox still require device/integration testing.
 
-The targeted ESLint pass is not clean: 55 existing errors and 34 warnings remain, mostly React ref/effect guidance. The error count is unchanged from the initial baseline; the updated Next lint package adds a warning about full-page navigation on sign-out. Independent triage found no additional demonstrated runtime blocker, but render-mutated refs remain real concurrency/compiler maintenance debt. Trash's expiry action can remain visually stale until a rerender; the server still rejects expired restoration. No blanket suppressions were added. Treat this as remaining static-analysis cleanup, not a passed lint gate.
+The complete repository ESLint gate now passes with zero errors and zero warnings. React callbacks are committed after render, stale request replies cannot replace newer scopes, and keyed/state-based resets preserve drafts. New component regressions cover response/history/dictation lifecycle, retained Budget editors and storage preferences, workout navigation/rest/drag state, exercise playback and native-dialog dates. Trash restoration expires on a timer. Only ignored build/runtime/scratch output is excluded from lint; no new source-rule suppressions were added.
+
+Sign-out uses full-page navigation at the authentication boundary. A trial use of next/link pulled a Vinext Pages Router dynamic import into the Worker; the compiled test gate rejected it. Native action buttons preserve server session rechecks without that dependency.
 
 ## Before paid onboarding
 

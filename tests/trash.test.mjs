@@ -82,7 +82,7 @@ test('permanently deleting an uncertain AI draft retains the hold and removes it
  f.raw.prepare('INSERT INTO life_account_deletions(user_id,deleted_at) VALUES(?,?)').run('a',stamp);assert.equal(f.raw.prepare('SELECT COUNT(*) n FROM life_trash').get().n,0);assert.equal(f.raw.prepare('SELECT COUNT(*) n FROM life_profiles').get().n,0);assert.equal(f.raw.prepare('SELECT reserved_micros FROM life_ai_usage').get().reserved_micros,200000);
 });
 test('training regeneration replaces only the matching week and preserves a previous week',async t=>{
- const f=fixture(t);await f.setup();const cardio=await f.cardio();await f.call(f.change((await f.list())[0],'restore'));
+ const f=fixture(t);await f.setup();const cardio=await f.cardio(),item=(await f.list())[0];assert.equal(item.id,cardio.id);assert.equal((await f.call(f.change(item,'restore'))).status,200);
  const run=()=>f.call({action:'training-analysis',build:{requestId:randomUUID(),consent:true}});
  const first=(await (await run()).json()).build;assert.equal(first.status,'complete');
  const previous='training:'+randomUUID();f.raw.prepare("INSERT INTO life_routine_builds(user_id,request_id,status,input_snapshot,result_json,model,price_version,reserved_micros,cost_micros,input_tokens,output_tokens,thought_tokens,provider_id,created_at,finished_at,error_code) SELECT user_id,?1,status,json_set(input_snapshot,'$.training.from','2026-09-07'),result_json,model,price_version,reserved_micros,cost_micros,input_tokens,output_tokens,thought_tokens,provider_id,'2026-09-13T12:00:00.000Z','2026-09-13T12:00:00.000Z',error_code FROM life_routine_builds WHERE request_id=?2").run(previous,'training:'+first.id);

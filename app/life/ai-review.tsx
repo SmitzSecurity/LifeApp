@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useLayoutEffect,useRef,useState} from 'react';
 import {MessageSquare,RotateCw,LoaderCircle,ArrowUpRight} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter} from '@/components/ui/alert-dialog';
@@ -14,22 +14,27 @@ type State={available:boolean;reports:AnalysisReport[];regenerationsRemaining:nu
 type FeedbackWrite={id:string;text:string;reportId:string;date:string;cadence:Cadence;profileVersion:number;regenerate:boolean};
 type ReviewWrite={cadence:Cadence;date:string;requestId:string;sourceVersion:number;predecessorId:string|null;critique:string;consent:true};
 type Props={entry?:Entry|null;date?:string;cadence?:Cadence;profile:Profile;synced:boolean;heading?:string;onBusy:(busy:boolean)=>void;onProfileSaved:(profile:Profile)=>void;onSettings:()=>void;onGenerated?:()=>void};
-export default function AIReview({entry,date,cadence='daily',profile,synced,heading='Analysis',onBusy,onProfileSaved,onSettings,onGenerated}:Props){
+export default function AIReview(props:Props){
+ // A different saved day/period owns a separate request lifecycle. Unmounting
+ // invalidates its callbacks before any new scope can display their results.
+ return <AnalysisPanel key={(props.cadence||'daily')+':'+(props.date||props.entry!.date)} {...props}/>;
+}
+function AnalysisPanel({entry,date,cadence='daily',profile,synced,heading='Analysis',onBusy,onProfileSaved,onSettings,onGenerated}:Props){
  const targetDate=date||entry!.date;
  const [data,setData]=useState<State|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[generating,setGenerating]=useState(false),[pending,setPending]=useState<string|null>(null),[dismissed,setDismissed]=useState(false),[feedbackOpen,setFeedbackOpen]=useState(false),[feedback,setFeedback]=useState(''),[feedbackId,setFeedbackId]=useState(''),[requestId,setRequestId]=useState(''),[notice,setNotice]=useState('');
  const [deletePending,setDeletePending]=useState<AnalysisReport|null>(null),[feedbackPending,setFeedbackPending]=useState<FeedbackWrite|null>(null);
- const [pendingInput,setPendingInput]=useState<ReviewWrite|null>(null),mounted=useRef(false),scope=useRef(''),scopeEpoch=useRef(0),generation=useRef({epoch:0,id:null as string|null});if(scope.current!==cadence+':'+targetDate){scope.current=cadence+':'+targetDate;scopeEpoch.current++;}
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
- const status=useAIStatus<State>({scope:scope.current,load:()=>request('?ai=1&date='+targetDate+'&cadence='+cadence),active:!!pending,shouldPoll:next=>next.reports.some(r=>r.status==='generating'),onData:next=>{setData(next);if(generation.current.id&&next.reports.some(r=>r.id===generation.current.id&&r.status!=='generating')){if(next.reports.some(r=>r.id===generation.current.id&&r.status==='complete')){setError('');onGenerated?.();}generation.current={epoch:generation.current.epoch+1,id:null};setGenerating(false);setRequestId(crypto.randomUUID());}setPending(current=>current&&next.reports.some(r=>r.id===current&&r.status!=='generating')?null:current);setPendingInput(current=>current&&next.reports.some(r=>r.id===(current.predecessorId?current.requestId:current.cadence+':'+current.date)&&r.status!=='generating')?null:current);setDeletePending(current=>current&&next.reports.some(r=>r.id===current.id&&!!r.deleted===!current.deleted)?null:current);}});
- useEffect(()=>{generation.current={epoch:generation.current.epoch+1,id:null};setData(null);setError('');setNotice('');setFeedback('');setFeedbackOpen(false);setPending(null);setPendingInput(null);setGenerating(false);setDismissed(false);setRequestId(crypto.randomUUID());},[targetDate,cadence]);
- useEffect(()=>{if(synced)void status.check();},[entry?.version,synced]);
+ const [pendingInput,setPendingInput]=useState<ReviewWrite|null>(null),mounted=useRef(false),generation=useRef({epoch:0,id:null as string|null});
+ useLayoutEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+ const status=useAIStatus<State>({scope:cadence+':'+targetDate,load:()=>request('?ai=1&date='+targetDate+'&cadence='+cadence),active:!!pending,shouldPoll:next=>next.reports.some(r=>r.status==='generating'),onData:next=>{setData(next);if(generation.current.id&&next.reports.some(r=>r.id===generation.current.id&&r.status!=='generating')){if(next.reports.some(r=>r.id===generation.current.id&&r.status==='complete')){setError('');onGenerated?.();}generation.current={epoch:generation.current.epoch+1,id:null};setGenerating(false);setRequestId(crypto.randomUUID());}setPending(current=>current&&next.reports.some(r=>r.id===current&&r.status!=='generating')?null:current);setPendingInput(current=>current&&next.reports.some(r=>r.id===(current.predecessorId?current.requestId:current.cadence+':'+current.date)&&r.status!=='generating')?null:current);setDeletePending(current=>current&&next.reports.some(r=>r.id===current.id&&!!r.deleted===!current.deleted)?null:current);}});
+ const checkStatus=status.check;
+ useEffect(()=>{if(synced)void checkStatus();},[entry?.version,synced,checkStatus]);
  useEffect(()=>{onBusy(busy||!!deletePending||!!feedbackPending||(generating&&!dismissed));return()=>onBusy(false);},[busy,deletePending,feedbackPending,generating,dismissed,onBusy]);
  const reports=[...(data?.reports||[])].sort((a,b)=>b.revision-a.revision),latest=reports[0],shown=reports.find(r=>r.status==='complete'&&!r.deleted),unconfirmed=!!latest&&latest.status!=='complete';
  const ready=cadence!=='daily'||!!entry?.complete&&!entry?.deleted;
  const canGenerate=!!data?.available&&synced&&ready&&!unconfirmed&&!busy&&!generating&&!pending&&!deletePending&&!feedbackPending&&(!latest||data.regenerationsRemaining>0);
- async function remove(report:AnalysisReport){const retrying=!!deletePending,target=deletePending||report,ticket=scopeEpoch.current,current=()=>mounted.current&&scopeEpoch.current===ticket;setDeletePending(target);setBusy(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'analysis',id:target.id,deleted:!target.deleted}});if(!current())return;setDeletePending(null);await status.check();if(!current())return;onGenerated?.();setNotice(target.deleted?'Analysis restored.':'Analysis moved to Trash.');}catch(e){if(!current())return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying))setDeletePending(null);await status.check();}finally{if(current())setBusy(false);}}
+ async function remove(report:AnalysisReport){const retrying=!!deletePending,target=deletePending||report,current=()=>mounted.current;setDeletePending(target);setBusy(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'analysis',id:target.id,deleted:!target.deleted}});if(!current())return;setDeletePending(null);await status.check();if(!current())return;onGenerated?.();setNotice(target.deleted?'Analysis restored.':'Analysis moved to Trash.');}catch(e){if(!current())return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying))setDeletePending(null);await status.check();}finally{if(current())setBusy(false);}}
  async function runGeneration(nextProfile:Profile,critique=''){
-  const retrying=!!pendingInput,input=pendingInput||{cadence,date:targetDate,requestId,sourceVersion:cadence==='daily'?entry!.version:nextProfile.version,predecessorId:latest?.id||null,critique,consent:true as const},ticket=scopeEpoch.current,run=generation.current.epoch+1,id=input.predecessorId?input.requestId:input.cadence+':'+input.date;generation.current={epoch:run,id};const current=()=>mounted.current&&scopeEpoch.current===ticket&&generation.current.epoch===run;
+  const retrying=!!pendingInput,input=pendingInput||{cadence,date:targetDate,requestId:requestId||crypto.randomUUID(),sourceVersion:cadence==='daily'?entry!.version:nextProfile.version,predecessorId:latest?.id||null,critique,consent:true as const},run=generation.current.epoch+1,id=input.predecessorId?input.requestId:input.cadence+':'+input.date;generation.current={epoch:run,id};const current=()=>mounted.current&&generation.current.epoch===run;
   setPendingInput(input);setPending(id);setGenerating(true);setDismissed(false);
   try{await request('',{action:'ai',review:input});if(!current())return;setRequestId(crypto.randomUUID());await status.check();}
   catch(e){if(!current())return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying)){setPending(null);setPendingInput(null);generation.current.id=null;}await status.check();}
@@ -39,7 +44,7 @@ export default function AIReview({entry,date,cadence='daily',profile,synced,head
  function cancelWait(){setDismissed(true);}
  function openFeedback(){setFeedbackId(crypto.randomUUID());setFeedback('');setFeedbackOpen(true);setError('');}
  async function saveFeedback(regenerate:boolean){
-  if(!shown||!feedback.trim())return;const retrying=!!feedbackPending,input=feedbackPending||{id:feedbackId,text:feedback,reportId:shown.id,date:targetDate,cadence,profileVersion:profile.version,regenerate},ticket=scopeEpoch.current,current=()=>mounted.current&&scopeEpoch.current===ticket;setFeedbackPending(input);setBusy(true);setError('');
+  if(!shown||!feedback.trim())return;const retrying=!!feedbackPending,input=feedbackPending||{id:feedbackId,text:feedback,reportId:shown.id,date:targetDate,cadence,profileVersion:profile.version,regenerate},current=()=>mounted.current;setFeedbackPending(input);setBusy(true);setError('');
   try{
    const {regenerate:run,...payload}=input;const result=await request('',{action:'analysis-feedback',feedback:payload});if(!current())return;setFeedbackPending(null);
    onProfileSaved(result.profile);setNotice('Feedback saved for future analyses.');

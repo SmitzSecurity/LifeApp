@@ -1,6 +1,6 @@
 "use client";
 import {formatDate} from '@/lib/life/date-display';
-import {useEffect,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {ChevronDown,Pencil,Sparkles} from 'lucide-react';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
@@ -16,8 +16,11 @@ import type {DirtyReporter} from './budget-fields';
 import './loan-builder.css';
 
 export default function BudgetDebts({plan,today,transactions,onEdit,onAdd,onAI,onSave,onDirty,dirtyItems}:{dirtyItems:Record<string,boolean>;plan:Saved<Budget>;today:string;transactions:Saved<Transaction>[];onEdit:(item:Budget['recurring'][number])=>void;onAdd:()=>void;onAI?:()=>void;onSave:(record:Saved<Transaction>)=>Promise<Saved<Transaction>>;onDirty:DirtyReporter}){
- const [payments,setPayments]=useState<Saved<Transaction>[]>([]),[suppressedOccurrences,setSuppressedOccurrences]=useState<string[]>([]),[error,setError]=useState(''),[loaded,setLoaded]=useState(false),[reload,setReload]=useState(0);
- useEffect(()=>{let cancelled=false;setLoaded(false);setError('');request('?debt-payments&month='+plan.id).then(data=>{if(!cancelled){setPayments(data.records.map((r:Saved<Transaction>)=>({...r,data:transactionSchema.parse(r.data)})));setSuppressedOccurrences(data.suppressedOccurrences||[]);setLoaded(true);}}).catch(e=>{if(!cancelled)setError(e.message);});return()=>{cancelled=true;};},[plan.id,plan.version,transactions,reload]);
+ const [reload,setReload]=useState(0);
+ const readKey=useMemo(()=>({month:plan.id,version:plan.version,transactions,reload}),[plan.id,plan.version,transactions,reload]);
+ const [result,setResult]=useState<{key:typeof readKey;payments:Saved<Transaction>[];suppressedOccurrences:string[];error:string}|null>(null);
+ const current=result?.key===readKey?result:null,payments=current?.payments??[],suppressedOccurrences=current?.suppressedOccurrences??[],error=current?.error??'',loaded=!!current&&!error;
+ useEffect(()=>{let cancelled=false;request('?debt-payments&month='+readKey.month).then(data=>{if(!cancelled)setResult({key:readKey,payments:data.records.map((r:Saved<Transaction>)=>({...r,data:transactionSchema.parse(r.data)})),suppressedOccurrences:data.suppressedOccurrences||[],error:''});}).catch(e=>{if(!cancelled)setResult({key:readKey,payments:[],suppressedOccurrences:[],error:e.message});});return()=>{cancelled=true;};},[readKey]);
  const loans=plan.data.recurring.filter(r=>!!r.debt&&(!r.deleted||dirtyItems['transaction-editor:loan-payment:'+r.id]));
  return <BudgetSection id="loans" title="Loans & payoff" className="module-card budget-debts" dirty={Object.entries(dirtyItems).some(([k,v])=>v&&k.startsWith('transaction-editor:loan-payment:'))} actions={onAI?<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" disabled={plan.data.recurring.length>=60}>+ Add loan<ChevronDown size={16} aria-hidden="true"/></Button></DropdownMenuTrigger><DropdownMenuContent className="life-menu" align="end"><DropdownMenuItem onSelect={onAdd}><Pencil aria-hidden="true"/><span>Manual Build</span></DropdownMenuItem><DropdownMenuItem onSelect={onAI}><Sparkles aria-hidden="true"/><span>AI Build</span></DropdownMenuItem></DropdownMenuContent></DropdownMenu>:<Button variant="ghost" disabled={plan.data.recurring.length>=60} onClick={onAdd}>+ Add loan</Button>}>
  {!loans.length&&<p className="field-hint">Choose a loan preset or use a statement to build with AI. Track a balance now and add payments when you’re ready.</p>}

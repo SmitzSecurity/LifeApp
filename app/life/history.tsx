@@ -1,7 +1,7 @@
 "use client";
 import {DateInput} from './date-input';
 import {formatDate} from '@/lib/life/date-display';
-import {useEffect,useRef,useState,type FormEvent} from 'react';
+import {useEffect,useState,type FormEvent} from 'react';
 import {SquarePen,BookOpen,Search,Trash2} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogCancel} from '@/components/ui/alert-dialog';
@@ -12,26 +12,27 @@ import {request} from './shared';
 type Filters=Omit<HistoryFilters,'before'>;
 const blank:Filters={query:'',from:'',through:'',status:'all',deleted:false};
 const niceDate=formatDate;
+type HistoryQuery={filters:Filters;before:string|null;previous:Entry[];refreshKey:number};
+type HistoryResult={query:HistoryQuery;entries:Entry[];cursor:string|null;error:string};
 
 export default function History({disabled,onOpen,onDeleted,onBusy,searchOpen=false,refreshKey=0}:{disabled:boolean;onOpen:(date:string)=>void;onDeleted:(date:string)=>void;onBusy:(busy:boolean)=>void;searchOpen?:boolean;refreshKey?:number}){
- const [filters,setFilters]=useState<Filters>(blank),[applied,setApplied]=useState<Filters>(blank);
- const [entries,setEntries]=useState<Entry[]>([]),[cursor,setCursor]=useState<string|null>(null);
- const [loading,setLoading]=useState(false),[loaded,setLoaded]=useState(false),[error,setError]=useState('');
+ const [filters,setFilters]=useState<Filters>(blank),[query,setQuery]=useState<HistoryQuery>({filters:blank,before:null,previous:[],refreshKey});
+ const [result,setResult]=useState<HistoryResult|null>(null);
  const [removing,setRemoving]=useState<Entry|null>(null),[deleting,setDeleting]=useState(false),[deleteError,setDeleteError]=useState('');
- const sequence=useRef(0);
- async function load(next:Filters,before:string|null=null){
-  const token=++sequence.current;
-  setLoading(true);setError('');
-  if(!before){setApplied(next);setEntries([]);setCursor(null);setLoaded(false);}
-  try{
-   const page:HistoryPage=await request('',{action:'history',filters:{...next,before}});
-   if(token!==sequence.current)return;
-   setEntries(previous=>before?[...previous,...page.entries.filter(e=>!previous.some(p=>p.date===e.date))]:page.entries);
-   setCursor(page.nextCursor);setLoaded(true);
-  }catch{if(token===sequence.current)setError('History could not be loaded. Your saved check-ins are safe. Try again.');}
-  finally{if(token===sequence.current)setLoading(false);}
- }
- useEffect(()=>{void load(applied);return()=>{sequence.current++;};},[refreshKey]);
+ if(query.refreshKey!==refreshKey)setQuery({filters:query.filters,before:null,previous:[],refreshKey});
+ const applied=query.filters,current=result?.query===query&&query.refreshKey===refreshKey?result:null;
+ const loading=!current,loaded=!!current&&!current.error,error=current?.error||'',entries=current?.entries||query.previous,cursor=current?current.cursor:query.before;
+ function load(next:Filters,before:string|null=null){setQuery({filters:next,before,previous:before?entries:[],refreshKey});}
+ useEffect(()=>{
+  let cancelled=false;
+  // A refresh always starts at the first page, retaining the selected filters.
+  // Each effect owns its response; abandoned filter/pagination reads cannot win.
+  const {before,previous}=query;
+  void request('',{action:'history',filters:{...query.filters,before}}).then((page:HistoryPage)=>{
+   if(!cancelled)setResult({query,entries:before?[...previous,...page.entries.filter(e=>!previous.some(p=>p.date===e.date))]:page.entries,cursor:page.nextCursor,error:''});
+  },()=>{if(!cancelled)setResult({query,entries:previous,cursor:before,error:'History could not be loaded. Your saved check-ins are safe. Try again.'});});
+  return()=>{cancelled=true;};
+ },[query]);
  const filtered=!!(applied.query||applied.from||applied.through||applied.status!=='all');
  const filtersChanged=JSON.stringify(filters)!==JSON.stringify(applied);
  function search(event:FormEvent){event.preventDefault();void load(filters);}

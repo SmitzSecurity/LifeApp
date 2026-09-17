@@ -1,6 +1,6 @@
 "use client";
 import NumericInput from './numeric-input';
-import {useEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from 'react';
+import {useCallback,useEffect,useLayoutEffect,useRef,useState,type PointerEvent as ReactPointerEvent} from 'react';
 import {GripVertical} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 import {muscleIds,muscleNames,type MuscleId} from '@/lib/life/muscle-groups';
@@ -19,18 +19,21 @@ export default function RoutineEditor({routine,onChange,onSave,onCancel,busy,pen
  const [personal,setPersonal]=useState<Exercise[]>([]);useEffect(()=>{request('?personal-exercises').then(r=>setPersonal(r.exercises)).catch(()=>{});},[]);
  const data=routine.data,exercise=data.exercises.find(e=>e.id===exerciseId)||data.exercises[0],targets=exercise?exerciseTargets(exercise):null;
  const list=useRef<HTMLDivElement>(null),drag=useRef<ExerciseDrag|null>(null),hold=useRef<ReturnType<typeof setTimeout>|null>(null),frame=useRef<number|null>(null);
- const latest=useRef({data,onChange,busy,pending});latest.current={data,onChange,busy,pending};
+ const latest=useRef({data,onChange,busy,pending});
+ useLayoutEffect(()=>{latest.current={data,onChange,busy,pending};},[data,onChange,busy,pending]);
  const [dragView,setDragView]=useState<{id:string;drop:DropPosition|null}|null>(null),[reorderAnnouncement,setReorderAnnouncement]=useState('');
- function clearDrag(updateView=true){
+ const locked=busy||pending,[wasLocked,setWasLocked]=useState(locked);
+ if(wasLocked!==locked){setWasLocked(locked);if(locked&&dragView){setDragView(null);setReorderAnnouncement('Reordering cancelled. Exercise order is unchanged.');}}
+ const releaseDrag=useCallback(()=>{
   const previous=drag.current;drag.current=null;
   if(hold.current!==null){clearTimeout(hold.current);hold.current=null;}
   if(frame.current!==null){cancelAnimationFrame(frame.current);frame.current=null;}
   if(previous?.handle.hasPointerCapture(previous.pointerId))previous.handle.releasePointerCapture(previous.pointerId);
-  if(updateView)setDragView(null);
- }
- function cancelDrag(){const wasActive=drag.current?.active;clearDrag();if(wasActive)setReorderAnnouncement('Reordering cancelled. Exercise order is unchanged.');}
- useEffect(()=>{const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'&&drag.current){event.preventDefault();event.stopPropagation();cancelDrag();}};document.addEventListener('keydown',escape,true);return()=>{document.removeEventListener('keydown',escape,true);clearDrag(false);};},[]);
- useEffect(()=>{if(busy||pending)cancelDrag();},[busy,pending]);
+ },[]);
+ const clearDrag=useCallback(()=>{releaseDrag();setDragView(null);},[releaseDrag]);
+ const cancelDrag=useCallback(()=>{const wasActive=drag.current?.active;clearDrag();if(wasActive)setReorderAnnouncement('Reordering cancelled. Exercise order is unchanged.');},[clearDrag]);
+ useEffect(()=>{const escape=(event:KeyboardEvent)=>{if(event.key==='Escape'&&drag.current){event.preventDefault();event.stopPropagation();cancelDrag();}};document.addEventListener('keydown',escape,true);return()=>{document.removeEventListener('keydown',escape,true);releaseDrag();};},[cancelDrag,releaseDrag]);
+ useEffect(()=>{if(locked)releaseDrag();},[locked,releaseDrag]);
  function dropAtPointer(current:ExerciseDrag){
   const container=list.current;if(!container)return null;
   const bounds=container.getBoundingClientRect();

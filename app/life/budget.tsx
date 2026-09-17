@@ -32,24 +32,26 @@ const blankPlan=():Budget=>budgetSchema.parse({currency:'USD',categories:['Housi
 export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Profile;onDirty:(v:boolean)=>void;onProfileSaved:(p:Profile)=>void}){
  const today=todayIn(profile.timezone),[month,setMonth]=useState(today.slice(0,7)),[plan,setPlan]=useState<Saved<Budget>|null>(null),[transactions,setTransactions]=useState<Saved<Transaction>[]>([]);
  const [recurring,setRecurring]=useState<{item:Recurring;previous:Recurring|null}|null>(null);
- const [suppressedAllocations,setSuppressedAllocations]=useState<string[]>([]),[suppressedOccurrences,setSuppressedOccurrences]=useState<string[]>([]),allocationCache=useRef<Saved<Transaction>[]>([]);
- const dueCache=useRef<ReturnType<typeof budgetSummary>['due']>([]);
+ const [suppressedAllocations,setSuppressedAllocations]=useState<string[]>([]),[suppressedOccurrences,setSuppressedOccurrences]=useState<string[]>([]);
  const [ordering,setOrdering]=useState(false),[building,setBuilding]=useState<'budget'|'loans'|null>(null);
  const [logging,setLogging]=useState(false);
  const [fundSetup,setFundSetup]=useState<'offer'|'manage'|null>(null),fundPromptShown=useRef(false);
- const [loading,setLoading]=useState(false),[ready,setReady]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[dirtyItems,setDirtyItems]=useState<Record<string,boolean>>({}),[goalsDirty,setGoalsDirty]=useState(false);
+ const [loading,setLoading]=useState(true),[ready,setReady]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[dirtyItems,setDirtyItems]=useState<Record<string,boolean>>({}),[goalsDirty,setGoalsDirty]=useState(false);
+ const [retained,setRetained]=useState({month,plan,transactions,suppressedAllocations,suppressedOccurrences,dirtyItems,due:[] as ReturnType<typeof budgetSummary>['due'],allocations:[] as Saved<Transaction>[]});
  const planRef=useRef<Saved<Budget>|null>(null),loadSequence=useRef(0);
  const reportDirty:DirtyReporter=useCallback((id,dirty)=>setDirtyItems(previous=>!!previous[id]===dirty?previous:{...previous,[id]:dirty}),[]);
  const dirty=goalsDirty||Object.values(dirtyItems).some(Boolean);useUnsaved(dirty,onDirty);
- function acceptPlan(record:Saved<Budget>){const value={...record,data:budgetSchema.parse(record.data)};if(value.id===month&&(!planRef.current||planRef.current.id!==month||value.version>=planRef.current.version)){planRef.current=value;setPlan(value);}return value;}
- async function load(){const sequence=++loadSequence.current;setLoading(true);setReady(false);setError('');try{
-  const [current,history,tx]=await Promise.all([request('?kind=budget&month='+month),request('?kind=budget'),request('?kind=transaction&month='+month)]);
-  if(sequence!==loadSequence.current)return;
+ const acceptPlan=useCallback((record:Saved<Budget>)=>{const value={...record,data:budgetSchema.parse(record.data)};if(value.id===month&&(!planRef.current||planRef.current.id!==month||value.version>=planRef.current.version)){planRef.current=value;setPlan(value);}return value;},[month]);
+ const load=useCallback((isActive:()=>boolean=()=>true)=>{const sequence=++loadSequence.current;
+  return Promise.all([request('?kind=budget&month='+month),request('?kind=budget'),request('?kind=transaction&month='+month)]).then(([current,history,tx])=>{
+  if(!isActive()||sequence!==loadSequence.current)return;
   const existing=current.records[0],earlier=(history.records as Saved<Budget>[]).filter(p=>p.id<month).sort((a,b)=>b.id.localeCompare(a.id))[0];
   planRef.current=null;acceptPlan(existing||{id:month,version:0,data:earlier?budgetSchema.parse(earlier.data):blankPlan()});
-  setSuppressedAllocations(tx.suppressedAllocations||[]);setSuppressedOccurrences(tx.suppressedOccurrences||[]);allocationCache.current=[];dueCache.current=[];setTransactions(tx.records.map((t:Saved<Transaction>)=>({...t,data:transactionSchema.parse(t.data)})));setRecurring(null);setDirtyItems({});setNotice('');setReady(true);
- }catch(e){if(sequence===loadSequence.current)setError((e as Error).message);}finally{if(sequence===loadSequence.current)setLoading(false);}}
- useEffect(()=>{void load();return()=>{loadSequence.current++;};},[month]);
+  setSuppressedAllocations(tx.suppressedAllocations||[]);setSuppressedOccurrences(tx.suppressedOccurrences||[]);setTransactions(tx.records.map((t:Saved<Transaction>)=>({...t,data:transactionSchema.parse(t.data)})));setRecurring(null);setDirtyItems({});setNotice('');setReady(true);
+ }).catch(e=>{if(isActive()&&sequence===loadSequence.current)setError((e as Error).message);}).finally(()=>{if(isActive()&&sequence===loadSequence.current)setLoading(false);});},[month,acceptPlan]);
+ useEffect(()=>{let active=true;void load(()=>active);return()=>{active=false;};},[load]);
+ function openMonth(next:string){if(next===month)return;setLoading(true);setReady(false);setError('');setMonth(next);}
+ function retryLoad(){setLoading(true);setReady(false);setError('');void load();}
  async function saveItem(change:BudgetItemChange):Promise<Saved<Budget>>{
   try{const result=await request('',{action:'budget-item',change});const saved=acceptPlan(result.record);
    const eligible=(item:Recurring)=>isAnnualExpense(item)&&item.active&&!item.deleted&&!item.excludeFromAnnualFund;
@@ -81,18 +83,21 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
  const summary=plan?budgetSummary(plan.data,transactions,month,suppressedOccurrences):null;
  // Keep an editor mounted if another item action archives its category or
  // removes its recurrence. Its draft stays available to finish or cancel.
- const displayedDue=[...(summary?.due||[]),...dueCache.current.filter(due=>dueHasDraft(due.id)&&!summary?.due.some(current=>current.id===due.id))];dueCache.current=displayedDue;
- const txProps=plan?{plan,today,annualFundEnabled:!!profile.annualFund?.enabled,onSave:saveTransaction,onDirty:reportDirty}:null;
+ const displayedDue=[...(summary?.due||[]),...(retained.month===month?retained.due:[]).filter(due=>dueHasDraft(due.id)&&!summary?.due.some(current=>current.id===due.id))];
+ const txProps={plan:plan!,today,annualFundEnabled:!!profile.annualFund?.enabled,onSave:saveTransaction,onDirty:reportDirty};
  const derivedAllocations=incomeAllocations(transactions,month,suppressedAllocations);
- const keptAllocations=allocationCache.current.filter(t=>dueHasDraft(t.id)&&!transactions.some(x=>x.id===t.id)&&!derivedAllocations.some(x=>x.id===t.id));
- allocationCache.current=[...derivedAllocations,...keptAllocations];const allTransactions=[...transactions,...allocationCache.current];
+ const keptAllocations=(retained.month===month?retained.allocations:[]).filter(t=>dueHasDraft(t.id)&&!transactions.some(x=>x.id===t.id)&&!derivedAllocations.some(x=>x.id===t.id));
+ const allocations=[...derivedAllocations,...keptAllocations],allTransactions=[...transactions,...allocations];
+ // Render state participates in React's commit/rollback, unlike a mutated ref.
+ // Only changed source identities advance the snapshot, so this adjustment is bounded.
+ if(retained.month!==month||retained.plan!==plan||retained.transactions!==transactions||retained.suppressedAllocations!==suppressedAllocations||retained.suppressedOccurrences!==suppressedOccurrences||retained.dirtyItems!==dirtyItems)setRetained({month,plan,transactions,suppressedAllocations,suppressedOccurrences,dirtyItems,due:displayedDue,allocations});
  const expected:ExpectedPayment[]=[...displayedDue.map(due=>({...due,amountCents:due.incomePlan?calculateIncome(due.amountCents,due.incomePlan).netCents:due.amountCents})),...allTransactions.filter(t=>!t.data.recurringId&&(t.data.planned||t.data.expectedDate)&&(!t.data.deleted&&!t.data.voided||dueHasDraft(t.id))).map(t=>({id:t.id,title:t.data.note||'Planned '+t.data.kind,kind:t.data.kind,amountCents:t.data.amountCents,categoryId:t.data.categoryId,date:t.data.expectedDate||t.data.date,variable:false,recorded:!t.data.planned&&!t.data.deleted&&!t.data.voided,actualCents:t.data.amountCents}))].sort(compareExpected);
  const renderExpected=(item:ExpectedPayment,scope?:string)=><ExpectedItem key={item.id} {...txProps!} scope={scope} due={item} source={plan!.data.recurring.find(x=>x.id===item.recurringId)} transaction={allTransactions.find(t=>t.id===item.id)} onEditRecurring={editRecurring}/>;
  const unscheduled=plan?.data.recurring.filter(r=>!r.deleted&&!r.debt&&!displayedDue.some(d=>d.recurringId===r.id))||[];
  return <section className="budget-workspace">
- <div className="metric-grid budget-metrics"><div className="budget-month-metric"><MonthInput variant="tile" label="Month" aria-label="Budget month" required value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onValueChange={month=>{if(month)setMonth(month);}}/></div>{[['Income',summary?.income],['Spent',summary?.expenses],['Saved / invested',summary?summary.saving+summary.investing:undefined],['Cash flow',summary?.cashFlow]].map(([label,value])=><div key={label}><small>{label}</small><strong>{ready?money(value as number):'—'}</strong></div>)}</div>
+ <div className="metric-grid budget-metrics"><div className="budget-month-metric"><MonthInput variant="tile" label="Month" aria-label="Budget month" required value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onValueChange={month=>{if(month)openMonth(month);}}/></div>{[['Income',summary?.income],['Spent',summary?.expenses],['Saved / invested',summary?summary.saving+summary.investing:undefined],['Cash flow',summary?.cashFlow]].map(([label,value])=><div key={label}><small>{label}</small><strong>{ready?money(value as number):'—'}</strong></div>)}</div>
  {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="budget-notice">{notice}</p>}
- {!ready?<Button disabled={loading} onClick={()=>void load()}>{loading?'Opening budget…':'Retry budget'}</Button>:plan&&summary&&txProps&&<div key={month}>
+ {!ready?<Button disabled={loading} onClick={retryLoad}>{loading?'Opening budget…':'Retry budget'}</Button>:plan&&summary&&<div key={month}>
  <div className="budget-columns">
 <BudgetSection id="allowances" title="Category allowances" className="module-card category-allowances" dirty={hasDirtyPrefix('category:')||plan.data.categories.some(c=>categoryHasDraft(c.id))||!!dirtyItems['category-order']} actions={<Button variant="ghost" onClick={()=>setOrdering(true)} aria-label="Edit categories">Edit</Button>}>
  {summary.categories.filter(c=>!c.archived||categoryHasDraft(c.id)).map(c=>{const category=plan.data.categories.find(x=>x.id===c.id)!;const upcoming=expected.filter(r=>r.categoryId===c.id&&!r.recorded||hasTransactionDraft('category-due:'+c.id+':'+r.id));const recorded=transactions.filter(t=>hasTransactionDraft(c.id+':'+t.id)||t.data.kind==='expense'&&t.data.categoryId===c.id&&!t.data.planned&&!t.data.deleted&&!t.data.voided).filter(t=>!upcoming.some(r=>r.id===t.id)||hasTransactionDraft(c.id+':'+t.id)).sort((a,b)=>b.data.date.localeCompare(a.data.date));return <CategoryAllowance key={c.id} category={category} plan={plan} spent={c.spent} scheduled={c.scheduled} onSave={saveItem} onDirty={reportDirty}><div className="category-activity">{upcoming.map(r=>renderExpected(r,'category-due:'+c.id+':'+r.id))}{recorded.map(t=><TransactionTile key={t.id} {...txProps} record={t} scope={c.id+':'+t.id}/>)}{!upcoming.length&&!recorded.length&&<p className="muted">No activity in this category.</p>}</div></CategoryAllowance>;})}

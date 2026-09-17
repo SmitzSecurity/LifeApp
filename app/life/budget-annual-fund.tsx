@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter} from '@/components/ui/dialog';
 import type {Profile} from '@/lib/life/domain';
@@ -13,15 +13,18 @@ type Choice={previous:Profile['annualFund']|null;item:{enabled:boolean}};
 type Props={profile:Profile;plan:Saved<Budget>;today:string;transactions:Saved<Transaction>[];setup:'offer'|'manage'|null;onSetup:(value:'offer'|'manage'|null)=>void;onProfileSaved:(profile:Profile)=>void;onSave:(record:Saved<Transaction>)=>Promise<Saved<Transaction>>;onDirty:DirtyReporter};
 export default function BudgetAnnualFund({profile,plan,today,transactions,setup,onSetup,onProfileSaved,onSave,onDirty}:Props){
  const target=annualFundTarget(plan.data,plan.id),enabled=!!profile.annualFund?.enabled;
- const [balance,setBalance]=useState<AnnualFundBalance|null>(null),[reading,setReading]=useState(false),[error,setError]=useState(''),[refresh,setRefresh]=useState(0),[contribution,setContribution]=useState<Saved<Transaction>|null>(null),[contributionLocked,setContributionLocked]=useState(false);
- const sequence=useRef(0);
+ const [refresh,setRefresh]=useState(0),[contribution,setContribution]=useState<Saved<Transaction>|null>(null),[contributionLocked,setContributionLocked]=useState(false);
  const revision=transactions.map(record=>record.id+':'+record.version).sort().join('|');
+ const setupOpen=!!setup;
+ const readKey=useMemo(()=>({month:plan.id,profileVersion:profile.version,revision,refresh,enabled,setupOpen}),[plan.id,profile.version,revision,refresh,enabled,setupOpen]);
+ const [result,setResult]=useState<{key:typeof readKey;balance:AnnualFundBalance|null;error:string}|null>(null);
+ const current=result?.key===readKey?result:null,balance=current?.balance??null,error=current?.error??'',reading=(enabled||setupOpen)&&!current;
  useEffect(()=>{
-  if(!enabled&&!setup)return;
-  const current=++sequence.current;setReading(true);setBalance(null);setError('');
-  request('?annual-fund&month='+plan.id).then(result=>{if(current===sequence.current)setBalance(result.balance);}).catch(reason=>{if(current===sequence.current)setError((reason as Error).message);}).finally(()=>{if(current===sequence.current)setReading(false);});
-  return()=>{sequence.current++;};
- },[plan.id,profile.version,revision,refresh,enabled,!!setup]);
+  if(!readKey.enabled&&!readKey.setupOpen)return;
+  let cancelled=false;
+  request('?annual-fund&month='+readKey.month).then(result=>{if(!cancelled)setResult({key:readKey,balance:result.balance,error:''});}).catch(reason=>{if(!cancelled)setResult({key:readKey,balance:null,error:(reason as Error).message});});
+  return()=>{cancelled=true;};
+ },[readKey]);
  const setting=useItemSave<Choice,Profile>(async change=>{
   try{const result=await request('',{action:'annual-fund-settings',change});onProfileSaved(result.profile);return result.profile;}
   catch(reason){if((reason as {status?:number}).status===409){try{const latest=(await request('')).profile;if(latest)onProfileSaved(latest);}catch{}}throw reason;}

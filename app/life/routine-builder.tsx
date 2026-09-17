@@ -13,7 +13,7 @@ type Input={requestId:string;text:string;consent:true};
 export default function RoutineBuilder({onDirty,onReview,reviewDisabled,embedded=false}:{embedded?:boolean;onDirty:(v:boolean)=>void;onReview:(routine:Saved<Routine>)=>void;reviewDisabled:boolean}){
  const [text,setText]=useState(''),[listening,setListening]=useState(false),[busy,setBusy]=useState(false),[loaded,setLoaded]=useState(false),[available,setAvailable]=useState(false),[error,setError]=useState(''),[builds,setBuilds]=useState<Build[]>([]),[pending,setPending]=useState<Input|null>(null);
  const visible=useContext(WorkoutToolVisible),mounted=useRef(true),generation=useRef(0),pendingRef=useRef<Input|null>(null);
- useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;generation.current++;};},[]);
+ useEffect(()=>{mounted.current=true;generation.current++;return()=>{mounted.current=false;};},[]);
  useUnsaved(visible&&(!!text||listening||!!pending),onDirty);
  const status=useAIStatus<{builds:Build[];available:boolean}>({enabled:visible,scope:'routine-builder',load:()=>request('?routine-builds&summary=1'),active:!!pending,
   shouldPoll:data=>data.builds.some(b=>b.status==='generating'),

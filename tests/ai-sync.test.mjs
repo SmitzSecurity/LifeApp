@@ -45,6 +45,8 @@ function retryComponent(file,seed){
   useState(initial){const i=cursor++;if(!(i in slots))slots[i]=typeof initial==='function'?initial():initial;return [slots[i],value=>{slots[i]=typeof value==='function'?value(slots[i]):value;}];},
   useRef(initial){const i=cursor++;return slots[i]??(slots[i]={current:initial});},
   useEffect(fn,deps){const i=cursor++,previous=slots[i];if(!previous||deps.some((value,index)=>!Object.is(value,previous[index]))){slots[i]=deps;effects.push(fn);}},
+  useLayoutEffect(fn,deps){react.useEffect(fn,deps);},
+  useCallback(fn,deps){const i=cursor++,previous=slots[i];if(!previous||deps.some((value,index)=>!Object.is(value,previous.deps[index])))slots[i]={deps,fn};return slots[i].fn;},
   useContext(){return true;}
  };
  async function write(body){
@@ -60,7 +62,7 @@ function retryComponent(file,seed){
  const code=transpileModule(readFileSync('app/life/'+file+'.tsx','utf8'),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText,output={};
  runInNewContext(code,{exports:output,crypto:{randomUUID},require:name=>adapters[name]||new Proxy({},{get:(_,key)=>String(key)})});
  const props={profile:profileSchema.parse({...profile,version:1}),date:'2026-09-16',cadence:'weekly',synced:true,onDirty(){},onReview(){},onBusy(){},onProfileSaved(){},onSettings(){}};
- function render(){cursor=0;tree=output.default(props);for(const effect of effects.splice(0))effect();return tree;}
+ function render(){cursor=0;tree=output.default(props);while(typeof tree?.type==='function')tree=tree.type(tree.props);for(const effect of effects.splice(0))effect();return tree;}
  function text(node){if(typeof node==='string'||typeof node==='number')return String(node);return [node?.props?.children].flat(Infinity).map(child=>child&&typeof child==='object'?text(child):typeof child==='string'?child:'').join('');}
  function findNode(predicate,node){if(!node||typeof node!=='object')return null;if(predicate(node))return node;for(const child of [node.props?.children].flat(Infinity)){const found=findNode(predicate,child);if(found)return found;}return null;}
  const find=predicate=>findNode(predicate,tree);

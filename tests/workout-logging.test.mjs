@@ -5,13 +5,11 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
-import {renderReportMarkdown} from '../lib/life/report-markdown.ts';
-import {reportEmail} from '../lib/life/email-service.ts';
-import {exercisePresets,presetExercise,repTarget} from '../lib/life/exercise-presets.ts';
+import {presetExercise} from '../lib/life/exercise-presets.ts';
 import {exerciseSchema,workoutSchema,nextSet,structuredWorkoutSchema,workoutTotals} from '../lib/life/modules.ts';
 import {createWorkoutSession,extendWorkoutRest,skipCurrentSet,sameRoutinePlan,definiteWorkoutRejection} from '../lib/life/workout-session.ts';
 import {copyRoutineDraft} from '../lib/life/routine-recovery.ts';
-import {validateBackup,previewMigration} from '../lib/life/migration-preview.ts';
+import {validateBackup} from '../lib/life/migration-preview.ts';
 import {AI_MODEL,RESERVATION_MICROS,geminiProvider} from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-14T12:00:00.000Z');
 const description='Push / pull split, dumbbells and cables, muscle growth. About 45 minutes.';
@@ -33,7 +31,6 @@ function fixture(t){
 
 
 import {recordedVolume} from '../lib/life/muscle-volume.ts';
-import {consumeReportEmails} from '../lib/life/email-service.ts';
 
 const written={notes:'Check the unfamiliar movement.',name:'Written push',exercises:[{name:'Bench press',unit:'lb',reps:6,repMax:10,restSeconds:150,muscles:{direct:['forearms'],indirect:[]},logged:[{reps:8,load:100,warmup:true},{reps:8,load:135,warmup:false},{reps:7,load:135,warmup:false}]},{name:'Synthetic custom cable press',unit:'lb',reps:8,repMax:12,restSeconds:120,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:12,load:30,warmup:false}]}]};
 const write=(id=randomUUID())=>({action:'workout-build',build:{requestId:id,text:'Completed bench: warm-up 100 x 8, 135 x 8/7 lb; custom cable press 30 lb x 12.',consent:true}});

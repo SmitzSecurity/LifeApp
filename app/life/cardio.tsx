@@ -9,14 +9,15 @@ import {todayIn,type Profile} from '@/lib/life/domain';
 import type {Cardio,Saved} from '@/lib/life/modules';
 import {Choice,request,saveRecord,useUnsaved,useWorkoutCancel} from './shared';
 const activities=['walk','run','cycle','swim','row','elliptical','other'] as const;
+const freshCardio=(timezone:string):Saved<Cardio>=>({id:crypto.randomUUID(),version:0,data:{date:todayIn(timezone),activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'',voided:false}});
 export default function CardioLog({profile,onDirty,active=false,onSaved,onCancel}:{onCancel?:()=>void;onSaved?:()=>void;active?:boolean;profile:Profile;onDirty:(dirty:boolean)=>void}){
- const [records,setRecords]=useState<Saved<Cardio>[]>([]),[form,setForm]=useState<Saved<Cardio>|null>(null),[pending,setPending]=useState<Saved<Cardio>|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [records,setRecords]=useState<Saved<Cardio>[]>([]),[form,setForm]=useState<Saved<Cardio>|null>(()=>active?freshCardio(profile.timezone):null),[pending,setPending]=useState<Saved<Cardio>|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [wasActive,setWasActive]=useState(active);
+ if(wasActive!==active){setWasActive(active);if(active&&!form){setForm(freshCardio(profile.timezone));setError('');setNotice('');}}
  useUnsaved(!!form||!!pending,onDirty);
  const cancel=useWorkoutCancel(()=>{setForm(null);setError('');setNotice('');onCancel?.();},busy||!!pending);
- async function load(){try{const data=await request('?kind=cardio');setRecords(data.records);setError('');}catch{setError('Cardio history could not be loaded.');}}
- useEffect(()=>{void load();},[]);
- function start(){setError('');setNotice('');setForm({id:crypto.randomUUID(),version:0,data:{date:todayIn(profile.timezone),activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'',voided:false}});}
- useEffect(()=>{if(active&&!form)start();},[active]);
+ useEffect(()=>{let cancelled=false;void request('?kind=cardio').then(data=>{if(!cancelled)setRecords(previous=>[...previous,...data.records.filter((record:Saved<Cardio>)=>!previous.some(saved=>saved.id===record.id))]);}).catch(()=>{if(!cancelled)setError('Cardio history could not be loaded.');});return()=>{cancelled=true;};},[]);
+ function start(){setError('');setNotice('');setForm(freshCardio(profile.timezone));}
  function edit(patch:Partial<Cardio>){if(form)setForm({...form,data:{...form.data,...patch}});}
  async function save(record=form){if(!record)return;const retrying=!!pending;setBusy(true);setError('');setPending(record);try{const saved=await saveRecord('cardio',record);setRecords(prev=>[saved,...prev.filter(r=>r.id!==saved.id)]);if(form?.id===saved.id)setForm(null);setPending(null);setNotice(saved.data.deleted?'Cardio moved to Trash.':'Cardio saved.');onSaved?.();}catch(e){setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying))setPending(null);}finally{setBusy(false);}}
  return <section className="module-card cardio-card" aria-label="Cardio">{!form&&<div className="section-heading"><h3>Cardio history</h3><Button disabled={busy} onClick={start}>Log cardio</Button></div>}

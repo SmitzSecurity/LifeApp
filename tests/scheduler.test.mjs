@@ -4,7 +4,6 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {profileSchema} from '../lib/life/domain.ts';
-import {defaultReviewPreferences} from '../lib/life/reviews.ts';
 import {dueDailyDate,planDailyReviews,dailyJobStatus,scheduledReviewPlanning} from '../lib/life/scheduler.ts';
 import {handleLife} from '../lib/life/service.ts';
 

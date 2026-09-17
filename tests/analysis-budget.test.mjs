@@ -43,7 +43,7 @@ test('closed calendar periods handle year boundaries, leap years and local sched
 test('monthly weekday schedules and required variable estimates survive old-plan normalization',()=>{
  const r=recurringSchema.parse({id:randomUUID(),title:'Electric bill',kind:'expense',amountCents:8000,categoryId:randomUUID(),day:31,variable:true,frequency:'monthly-weekday',week:'second',weekday:1});
  assert.equal(recurringDate('2026-09',r),'2026-09-14');assert.equal(recurringDate('2026-02',{...r,week:'last',weekday:5}),'2026-02-27');assert.equal(recurringDate('2024-02',{...r,week:'last',weekday:4}),'2024-02-29');assert.equal(recurringDate('2027-01',{...r,week:'first',weekday:1}),'2027-01-04');
- assert.equal(recurringDate('2026-02',{...r,frequency:'monthly-day'}),'2026-02-28');assert.equal(recurringSchema.safeParse({...r,amountCents:0}).success,false);const {amountCents,...missing}=r;assert.equal(recurringSchema.safeParse(missing).success,false);
+ assert.equal(recurringDate('2026-02',{...r,frequency:'monthly-day'}),'2026-02-28');assert.equal(recurringSchema.safeParse({...r,amountCents:0}).success,false);const missing={...r};delete missing.amountCents;assert.equal(recurringSchema.safeParse(missing).success,false);
  const old=recurringSchema.parse({id:r.id,title:r.title,kind:r.kind,amountCents:8000,categoryId:r.categoryId,day:31});assert.equal(old.variable,false);assert.equal(old.frequency,'monthly-day');
 });
 test('variable occurrence forecasts become actuals once, with inline-compatible exact retry and preserved references',async()=>{

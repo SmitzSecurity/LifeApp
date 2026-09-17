@@ -10,11 +10,12 @@ import type {TrainingSummary} from '@/lib/life/training-summary';
 import MuscleMap,{volumeColor} from './muscle-map';
 export default function MuscleCoverage({routines,selectedId,onSelect,summary,incomplete,onEdit,onGuide,active=true,viewKey,hideProgramChoice=false,sessionPreview}:{sessionPreview?:Saved<Routine>;hideProgramChoice?:boolean;active?:boolean;viewKey?:string;routines:Saved<Routine>[];selectedId:string;onSelect:(id:string)=>void;summary:TrainingSummary|null;incomplete:boolean;onEdit:(id:string,exercise?:string,session?:boolean)=>void;onGuide:()=>void}){
  const [mode,setMode]=useState('program'),[muscle,setMuscle]=useState<MuscleId|null>(null),card=useRef<HTMLElement>(null);
+ const scope=JSON.stringify([active,viewKey,selectedId,mode]),[selectionScope,setSelectionScope]=useState(scope);
+ if(selectionScope!==scope){setSelectionScope(scope);setMuscle(null);}
  function selectMuscle(id:MuscleId,focus=false){setMuscle(previous=>previous===id?null:id);if(focus)requestAnimationFrame(()=>card.current?.querySelector<SVGElement>(`[data-muscle="${id}"]`)?.focus());}
  function overview(){const region=card.current?.querySelector<SVGElement>('.muscle-region[aria-pressed=true]');setMuscle(null);region?.focus();}
  // Each newly opened view starts broad. Clicking a control in the detail pane
  // keeps its selection; a click elsewhere, including the map background, clears it.
- useEffect(()=>setMuscle(null),[active,viewKey,selectedId,mode]);
  useEffect(()=>{if(!active||!muscle)return;const clear=(event:PointerEvent)=>{const target=event.target;if(target instanceof Element&&card.current?.contains(target)&&target.closest('.muscle-region,.muscle-detail,.coverage-adjust'))return;setMuscle(null);};document.addEventListener('pointerdown',clear,true);return()=>document.removeEventListener('pointerdown',clear,true);},[active,muscle]);
  const selected=mode==='program'&&sessionPreview?.id===selectedId?sessionPreview:routines.find(r=>r.id===selectedId),planned=plannedVolume(routines);
  const volume:ReturnType<typeof tallyVolume>|null=mode==='week'?summary?.current||null:mode==='plan'?incomplete?null:planned:selected?routineVolume(selected):null;

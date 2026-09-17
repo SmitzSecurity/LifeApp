@@ -1,9 +1,8 @@
 "use client";
 import {useAppearance} from "./life/use-appearance";
-import {formatDate} from "@/lib/life/date-display";
 import {assertFiniteNumbers} from "@/lib/life/numeric-draft";
 import {profileSaveAcknowledged,reviewProfileChanges} from "@/lib/life/profile-recovery";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Plus, ArrowRight, ArrowLeft, Archive, LoaderCircle, SquarePen, SlidersHorizontal, ShieldCheck, Menu, Search, RefreshCw, Wallet, Dumbbell, House, Download, LogOut, Trash2 } from "lucide-react";
 import { useDraftSync } from "./life/use-draft-sync";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -28,7 +27,6 @@ import { modules, coreModules, standardHabits, todayIn, emptyEntry, dateSchema, 
 
 const freshProfile=():Profile=>({goal:"",budgetGoals:null,analysisGuidance:[],reviewPreferences:defaultReviewPreferences(),moduleGoals:{},spiritualTradition:"",timezoneMode:"automatic",timezone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC",modules:[...coreModules],habits:[],version:0});
 async function api(body?:unknown){assertFiniteNumbers(body);const r=await fetch("/api/life",{method:body?"POST":"GET",headers:body?{"Content-Type":"application/json"}:undefined,body:body?JSON.stringify(body):undefined,cache:"no-store"});const data=await r.json();if(!r.ok)throw Object.assign(new Error(data.error||"Unable to connect. Please try again."),{status:r.status});return data;}
-const niceDate=formatDate;
 
 export default function LifeApp({signOutHref="/signout-with-chatgpt?return_to=%2F"}:{signOutHref?:string}){
  const [profile,setProfile]=useState<Profile|null>(null),[config,setConfig]=useState<Profile|null>(null),[entries,setEntries]=useState<Entry[]>([]);
@@ -50,11 +48,31 @@ export default function LifeApp({signOutHref="/signout-with-chatgpt?return_to=%2
  useAppearance(profile?.appearance,tab==='settings'?config?.appearance:undefined,loaded);
  const setupDirty=!!config&&!!(profile||initialConfig)&&JSON.stringify(config)!==JSON.stringify(profile||initialConfig);
  const anyDirty=dirty||setupDirty||budgetDirty||gymDirty||aiBusy||journalListening||profileUnconfirmed;
- async function load(){setError("");try{const data=await api();let p=data.profile as Profile|null;const detected=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";if(p&&p.timezoneMode==="automatic"&&p.timezone!==detected)p=(await api({action:"profile",profile:{...p,timezone:detected}})).profile;setProfile(p);const initial=p||freshProfile();setConfig(initial);setInitialConfig(initial);setEntries(data.entries);if(p){const requested=dateSchema.safeParse(new URLSearchParams(window.location.search).get('date'));const date=requested.success?requested.data:todayIn(p.timezone);let entry=data.entries.find((e:Entry)=>e.date===date);if(!entry){const response=await fetch('/api/life?date='+encodeURIComponent(date),{cache:'no-store'});const result=await response.json();if(!response.ok)throw Error(result.error||'Unable to open the saved day.');entry=result.entry;}sync.open(entry||emptyEntry(p,date));if(requested.success){const cadence=new URLSearchParams(window.location.search).get("analysis");if(cadence&&["weekly","monthly","annual"].includes(cadence)){setPeriod({cadence:cadence as PeriodCadence,date});setTab("analysis");}else {setTab("today");}}}setLoaded(true);}catch(e){setError((e as Error).message);}}
- useEffect(()=>{load();document.body.classList.add('life-compact-theme');return()=>document.body.classList.remove('life-compact-theme');},[]);
+ const loadEpoch=useRef(0),openEntry=sync.open;
+ const load=useCallback(async(signal?:AbortSignal)=>{
+  const epoch=++loadEpoch.current;
+  try{
+   const data=await api();if(epoch!==loadEpoch.current||signal?.aborted)return;
+   let p=data.profile as Profile|null;
+   const detected=Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC";
+   if(p&&p.timezoneMode==="automatic"&&p.timezone!==detected){p=(await api({action:"profile",profile:{...p,timezone:detected}})).profile;if(epoch!==loadEpoch.current||signal?.aborted)return;}
+   const params=new URLSearchParams(window.location.search),requested=dateSchema.safeParse(params.get('date'));
+   const date=p?(requested.success?requested.data:todayIn(p.timezone)):null;
+   let entry:Entry|null=null;
+   if(p&&date){
+    entry=data.entries.find((e:Entry)=>e.date===date)||null;
+    if(!entry){const response=await fetch('/api/life?date='+encodeURIComponent(date),{cache:'no-store'});const result=await response.json();if(epoch!==loadEpoch.current||signal?.aborted)return;if(!response.ok)throw Error(result.error||'Unable to open the saved day.');entry=result.entry;}
+   }
+   const initial=p||freshProfile();setProfile(p);setConfig(initial);setInitialConfig(initial);setEntries(data.entries);
+   if(p&&date){openEntry(entry||emptyEntry(p,date));if(requested.success){const cadence=params.get('analysis');if(cadence&&['weekly','monthly','annual'].includes(cadence)){setPeriod({cadence:cadence as PeriodCadence,date});setTab('analysis');}else setTab('today');}}
+   setError('');setLoaded(true);
+  }catch(e){if(epoch===loadEpoch.current&&!signal?.aborted)setError((e as Error).message);}
+ },[openEntry]);
+ useEffect(()=>{const controller=new AbortController();void load(controller.signal);document.body.classList.add('life-compact-theme');return()=>{controller.abort();document.body.classList.remove('life-compact-theme');};},[load]);
  useEffect(()=>{const returning=previousTab.current==='today'&&tab==='history';workspace.current?.scrollTo({top:returning?responseScroll.current:0});if(returning)responseTrigger.current?.focus({preventScroll:true});if(tab==='today')document.querySelector<HTMLElement>('.compact-topbar h1')?.focus({preventScroll:true});previousTab.current=tab;},[tab]);
+ const hasProfile=profile!==null;
  useEffect(()=>{
-  if(!profile)return;
+  if(!hasProfile)return;
   const viewport=window.visualViewport,style=document.documentElement.style;let frame=0;
   // The whole signed-in shell follows the visible viewport. The navigation is
   // a normal shell row, avoiding Firefox Android's independent fixed-footer shift.
@@ -62,7 +80,7 @@ export default function LifeApp({signOutHref="/signout-with-chatgpt?return_to=%2
   const schedule=()=>{if(!frame)frame=requestAnimationFrame(fit);};
   fit();viewport?.addEventListener('resize',schedule);viewport?.addEventListener('scroll',schedule);window.addEventListener('resize',schedule);
   return()=>{cancelAnimationFrame(frame);viewport?.removeEventListener('resize',schedule);viewport?.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);style.removeProperty('--app-viewport-height');style.removeProperty('--app-viewport-top');};
- },[!!profile]);
+ },[hasProfile]);
  useEffect(()=>{if(!anyDirty||deleted)return;const fn=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue="";};window.addEventListener("beforeunload",fn);return()=>window.removeEventListener("beforeunload",fn);},[anyDirty,deleted]);
  function edit(next:Entry){sync.edit(next);setNotice("");}
  async function chooseDate(date:string,destination="today"){if(!profile||!date)return;entriesEpoch.current++;if(tab!=='today'&&destination==='today'){responseTrigger.current=document.activeElement as HTMLElement;responseScroll.current=tab==='history'?(workspace.current?.scrollTop||0):0;}setBusy(true);setError("");try{const r=await fetch('/api/life?date='+encodeURIComponent(date),{cache:'no-store'});const data=await r.json();if(!r.ok)throw new Error(data.error||'Unable to open this response.');const entry=data.entry as Entry|null;sync.open(entry||emptyEntry(profile,date));entriesEpoch.current++;setEntries(prev=>entry?[entry,...prev.filter(e=>e.date!==date)].sort((a,b)=>b.date.localeCompare(a.date)):prev.filter(e=>e.date!==date));setNotice("");setTab(destination);}catch(e){setError((e as Error).message);}finally{setBusy(false);}}
@@ -125,7 +143,7 @@ export default function LifeApp({signOutHref="/signout-with-chatgpt?return_to=%2
  {tab==='today'&&profile?<Button variant="ghost" size="icon" aria-label="Back to responses" disabled={responseLocked} onClick={cancelResponse}><ArrowLeft/></Button>:tab==='analysis'&&profile?<Button variant="ghost" size="icon" aria-label="Back" disabled={busy} onClick={()=>go('home')}><ArrowLeft/></Button>:<DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" aria-label="Open menu" disabled={busy}><Menu/></Button></DropdownMenuTrigger><DropdownMenuContent align="start" className="life-menu"><DropdownMenuLabel>LifeApp</DropdownMenuLabel><DropdownMenuSeparator/>{profile&&<DropdownMenuItem onSelect={()=>go('settings')}><SlidersHorizontal/>Settings</DropdownMenuItem>}{profile&&<DropdownMenuItem onSelect={()=>go('trash')}><Trash2/>Trash</DropdownMenuItem>}{profile&&<DropdownMenuItem asChild><a href="/api/life?export=1" download><Download/>Download backup</a></DropdownMenuItem>}<DropdownMenuSeparator/><DropdownMenuItem asChild><a href={signOutHref} target="_top" onClick={e=>{if(anyDirty){e.preventDefault();navigate(()=>window.location.assign(signOutHref));}}}><LogOut/>Sign out</a></DropdownMenuItem></DropdownMenuContent></DropdownMenu>}
  <h1 tabIndex={-1}>{title}</h1>{profile&&tab==='history'&&<div className="toolbar-actions"><Button variant="ghost" size="icon" aria-label="Search responses" aria-pressed={searchOpen} onClick={()=>setSearchOpen(v=>!v)}><Search/></Button><Button variant="ghost" size="icon" aria-label="Refresh responses" disabled={busy} onClick={()=>setHistoryRevision(n=>n+1)}><RefreshCw/></Button></div>}
  </header>{loaded&&signOutHref==='/sign-out'&&<AccountSettings open={accountOpen} onOpenChange={setAccountOpen} disabled={busy||anyDirty} onBusy={setBusy} onDeleted={()=>{sync.discard();setDeleted(true);}}/>}
- <fieldset disabled={busy} className="contents">{!loaded?<main className="loading-state">{error?<><h1>We couldn’t open your journal.</h1><p role="alert">{error}</p><Button onClick={load}>Try again</Button></>:<><LoaderCircle className="spin"/><p>Opening your space…</p></>}</main>:!profile?<main className="onboarding"><div className="eyebrow">YOUR LIFE, YOUR CHOICES <span>{step} / 2</span></div><h1>{step===1?"What matters to you?":"Start small. Make it yours."}</h1><p className="intro">{step===1?"Choose the areas you’d like to check in on. You can change these anytime.":"Pick the habits you want to track, or begin with a simple journal."}</p>{error&&<p className="error" role="alert">{error}</p>}{settingsConflict}<fieldset className="contents" disabled={profileUnconfirmed||!!profileConflict}>{step===1?configFields:habitFields}</fieldset><div className="onboarding-footer">{step===2&&<Button variant="ghost" disabled={profileUnconfirmed} onClick={()=>setStep(1)}>Back</Button>}<span>About 2 minutes to set up</span><Button disabled={busy||!!profileConflict||!config?.modules.length} onClick={()=>step===1?setStep(2):saveProfile()}>{busy?<LoaderCircle className="spin"/>:null}{step===1?"Choose my habits":"Open my journal"}<ArrowRight/></Button></div><p className="privacy-note"><ShieldCheck/> Your journal is private. You choose when to request AI analysis.</p></main>:<><main ref={workspace} className="workspace">
+ <fieldset disabled={busy} className="contents">{!loaded?<main className="loading-state">{error?<><h1>We couldn’t open your journal.</h1><p role="alert">{error}</p><Button onClick={()=>void load()}>Try again</Button></>:<><LoaderCircle className="spin"/><p>Opening your space…</p></>}</main>:!profile?<main className="onboarding"><div className="eyebrow">YOUR LIFE, YOUR CHOICES <span>{step} / 2</span></div><h1>{step===1?"What matters to you?":"Start small. Make it yours."}</h1><p className="intro">{step===1?"Choose the areas you’d like to check in on. You can change these anytime.":"Pick the habits you want to track, or begin with a simple journal."}</p>{error&&<p className="error" role="alert">{error}</p>}{settingsConflict}<fieldset className="contents" disabled={profileUnconfirmed||!!profileConflict}>{step===1?configFields:habitFields}</fieldset><div className="onboarding-footer">{step===2&&<Button variant="ghost" disabled={profileUnconfirmed} onClick={()=>setStep(1)}>Back</Button>}<span>About 2 minutes to set up</span><Button disabled={busy||!!profileConflict||!config?.modules.length} onClick={()=>step===1?setStep(2):saveProfile()}>{busy?<LoaderCircle className="spin"/>:null}{step===1?"Choose my habits":"Open my journal"}<ArrowRight/></Button></div><p className="privacy-note"><ShieldCheck/> Your journal is private. You choose when to request AI analysis.</p></main>:<><main ref={workspace} className="workspace">
  <Tabs value={tab} data-page={tab}>
  {error&&tab!=='today'&&<p className="error" role="alert">{error}</p>}{notice&&<p className="notice" role="status"><Check/>{notice}</p>}
  <TabsContent value="home" aria-label="Home"><Home profile={profile} entries={entries} onDate={date=>navigate(()=>chooseDate(date))} onPeriod={openPeriod} onSection={go} onBusy={setAiBusy} onProfileSaved={profileSaved}/></TabsContent>

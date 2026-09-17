@@ -65,11 +65,11 @@ test('confirmed contributions and annual payments roll across months; deletion, 
  const balance=async(user='a',month='2026-09')=>(await f.ok(undefined,user,'?annual-fund&month='+month)).balance;
  assert.deepEqual(await balance(),{contributionsCents:7000,paymentsCents:3000,monthContributionsCents:2000,balanceCents:4000});
  assert.equal((await balance('b')).balanceCents,0);assert.equal((await balance('a','2026-08')).balanceCents,5000);
- payment=await f.save({...payment,data:{...payment.data,deleted:true}});assert.equal((await balance()).balanceCents,7000);
+ payment=await f.save({...payment,data:{...payment.data,deleted:true}});assert.equal(payment.version,2);assert.equal(payment.data.deleted,true);assert.equal((await balance()).balanceCents,7000);
  saved=await f.save({...saved,data:{...saved.data,voided:true}});assert.equal((await balance()).balanceCents,2000);
  await f.ok({action:'annual-fund-settings',change:{previous:{enabled:true},item:{enabled:false}}});
  assert.equal((await f.call({action:'resource',record:{kind:'transaction',id:planned.id,version:planned.version,data:{...planned.data,planned:false}}})).status,400,'Opt-out blocks first confirmation of a pending fund contribution');
- saved=await f.save({...saved,data:{...saved.data,voided:false,amountCents:6000}});assert.equal((await balance()).balanceCents,8000);
+ saved=await f.save({...saved,data:{...saved.data,voided:false,amountCents:6000}});assert.equal(saved.version,3);assert.equal(saved.data.amountCents,6000);assert.equal((await balance()).balanceCents,8000);
  assert.equal((await f.call({action:'resource',record:{kind:'transaction',id:randomUUID(),version:0,data:{...tx,date:'2026-09-16'}}})).status,400);
  const backup=await (await f.call(undefined,'a','?export=1')).text();assert.doesNotThrow(()=>validateBackup(backup));
  assert.equal((await f.call(undefined,'a','?annual-fund&month=invalid')).status,400);

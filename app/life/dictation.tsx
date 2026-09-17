@@ -1,18 +1,26 @@
 "use client";
-import {useContext,useEffect,useRef,useState,type RefObject} from 'react';
+import {useCallback,useContext,useEffect,useLayoutEffect,useRef,useState,useSyncExternalStore,type RefObject} from 'react';
 import {WorkoutToolVisible} from './shared';
 import {Mic,Square} from 'lucide-react';
 import {Button} from '@/components/ui/button';
 type Recognition={lang:string;continuous:boolean;interimResults:boolean;onresult:((event:{results:ArrayLike<{isFinal:boolean;0:{transcript:string}}>})=>void)|null;onerror:((event:{error:string})=>void)|null;onend:(()=>void)|null;onspeechstart:(()=>void)|null;onspeechend:(()=>void)|null;start:()=>void;stop:()=>void;abort:()=>void};
 type SpeechWindow=Window&{SpeechRecognition?:new()=>Recognition;webkitSpeechRecognition?:new()=>Recognition};
-export default function Dictation({value,onChange,onListening,disabled=false,maxLength=5000,compact=false,cancelRef}:{value:string;onChange:(text:string)=>void;onListening:(v:boolean)=>void;disabled?:boolean;maxLength?:number;compact?:boolean;cancelRef?:RefObject<(()=>void)|null>}){
+type Props={value:string;onChange:(text:string)=>void;onListening:(v:boolean)=>void;disabled?:boolean;maxLength?:number;compact?:boolean;cancelRef?:RefObject<(()=>void)|null>};
+const subscribeToCapability=()=>()=>{};
+const supportsRecognition=()=>{const w=window as SpeechWindow;return !!(w.SpeechRecognition||w.webkitSpeechRecognition);};
+const noServerRecognition=()=>false;
+export default function Dictation(props:Props){
  const visible=useContext(WorkoutToolVisible);
- const [supported,setSupported]=useState(false),[listening,setListening]=useState(false),[receiving,setReceiving]=useState(false),[error,setError]=useState('');const recognition=useRef<Recognition|null>(null),callback=useRef(onChange),quietTimer=useRef<ReturnType<typeof setTimeout>|null>(null);callback.current=onChange;
- function detach(r:Recognition){r.onresult=null;r.onend=null;r.onerror=null;r.onspeechstart=null;r.onspeechend=null;if(quietTimer.current)clearTimeout(quietTimer.current);}
- function abort(){const r=recognition.current;recognition.current=null;if(r){detach(r);r.abort();}setListening(false);setReceiving(false);}
- useEffect(()=>{const w=window as SpeechWindow;setSupported(!!(w.SpeechRecognition||w.webkitSpeechRecognition));if(cancelRef)cancelRef.current=abort;return()=>{if(cancelRef)cancelRef.current=null;const r=recognition.current;recognition.current=null;if(r){detach(r);r.abort();}};},[cancelRef]);
+ return visible?<DictationControl {...props}/>:null;
+}
+function DictationControl({value,onChange,onListening,disabled=false,maxLength=5000,compact=false,cancelRef}:Props){
+ const supported=useSyncExternalStore(subscribeToCapability,supportsRecognition,noServerRecognition);
+ const [listening,setListening]=useState(false),[receiving,setReceiving]=useState(false),[error,setError]=useState('');const recognition=useRef<Recognition|null>(null),callback=useRef(onChange),quietTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+ useLayoutEffect(()=>{callback.current=onChange;},[onChange]);
+ const detach=useCallback((r:Recognition)=>{r.onresult=null;r.onend=null;r.onerror=null;r.onspeechstart=null;r.onspeechend=null;if(quietTimer.current)clearTimeout(quietTimer.current);},[]);
+ const abort=useCallback(()=>{const r=recognition.current;recognition.current=null;if(r){detach(r);r.abort();}setListening(false);setReceiving(false);},[detach]);
+ useLayoutEffect(()=>{if(cancelRef)cancelRef.current=abort;return()=>{if(cancelRef)cancelRef.current=null;const r=recognition.current;recognition.current=null;if(r){detach(r);r.abort();}};},[cancelRef,abort,detach]);
  useEffect(()=>{onListening(listening);return()=>onListening(false);},[listening,onListening]);
- useEffect(()=>{if(!visible){const r=recognition.current;if(r){detach(r);r.abort();recognition.current=null;}setListening(false);setReceiving(false);setError('');}},[visible]);
  function start(){setError('');const w=window as SpeechWindow,Ctor=w.SpeechRecognition||w.webkitSpeechRecognition;if(!Ctor)return;const r=new Ctor(),prefix=value?value+(/\s$/.test(value)?'':'\n'):'';recognition.current=r;r.lang=navigator.language||'en-US';r.continuous=true;r.interimResults=true;
   const finish=()=>{detach(r);if(recognition.current===r){recognition.current=null;setListening(false);setReceiving(false);}};
   const heard=()=>{if(recognition.current!==r)return;if(quietTimer.current)clearTimeout(quietTimer.current);setReceiving(true);};

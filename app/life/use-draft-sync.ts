@@ -1,11 +1,11 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Entry } from '@/lib/life/domain';
 import { DraftSync, type SyncStatus } from '@/lib/life/draft-sync';
 export function useDraftSync(onSaved:(entry:Entry)=>void,autoSave=true){
  const [draft,setDraft]=useState<Entry|null>(null),[status,setStatus]=useState<SyncStatus>('saved'),[syncError,setSyncError]=useState('');
  const writer=useRef<DraftSync|null>(null),onSavedRef=useRef(onSaved),timer=useRef<ReturnType<typeof setTimeout>|null>(null);
- onSavedRef.current=onSaved;
+ useLayoutEffect(()=>{onSavedRef.current=onSaved;},[onSaved]);
  const flush=useCallback(async()=>{if(timer.current)clearTimeout(timer.current);await writer.current?.flush();},[]);
  const discard=useCallback(()=>{if(writer.current?.status==='saving')throw new Error('Wait for the current save to finish.');if(timer.current)clearTimeout(timer.current);writer.current=null;setStatus('saved');setSyncError('');},[]);
  const open=useCallback((entry:Entry)=>{

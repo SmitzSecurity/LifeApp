@@ -116,7 +116,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(ids.size!==input.statuses.length||ids.size!==base.habits.length||base.habits.some(h=>!ids.has(h.id)))return json({error:'Your habit setup changed. Keep a copy of this entry, reload, and try again.'},409);
    if(Object.keys(input.context).some(k=>!profile.modules.includes(k as Profile['modules'][number])&&!Object.hasOwn(base.context,k)))return json({error:'This module is not enabled.'},400);
    const statuses=new Map(input.statuses.map(s=>[s.id,s.status]));
-   const {version,updatedAt,...snapshot}=base;
+   const snapshot:Omit<Entry,'version'|'updatedAt'>&{version?:number;updatedAt?:string}={...base};delete snapshot.version;delete snapshot.updatedAt;
    const entry={...snapshot,complete:input.complete,mutationId:input.mutationId,journal:input.journal,context:input.context,habits:base.habits.map(h=>({...h,status:statuses.get(h.id)!}))};
    if(input.complete&&completionIssues(entry).length)return json({error:completionIssues(entry).join(" ")},400);
    const row=await db.prepare(`INSERT INTO life_entries(user_id,entry_date,payload,version,updated_at) VALUES(?1,?2,?3,?5+1,?4)
