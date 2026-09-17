@@ -1,0 +1,22 @@
+/* Drag handles belong to the editor; previews remain a quiet list. */
+.life-compact-theme .workout-panel .routine-basics:has(>label:only-child){grid-template-columns:minmax(0,1fr)}
+.workout-panel .routine-editor-grid .routine-sort-list{display:flex;flex-direction:column;gap:6px;max-height:290px;overflow-x:hidden;overflow-y:auto;padding:3px;scrollbar-width:thin;overscroll-behavior:contain;scroll-behavior:auto}
+.workout-panel .routine-editor-grid .routine-sort-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr) 44px;align-items:stretch;flex-shrink:0;min-width:0;border:1px solid var(--border);border-radius:7px;background:var(--input-background)}
+.workout-panel .routine-editor-grid .routine-sort-row.is-selected{border-color:var(--primary);background:var(--accent)}
+.workout-panel .routine-editor-grid .routine-sort-row.is-dragging{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary);opacity:.65}
+.workout-panel .routine-editor-grid .routine-sort-row.drop-before::before,.workout-panel .routine-editor-grid .routine-sort-row.drop-after::after{content:'';position:absolute;left:0;right:0;height:3px;background:var(--primary);border-radius:2px;pointer-events:none;z-index:1}
+.workout-panel .routine-editor-grid .routine-sort-row.drop-before::before{top:-5px}
+.workout-panel .routine-editor-grid .routine-sort-row.drop-after::after{bottom:-5px}
+.workout-panel .routine-editor-grid .routine-sort-list .routine-exercise-select{display:block;min-width:0;max-width:none;width:100%;min-height:44px;height:auto;padding:8px;text-align:left;white-space:normal;overflow-wrap:anywhere;border:0;border-radius:6px 0 0 6px;background:transparent;line-height:1.4;font-size:calc(.8125rem * var(--ui-text-scale,1))}
+.workout-panel .routine-editor-grid .routine-sort-list .routine-exercise-select small{display:block;margin-top:3px;font-size:calc(.75rem * var(--ui-text-scale,1));line-height:1.4;color:var(--muted-foreground)}
+.workout-panel .routine-editor-grid .routine-sort-list .routine-reorder-grip{display:flex;align-items:center;justify-content:center;width:44px;min-width:44px;max-width:44px;min-height:44px;height:auto;padding:10px;border:0;border-left:1px solid var(--border);border-radius:0 6px 6px 0;background:transparent;color:var(--muted-foreground);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:grab}
+.workout-panel .routine-editor-grid .routine-sort-list .routine-reorder-grip:disabled{opacity:.4;cursor:default}
+.workout-panel .routine-editor-grid .routine-sort-list .routine-reorder-grip[aria-pressed=true]{cursor:grabbing;color:var(--primary)}
+.workout-panel .routine-editor-grid .routine-sort-list .routine-reorder-grip svg{width:20px;height:20px;pointer-events:none}
+.workout-panel .routine-editor-grid .routine-sort-list button:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+.workout-panel .routine-editor-grid .routine-sort-list.is-reordering{user-select:none;-webkit-user-select:none;cursor:grabbing}
+@media(max-width:760px){
+ .workout-panel .routine-editor-grid .routine-sort-list{max-height:220px}
+ .life-compact-theme .workout-panel .routine-editor-grid:has(.routine-sort-list) aside>.compact-field{display:flex;width:100%}
+ .life-compact-theme .workout-panel .routine-editor-grid:has(.routine-sort-list) aside>button{margin-left:0}
+}

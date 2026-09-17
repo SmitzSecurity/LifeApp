@@ -1,0 +1,3395 @@
+{
+  "title": "LifeApp exercise artwork",
+  "repository": "https://github.com/bryllim/workout-guide",
+  "upstreamCommit": "aac599224bb9780305239607ef98540b7e0ce389",
+  "everkineticCommit": "446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6",
+  "manifestSha256": "b3d110d680a7d6cb94731b8b41ee3f82bfdbd2f9a358038f8c17d453b5fb632b",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "copyright": "Copyright (c) 2026 Bryl Lim, except where asset attribution identifies Everkinetic upstream artwork.",
+  "upstreamProject": "Everkinetic, created by Greg Priday",
+  "upstreamProjectUrl": "https://github.com/everkinetic/data",
+  "assets": [
+    {
+      "localFile": "trap-bar-deadlift-1.svg",
+      "exerciseNames": [
+        "Trap-bar deadlift"
+      ],
+      "catalogName": "Trap Bar Deadlift",
+      "slug": "trap-bar-deadlift",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/trap-bar-deadlift/frame-1.svg",
+      "upstreamSha256": "939dc7a0b84665edd0bce43dab1b0dc292699a57341188312abcc50bf04e5557",
+      "localSha256": "509adb92b6ec2206888243d103347e8f14d9601aeacf8d2207e5bbd8cdc87a1e",
+      "inkViewBox": {
+        "x": 6,
+        "y": 10,
+        "width": 500,
+        "height": 470
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "overhead-press-1.svg",
+      "exerciseNames": [
+        "Overhead press",
+        "Barbell overhead press"
+      ],
+      "catalogName": "Overhead Press",
+      "slug": "overhead-press",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/overhead-press/frame-1.svg",
+      "upstreamSha256": "f8f67ba53c56532712b0eab6b4372038d45258a039bf53e641d154807de33922",
+      "localSha256": "fc186d6fd7466d2a68ef6af3f7b9e8bcace946c605ad165cdbdb8a065fda2a83",
+      "inkViewBox": {
+        "x": 80,
+        "y": -10,
+        "width": 354,
+        "height": 522
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "assisted-pull-up-1.svg",
+      "exerciseNames": [
+        "Assisted pull-up"
+      ],
+      "catalogName": "Assisted Pull-up",
+      "slug": "assisted-pull-up",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/assisted-pull-up/frame-1.svg",
+      "upstreamSha256": "e9550d7e146e2b477aa942839edb9d0a2324c55b7cd4a55d8a234a38b84d9a1f",
+      "localSha256": "81ad1c8718586d87592202b2cba674cf973c85c2f8d3981bfcd92f037536ea34",
+      "inkViewBox": {
+        "x": 99,
+        "y": -11,
+        "width": 291,
+        "height": 532
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "pendlay-row-1.svg",
+      "exerciseNames": [
+        "Pendlay row"
+      ],
+      "catalogName": "Pendlay Row",
+      "slug": "pendlay-row",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/pendlay-row/frame-1.svg",
+      "upstreamSha256": "e462be8e5f5b52b62e2b41185ef404bf8919a7525ff17d34343b2ce411f328b9",
+      "localSha256": "d926da6a86cd8ce49d54125a704ae859e848ff42b7f0cba57e4941510204309d",
+      "inkViewBox": {
+        "x": 4,
+        "y": 20,
+        "width": 487,
+        "height": 471
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "goblet-squat-1.svg",
+      "exerciseNames": [
+        "Goblet squat"
+      ],
+      "catalogName": "Goblet Squat",
+      "slug": "goblet-squat",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/goblet-squat/frame-1.svg",
+      "upstreamSha256": "f94a73243089f6a472e0fdcca604ae26f940b2dae4216b7280cf0f6867a34c63",
+      "localSha256": "26956435d018a52eab7bfea16b587264abc446cd289d05e24ab7df4f6b3faaa1",
+      "inkViewBox": {
+        "x": 103,
+        "y": 6,
+        "width": 308,
+        "height": 490
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "dumbbell-romanian-deadlift-1.svg",
+      "exerciseNames": [
+        "Dumbbell Romanian deadlift"
+      ],
+      "catalogName": "Dumbbell Romanian Deadlift",
+      "slug": "dumbbell-romanian-deadlift",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/dumbbell-romanian-deadlift/frame-1.svg",
+      "upstreamSha256": "ff05da6e13d1f1cc053af32e37b0cf4c2c47f472bf2f53706c7061b484f9ad05",
+      "localSha256": "fdb919784c00866e9c2b0b7f476b81703c71a1a5dd8ade43a391f339b5ddae85",
+      "inkViewBox": {
+        "x": 110,
+        "y": 8,
+        "width": 290,
+        "height": 491
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "hip-thrust-1.svg",
+      "exerciseNames": [
+        "Hip thrust"
+      ],
+      "catalogName": "Hip Thrust",
+      "slug": "hip-thrust",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/hip-thrust/frame-1.svg",
+      "upstreamSha256": "67afc4108e8e6e523a26fa59c9239346f368cc86d300da49c593de28deaf016e",
+      "localSha256": "761e0dff168274d7d65a77c7ee89f17b0e08dc1e3650568972c138a73d7a57c0",
+      "inkViewBox": {
+        "x": 5,
+        "y": 60,
+        "width": 480,
+        "height": 374
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "bulgarian-split-squat-1.svg",
+      "exerciseNames": [
+        "Bulgarian split squat"
+      ],
+      "catalogName": "Bulgarian Split Squat",
+      "slug": "bulgarian-split-squat",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/bulgarian-split-squat/frame-1.svg",
+      "upstreamSha256": "a4fcfffb3d8a51946329cb086c345b98d4bd2614dcdf99f04c358bb2361be017",
+      "localSha256": "50ef16f557be67699a5e6025d1f98bf49f97a3a88a85ecc9047995d935e922f8",
+      "inkViewBox": {
+        "x": 23,
+        "y": 8,
+        "width": 435,
+        "height": 459
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "step-up-1.svg",
+      "exerciseNames": [
+        "Step-up"
+      ],
+      "catalogName": "Step-Up",
+      "slug": "step-up",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/step-up/frame-1.svg",
+      "upstreamSha256": "3b0939930d327f874143577128f75d4ed979494bc0c554b6599610e0e4da4449",
+      "localSha256": "1a6843681926d2eec0269fd628b2a36c274d93060713ce2ce5093d6c20d73721",
+      "inkViewBox": {
+        "x": 152,
+        "y": 112,
+        "width": 215,
+        "height": 330
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": {
+          "name": "Everkinetic",
+          "url": "https://github.com/everkinetic/data/blob/main/dist/svg/0137-tension.svg",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "changes": "Rasterized on a transparent 512 × 512 canvas, recolored for monochrome display, and vector-traced."
+        }
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "source": {
+          "name": "Everkinetic",
+          "url": "https://github.com/everkinetic/data/blob/main/dist/svg/0137-tension.svg",
+          "license": "CC BY-SA 4.0",
+          "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+          "changes": "Rasterized on a transparent 512 × 512 canvas, recolored for monochrome display, and vector-traced."
+        }
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "one-arm-dumbbell-row-1.svg",
+      "exerciseNames": [
+        "Dumbbell row",
+        "One-arm dumbbell row"
+      ],
+      "catalogName": "One-Arm Dumbbell Row",
+      "slug": "one-arm-dumbbell-row",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/one-arm-dumbbell-row/frame-1.svg",
+      "upstreamSha256": "b818e63d8dc40bf3bd1b59aa9fa91fd5c7bdfed99bbb2ac599c4bed328a7de2f",
+      "localSha256": "723695897b9babedba3928e505f60ab22742ba11e13370a9ad9dfb6b2a490e6f",
+      "inkViewBox": {
+        "x": 60,
+        "y": 43,
+        "width": 407,
+        "height": 422
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "chest-supported-row-1.svg",
+      "exerciseNames": [
+        "Chest-supported row"
+      ],
+      "catalogName": "Chest Supported Row",
+      "slug": "chest-supported-row",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/chest-supported-row/frame-1.svg",
+      "upstreamSha256": "b4eee733b57230566a0407ae737a5435f28758535424eecc87e1cd4e9b010e16",
+      "localSha256": "a724eedace14bab7d2ba096087c7b2a7991e93b620c9ba9b30e45bbf8e2380f6",
+      "inkViewBox": {
+        "x": 45,
+        "y": 13,
+        "width": 438,
+        "height": 481
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "machine-row-1.svg",
+      "exerciseNames": [
+        "Machine row"
+      ],
+      "catalogName": "Machine Row",
+      "slug": "machine-row",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/machine-row/frame-1.svg",
+      "upstreamSha256": "7c981719a63c592d970a468c5daf36e63815683a2e6ae276cae01808c3b9bd99",
+      "localSha256": "88c83a7e75b80aa6a4954ffc29bef84dbf2f79ec7be1579c50e94eb85687540e",
+      "inkViewBox": {
+        "x": 30,
+        "y": 0,
+        "width": 430,
+        "height": 502
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "calf-raise-1.svg",
+      "exerciseNames": [
+        "Calf raise",
+        "Bodyweight calf raise"
+      ],
+      "catalogName": "Calf Raise",
+      "slug": "calf-raise",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/calf-raise/frame-1.svg",
+      "upstreamSha256": "9a933f3705dd8825d0a4aa1151248ef7445be00714cd59c56017b75e1455f74b",
+      "localSha256": "974fe95bf16c8c37c9ce251b6f27f190dedb92946dd38dfd902fc45e84515e0c",
+      "inkViewBox": {
+        "x": 100,
+        "y": -9,
+        "width": 310,
+        "height": 523
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "cable-lateral-raise-1.svg",
+      "exerciseNames": [
+        "Cable lateral raise"
+      ],
+      "catalogName": "Cable Lateral Raise",
+      "slug": "cable-lateral-raise",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/cable-lateral-raise/frame-1.svg",
+      "upstreamSha256": "3303803e2b2b5a01496989e7e3cbf75e70c4324ef7e392ed9dbd4bebdbb071b0",
+      "localSha256": "0ce8202e9637a84009f112c3225f70ef9bd70ae2910e51b48f89b544cbd78953",
+      "inkViewBox": {
+        "x": -2,
+        "y": -2,
+        "width": 487,
+        "height": 500
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "reverse-pec-deck-1.svg",
+      "exerciseNames": [
+        "Reverse pec deck"
+      ],
+      "catalogName": "Reverse Pec Deck",
+      "slug": "reverse-pec-deck",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/reverse-pec-deck/frame-1.svg",
+      "upstreamSha256": "51ee3fedca4d087fa4e487ae6339d85429a0e089d5611bbefe2be414e74fc2d4",
+      "localSha256": "9eaf47c8694bd503b9454ecb975249b24371e2e0d412f8ca08fb69f953ff5db6",
+      "inkViewBox": {
+        "x": 42,
+        "y": -9,
+        "width": 429,
+        "height": 515
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "hanging-knee-raise-1.svg",
+      "exerciseNames": [
+        "Hanging knee raise"
+      ],
+      "catalogName": "Hanging Knee Raise",
+      "slug": "hanging-knee-raise",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/hanging-knee-raise/frame-1.svg",
+      "upstreamSha256": "9c1d00d9967c87b294385c7fbf5160049de8d4870106ddb08646250b0a94201c",
+      "localSha256": "09ee9ea85614373c4becdf8c9fde33162e35b5ef2eb65dcf96f6e97030270656",
+      "inkViewBox": {
+        "x": 41,
+        "y": -3,
+        "width": 423,
+        "height": 519
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "dead-bug-1.svg",
+      "exerciseNames": [
+        "Dead bug"
+      ],
+      "catalogName": "Dead Bug",
+      "slug": "dead-bug",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/dead-bug/frame-1.svg",
+      "upstreamSha256": "0e1208250b923348fbf170f163e581be3dcc1ce7f906b14766da59a7801206a2",
+      "localSha256": "dd03b03eb69e0a03f798bb617ab84c28df19b771e71b31423410177f2b7f75ea",
+      "inkViewBox": {
+        "x": -6,
+        "y": 99,
+        "width": 525,
+        "height": 271
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "bird-dog-1.svg",
+      "exerciseNames": [
+        "Bird dog"
+      ],
+      "catalogName": "Bird Dog",
+      "slug": "bird-dog",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/bird-dog/frame-1.svg",
+      "upstreamSha256": "ab25efcaa49bc373d47f4bcf9fa9dacc7d3170bd7cd4f6d3a29bcb0d98c705ac",
+      "localSha256": "8e4cc7482c195a7d08457fea2b209313100708cb4c48051255c8309cd7788042",
+      "inkViewBox": {
+        "x": -16,
+        "y": 121,
+        "width": 542,
+        "height": 267
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "pallof-press-1.svg",
+      "exerciseNames": [
+        "Pallof press"
+      ],
+      "catalogName": "Pallof Press",
+      "slug": "pallof-press",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/pallof-press/frame-1.svg",
+      "upstreamSha256": "0d77cbf640bf6bfba8717ab634b3ef44fb4651cf74f7d57f90c700488dc08dea",
+      "localSha256": "d5c692e0db4915c454d8fd2d8c2b7e12eeb2672a924f7b6493c12130cfeaf049",
+      "inkViewBox": {
+        "x": 67,
+        "y": -9,
+        "width": 417,
+        "height": 508
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "wrist-extension-1.svg",
+      "exerciseNames": [
+        "Reverse wrist curl"
+      ],
+      "catalogName": "Wrist Extension",
+      "slug": "wrist-extension",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/bryllim/workout-guide/aac599224bb9780305239607ef98540b7e0ce389/packages/workout-guide/assets/wrist-extension/frame-1.svg",
+      "upstreamSha256": "dfbe01ff230682eb3b8322543d5a78b956a194dfb9212c8ed998cac9d44b745c",
+      "localSha256": "cfb622c086d33f9e2193099751db3260e79cc5f86431bc4daeef022cfd26ca13",
+      "inkViewBox": {
+        "x": 116,
+        "y": -5,
+        "width": 291,
+        "height": 504
+      },
+      "attribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "catalogAttribution": {
+        "creator": "Bryl Lim",
+        "creatorUrl": "https://bryllim.com",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Selected a static frame, retained geometry only, normalized opaque artwork to one white mask, and cropped the SVG viewBox around visible artwork with padding. Rendered as neutral ink on a light illustration canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0122-relaxation.svg",
+      "exerciseNames": [
+        "Squat",
+        "Barbell squat"
+      ],
+      "catalogName": "Squat",
+      "slug": "squat",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0122-relaxation.svg",
+      "upstreamSha256": "74c5904f5ce3074710921a337d3145d237f0d34cfbde476c0f0da141b838f0ab",
+      "localSha256": "41e5c4dbe2b5863f4ce54f1e15b03c7547e4a4a09d245a7ce214adc144e1c892",
+      "inkViewBox": {
+        "x": 0,
+        "y": 41,
+        "width": 216,
+        "height": 259
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0122-tension.svg",
+      "exerciseNames": [
+        "Squat",
+        "Barbell squat"
+      ],
+      "catalogName": "Squat",
+      "slug": "squat",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0122-tension.svg",
+      "upstreamSha256": "fbf147d5628b0c08b8f17775a7ef7abaa8500cb4599436ee5ff22afa578d2254",
+      "localSha256": "95f0a11e4c19ccfc4541bfbd58630d0672208eff1563d492139a7dcf8cd45ef2",
+      "inkViewBox": {
+        "x": 0,
+        "y": 41,
+        "width": 216,
+        "height": 259
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0138-relaxation.svg",
+      "exerciseNames": [
+        "Front squat"
+      ],
+      "catalogName": "Front squat",
+      "slug": "front-squat",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0138-relaxation.svg",
+      "upstreamSha256": "619043fc1d3b286cc5fd60c38bc3ca33054a610a2a5eb9ac60a322aad555a038",
+      "localSha256": "a1d65d66f80dc866aaeb1fe753c5efa152676f2d85d7299aacac4269d09bb6e3",
+      "inkViewBox": {
+        "x": 0,
+        "y": 32,
+        "width": 213,
+        "height": 268
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0138-tension.svg",
+      "exerciseNames": [
+        "Front squat"
+      ],
+      "catalogName": "Front squat",
+      "slug": "front-squat",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0138-tension.svg",
+      "upstreamSha256": "a9e71c47b5bb6366b1bfb31bd933bd28dd9c2c0c31932727e5045e9599c2c68a",
+      "localSha256": "dda958390b3ef3d1b60109d6f98aa858d7e9df66795fcab6d5b01901a42139fa",
+      "inkViewBox": {
+        "x": 0,
+        "y": 32,
+        "width": 213,
+        "height": 268
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0099-relaxation.svg",
+      "exerciseNames": [
+        "Deadlift",
+        "Barbell deadlift"
+      ],
+      "catalogName": "Deadlift",
+      "slug": "deadlift",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0099-relaxation.svg",
+      "upstreamSha256": "5d9f849a425fe0a4071f8b577cdae7a8613307a601aa24c1b196dcc92ca9b57b",
+      "localSha256": "1751daa4d1393addb67e6ac775d346306fece1a3ce3352e5b99405961681e03d",
+      "inkViewBox": {
+        "x": 0,
+        "y": 19,
+        "width": 162,
+        "height": 253
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0099-tension.svg",
+      "exerciseNames": [
+        "Deadlift",
+        "Barbell deadlift"
+      ],
+      "catalogName": "Deadlift",
+      "slug": "deadlift",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0099-tension.svg",
+      "upstreamSha256": "3e201af425e46eaeab475c48c5ca93a5acd3c88133456d8cc026c3f4c31d83b2",
+      "localSha256": "0fd821199e102d99ab119796a7a127e3ac442028b5a9e28cfb9c8c2cc3a8e1db",
+      "inkViewBox": {
+        "x": 0,
+        "y": 19,
+        "width": 162,
+        "height": 253
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0042-relaxation.svg",
+      "exerciseNames": [
+        "Bench press",
+        "Barbell bench press",
+        "Bench presses"
+      ],
+      "catalogName": "Bench press",
+      "slug": "bench-press",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0042-relaxation.svg",
+      "upstreamSha256": "129de97b8e44b1ae505248a15df343c4a602202d026eff17adef5d338864d3a3",
+      "localSha256": "861a9358f8ff1e0c85d844e588b9e2c439aacc7c143025d2955d2f2529f0a280",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 246,
+        "height": 275
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0042-tension.svg",
+      "exerciseNames": [
+        "Bench press",
+        "Barbell bench press",
+        "Bench presses"
+      ],
+      "catalogName": "Bench press",
+      "slug": "bench-press",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0042-tension.svg",
+      "upstreamSha256": "d7b03dfe5f5128fbc1d692f522082f8b3b6b1d8b47f73a51b5da3676239ccfa7",
+      "localSha256": "f35056da330deff8ce32fc49e003964ce49d51413a498694911932d4f7440e43",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 246,
+        "height": 275
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0043-relaxation.svg",
+      "exerciseNames": [
+        "Incline bench press"
+      ],
+      "catalogName": "Incline bench press",
+      "slug": "incline-bench-press",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0043-relaxation.svg",
+      "upstreamSha256": "0c27ee7083dc259d4a4302a2f8de080ed0ca508e57a9896cb38a8907a1b0d112",
+      "localSha256": "05cc7a381a99776710d674dab82b330d35080804be7afd3247baa3afa665f20d",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 248,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0043-tension.svg",
+      "exerciseNames": [
+        "Incline bench press"
+      ],
+      "catalogName": "Incline bench press",
+      "slug": "incline-bench-press",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0043-tension.svg",
+      "upstreamSha256": "ebe7299ad2172ea13325648ba17e9d7e88134ed98c922b05eee4053ea2147d84",
+      "localSha256": "2923b9eb6bdcfd2e0d2ad2255933fcf94510d07671df79698bed850662fcfacf",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 248,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0055-relaxation.svg",
+      "exerciseNames": [
+        "Dumbbell bench press"
+      ],
+      "catalogName": "Dumbbell bench press",
+      "slug": "dumbbell-bench-press",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0055-relaxation.svg",
+      "upstreamSha256": "4dde7a1d0292938d740c49448a336a9240cf75e4ec94694513580dc8e99e32ab",
+      "localSha256": "6c37cc6eea25eede6af58619cfa1124c5d4f63fdcb032ba8ff5a0a9b317efbfe",
+      "inkViewBox": {
+        "x": 2,
+        "y": 6,
+        "width": 205,
+        "height": 268
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0055-tension.svg",
+      "exerciseNames": [
+        "Dumbbell bench press"
+      ],
+      "catalogName": "Dumbbell bench press",
+      "slug": "dumbbell-bench-press",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0055-tension.svg",
+      "upstreamSha256": "85960f365edc3dbcb47357d5dce6f7f53d370feb0030abd4e3fcfefa3d75c82c",
+      "localSha256": "d69f9da2367d9af13a26a2444dc8726e70aca84f7d70ca9cd77b4184d3436bc5",
+      "inkViewBox": {
+        "x": 2,
+        "y": 6,
+        "width": 205,
+        "height": 268
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0061-relaxation.svg",
+      "exerciseNames": [
+        "Incline dumbbell press"
+      ],
+      "catalogName": "Incline dumbbell press",
+      "slug": "incline-dumbbell-press",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0061-relaxation.svg",
+      "upstreamSha256": "fcb3601db86d0dc61c2e3465085ddb4d6eba85027fc5d40b06290d2c757b4e83",
+      "localSha256": "c3289cc5d04a357e85cda91b56b6ea1b73c89e554088bba3bc5291a278762557",
+      "inkViewBox": {
+        "x": 36,
+        "y": 0,
+        "width": 204,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0061-tension.svg",
+      "exerciseNames": [
+        "Incline dumbbell press"
+      ],
+      "catalogName": "Incline dumbbell press",
+      "slug": "incline-dumbbell-press",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0061-tension.svg",
+      "upstreamSha256": "2492e04ff91459dbd7a394d0e525a6fcf43a79d5ef85f4f336913c65cbac119e",
+      "localSha256": "cdc37fc3cbe405e5a179c7a024da90eaa580c75f0d99633c8606ff59dd10b489",
+      "inkViewBox": {
+        "x": 36,
+        "y": 0,
+        "width": 204,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0172-relaxation.svg",
+      "exerciseNames": [
+        "Dip"
+      ],
+      "catalogName": "Dip",
+      "slug": "dip",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0172-relaxation.svg",
+      "upstreamSha256": "4e70f99450167201cb29d35a9f722e05d0001cf4523b20a5473550ab136ade86",
+      "localSha256": "e946a72fd6456518750ee0efd3079a6bda3a92ed916f00d4c6fd1e75b9eb5aea",
+      "inkViewBox": {
+        "x": 1,
+        "y": 3,
+        "width": 135,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0172-tension.svg",
+      "exerciseNames": [
+        "Dip"
+      ],
+      "catalogName": "Dip",
+      "slug": "dip",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0172-tension.svg",
+      "upstreamSha256": "5e83aa5b7a1fa57394e992dc63430d15253d82e849fb3ec50a90a622d6d74834",
+      "localSha256": "7ea60079428dd66b9dc00274c394e386e3c6bf74d73aaba295477c117246d1c6",
+      "inkViewBox": {
+        "x": 1,
+        "y": 3,
+        "width": 135,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0087-relaxation.svg",
+      "exerciseNames": [
+        "Pull-up",
+        "Pull ups"
+      ],
+      "catalogName": "Pull-up",
+      "slug": "pull-up",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0087-relaxation.svg",
+      "upstreamSha256": "12078cccf48e29c886dc84653dce07168945fc279ec20ec95a6b944f68816377",
+      "localSha256": "6503c80b28036f61a18b00bece4e42d0d57a4c6c961f872312a317a0cb7adf6b",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 167,
+        "height": 275
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0087-tension.svg",
+      "exerciseNames": [
+        "Pull-up",
+        "Pull ups"
+      ],
+      "catalogName": "Pull-up",
+      "slug": "pull-up",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0087-tension.svg",
+      "upstreamSha256": "92e859631001bc7b4514960bf940b51259ec2bbc1a8af6703ec8fbc4c7ad9303",
+      "localSha256": "e1ff6ccd9239e66d518fee910f89e5800fbca18ca829fa1ee9a26a55a618dd76",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 167,
+        "height": 275
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0127-relaxation.svg",
+      "exerciseNames": [
+        "Leg press"
+      ],
+      "catalogName": "Leg press",
+      "slug": "leg-press",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0127-relaxation.svg",
+      "upstreamSha256": "60d0ca21ed1af6adabe2ee2abbcd02aacf3054bed5f87445dfeb710a39d8d883",
+      "localSha256": "7ed85244f5de09cdc940c5e9e62858a3fe219edfc8d34ec3abf7ef5a37851a05",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 285,
+        "height": 200
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0127-tension.svg",
+      "exerciseNames": [
+        "Leg press"
+      ],
+      "catalogName": "Leg press",
+      "slug": "leg-press",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0127-tension.svg",
+      "upstreamSha256": "8eef18a3dc3ba73338e73853a1a3aef73003aa5c760d0e5c74988fb67b7f2020",
+      "localSha256": "3ab6322e9a0a6374f9db65b7f80aa1735f093cd68838450fca5a52bdff145d63",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 285,
+        "height": 200
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0123-relaxation.svg",
+      "exerciseNames": [
+        "Hack squat"
+      ],
+      "catalogName": "Hack squat",
+      "slug": "hack-squat",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0123-relaxation.svg",
+      "upstreamSha256": "c2d361ceeca0ec83192740d52db57bcfdcd35773895ddd56dffbbffb436c0fb4",
+      "localSha256": "c3e6d0a1a8e34420da1eee52da1f2e53c52e038fee06485829ace0fb4df364f9",
+      "inkViewBox": {
+        "x": 13,
+        "y": 21,
+        "width": 253,
+        "height": 179
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0123-tension.svg",
+      "exerciseNames": [
+        "Hack squat"
+      ],
+      "catalogName": "Hack squat",
+      "slug": "hack-squat",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0123-tension.svg",
+      "upstreamSha256": "81df2984345a4d4402781a887cfdab8f67cad61706644aded64bae45464e2c64",
+      "localSha256": "4fe561817ff378d6e2ff687b028a02d64c71d5a776c7f9096520b98b89285dad",
+      "inkViewBox": {
+        "x": 13,
+        "y": 21,
+        "width": 253,
+        "height": 179
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0118-relaxation.svg",
+      "exerciseNames": [
+        "Romanian deadlift",
+        "Barbell Romanian deadlift"
+      ],
+      "catalogName": "Romanian deadlift",
+      "slug": "romanian-deadlift",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0118-relaxation.svg",
+      "upstreamSha256": "a7c2c7418ba458e2776609595ea2cafd23aba4648c959b81b830f1836743bc04",
+      "localSha256": "7f68aa263d7b772ba00d7dff446a1946dd6d6704f84d29e6b092087a5cafff20",
+      "inkViewBox": {
+        "x": 0,
+        "y": 22,
+        "width": 162,
+        "height": 250
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0118-tension.svg",
+      "exerciseNames": [
+        "Romanian deadlift",
+        "Barbell Romanian deadlift"
+      ],
+      "catalogName": "Romanian deadlift",
+      "slug": "romanian-deadlift",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0118-tension.svg",
+      "upstreamSha256": "8664b9d36e2a34d07d211b5693ac3ba6c78effe8ef65eefe68ca98786586c4ab",
+      "localSha256": "5b6478b5def23daf2a77ba6523d4cc8b0b1b91f8fe1b7c814a6bd4493439cfa5",
+      "inkViewBox": {
+        "x": 0,
+        "y": 22,
+        "width": 162,
+        "height": 250
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0109-relaxation.svg",
+      "exerciseNames": [
+        "Glute bridge"
+      ],
+      "catalogName": "Glute bridge",
+      "slug": "glute-bridge",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0109-relaxation.svg",
+      "upstreamSha256": "3d661ec689a9448759f80f0bfbbe40dede918e12b2f0f65c56622d8eed8021e1",
+      "localSha256": "b0cc682867d1d1de55ed4e7c98db4628775d878558d4fb6eced766dcb2c767e8",
+      "inkViewBox": {
+        "x": 2,
+        "y": 23,
+        "width": 199,
+        "height": 102
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0109-tension.svg",
+      "exerciseNames": [
+        "Glute bridge"
+      ],
+      "catalogName": "Glute bridge",
+      "slug": "glute-bridge",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0109-tension.svg",
+      "upstreamSha256": "8958a3bf8c3f9f1abb62f36e154dcf876c1783890564bb3acc14ab215bbe02f3",
+      "localSha256": "747700b497c6c8e7fe73a9bbee145967c25ef94e0b977a9f95006ece56d703e0",
+      "inkViewBox": {
+        "x": 2,
+        "y": 23,
+        "width": 199,
+        "height": 102
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0115-relaxation.svg",
+      "exerciseNames": [
+        "Lunge",
+        "Forward lunge"
+      ],
+      "catalogName": "Lunge",
+      "slug": "forward-lunge",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0115-relaxation.svg",
+      "upstreamSha256": "c26d2e2fc8012a10766c26ce8d29cb04e6719caaddfdef2dd616119adf4190d1",
+      "localSha256": "b5005055784321e64bca66a85e54fa86488273f184371a183c45291cd89d63b8",
+      "inkViewBox": {
+        "x": 8,
+        "y": 6,
+        "width": 176,
+        "height": 269
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0115-tension.svg",
+      "exerciseNames": [
+        "Lunge",
+        "Forward lunge"
+      ],
+      "catalogName": "Lunge",
+      "slug": "forward-lunge",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0115-tension.svg",
+      "upstreamSha256": "9f6c08b11102a417b6d8d0d48c8675e79a56415b6730a789c583541f18eec348",
+      "localSha256": "3451a588198f32eeabca259fcf5044fd41fd155e7ca7cfec02559a68cde51b49",
+      "inkViewBox": {
+        "x": 8,
+        "y": 6,
+        "width": 176,
+        "height": 269
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0129-relaxation.svg",
+      "exerciseNames": [
+        "Reverse lunge"
+      ],
+      "catalogName": "Reverse lunge",
+      "slug": "reverse-lunge",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0129-relaxation.svg",
+      "upstreamSha256": "2214642dee62df0b633e53a60b41639dbf641b813a3b1673f15c8a30834f1d0d",
+      "localSha256": "286b396df546e2d4b9bce9659d6a6a489ef82a3a5dae9db054bbf77f67832595",
+      "inkViewBox": {
+        "x": 8,
+        "y": 6,
+        "width": 176,
+        "height": 269
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0129-tension.svg",
+      "exerciseNames": [
+        "Reverse lunge"
+      ],
+      "catalogName": "Reverse lunge",
+      "slug": "reverse-lunge",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0129-tension.svg",
+      "upstreamSha256": "b78bbd6ff287bc8baa014cf4ace3fb3d397e24f8b289032b1dc5284e0c6d03df",
+      "localSha256": "a0737bd32c4424d0bc865b6a6100c6d43c6adf4c51fa1e11827f16d395556cb9",
+      "inkViewBox": {
+        "x": 8,
+        "y": 6,
+        "width": 176,
+        "height": 269
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0025-relaxation.svg",
+      "exerciseNames": [
+        "Cable row",
+        "Seated cable row"
+      ],
+      "catalogName": "Cable row",
+      "slug": "seated-row",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0025-relaxation.svg",
+      "upstreamSha256": "53dcd08b3979417d36ec09fb7a6db1740494e421078cfa7b87128e917ba0e5bf",
+      "localSha256": "4c17df25a78bf9fc0940248946b9e46df4e47ebb4649be2ee15e75c280a50277",
+      "inkViewBox": {
+        "x": 22,
+        "y": 22,
+        "width": 228,
+        "height": 166
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0025-tension.svg",
+      "exerciseNames": [
+        "Cable row",
+        "Seated cable row"
+      ],
+      "catalogName": "Cable row",
+      "slug": "seated-row",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0025-tension.svg",
+      "upstreamSha256": "b3a3aaca0a119d567cc112850b19bfce10a2b9666b4d5db0cf8442702c9a57d6",
+      "localSha256": "07b4f158f95f65ec9bae99bf739b027d7ad3a4493869ed39cf039c1af506ba32",
+      "inkViewBox": {
+        "x": 22,
+        "y": 22,
+        "width": 228,
+        "height": 166
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0066-relaxation.svg",
+      "exerciseNames": [
+        "Machine chest press"
+      ],
+      "catalogName": "Machine chest press",
+      "slug": "machine-chest-press",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0066-relaxation.svg",
+      "upstreamSha256": "c1e7905ef451418e2af8c057c4136c776f18c7fe3c3460b177b0b972410ba51c",
+      "localSha256": "b4d55a9edf37ba100058fa9e1c4c9900fadb42d2c026d9a1418eda114934592b",
+      "inkViewBox": {
+        "x": 1,
+        "y": 0,
+        "width": 188,
+        "height": 221
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0066-tension.svg",
+      "exerciseNames": [
+        "Machine chest press"
+      ],
+      "catalogName": "Machine chest press",
+      "slug": "machine-chest-press",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0066-tension.svg",
+      "upstreamSha256": "ffcbffa1e694aa194258b51e8a353fd78e22beb49b8547e2aa9a3ba3e95396c1",
+      "localSha256": "cf5bea565bad5dc57edf7a439855529a025c5cd9df952abc1e2cca41a67ab6eb",
+      "inkViewBox": {
+        "x": 1,
+        "y": 0,
+        "width": 188,
+        "height": 221
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0077-relaxation.svg",
+      "exerciseNames": [
+        "Push-up",
+        "Push ups"
+      ],
+      "catalogName": "Push-up",
+      "slug": "push-up",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0077-relaxation.svg",
+      "upstreamSha256": "6ce1b11a8f525cc26ef8b12a0ed08de5a69aec533557b86d34d0d47d14e9d4f1",
+      "localSha256": "dc792e45177047306d03614f01e184bb2e939f984565186ba194de86c4030d40",
+      "inkViewBox": {
+        "x": 4,
+        "y": 52,
+        "width": 235,
+        "height": 144
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0077-tension.svg",
+      "exerciseNames": [
+        "Push-up",
+        "Push ups"
+      ],
+      "catalogName": "Push-up",
+      "slug": "push-up",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0077-tension.svg",
+      "upstreamSha256": "c4a9564295999f0a10f9924b4b09fe9cf7a105dd0dccab75bf667d606883240e",
+      "localSha256": "c3b068ef614ae36d5f5b7619c55a96676448e7a2cb4463bf6412ff07dfa7c243",
+      "inkViewBox": {
+        "x": 4,
+        "y": 52,
+        "width": 235,
+        "height": 144
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0086-relaxation.svg",
+      "exerciseNames": [
+        "Inverted row"
+      ],
+      "catalogName": "Inverted row",
+      "slug": "inverted-row",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0086-relaxation.svg",
+      "upstreamSha256": "aed5fc0c77b240b5f8b1e239dbb66dda2de506bbba98a82f4e15873eb9f6955c",
+      "localSha256": "df16d5a0eb0befb177cb18e6a9d7a92f976b91bf18714901eea91cb0ebfef6e1",
+      "inkViewBox": {
+        "x": 15,
+        "y": 14,
+        "width": 198,
+        "height": 221
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0086-tension.svg",
+      "exerciseNames": [
+        "Inverted row"
+      ],
+      "catalogName": "Inverted row",
+      "slug": "inverted-row",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0086-tension.svg",
+      "upstreamSha256": "a94c028146f7597b4cfd482bccdb8a2616d3394a01c56312e9b8463d0056efda",
+      "localSha256": "d74ffce667506e8c6632d6bc205885039f40c61e0893bdacf7f74000ea07aa17",
+      "inkViewBox": {
+        "x": 15,
+        "y": 14,
+        "width": 198,
+        "height": 221
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0211-relaxation.svg",
+      "exerciseNames": [
+        "Biceps curl",
+        "Barbell curl"
+      ],
+      "catalogName": "Biceps curl",
+      "slug": "ez-bar-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0211-relaxation.svg",
+      "upstreamSha256": "1a5e5d3c74e3510a8af53dc4a1b83d606eb59a7312d955c5d3ebcf70614d2990",
+      "localSha256": "8fa8e4912583512f07272e5255294e468712bf63c6cd840af513f050b8020ca2",
+      "inkViewBox": {
+        "x": 0,
+        "y": 18,
+        "width": 221,
+        "height": 256
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0211-tension.svg",
+      "exerciseNames": [
+        "Biceps curl",
+        "Barbell curl"
+      ],
+      "catalogName": "Biceps curl",
+      "slug": "ez-bar-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0211-tension.svg",
+      "upstreamSha256": "a6d90319d29b922d8cbf5592f0a52a3b273eaaa9b26de338c11e10525a51b56c",
+      "localSha256": "d7e0583646c0d20cc643b9d18b6a55158317a29bcd09d0d912ff2e3a420af42e",
+      "inkViewBox": {
+        "x": 0,
+        "y": 18,
+        "width": 221,
+        "height": 256
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0224-relaxation.svg",
+      "exerciseNames": [
+        "Dumbbell curl"
+      ],
+      "catalogName": "Dumbbell curl",
+      "slug": "bicep-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0224-relaxation.svg",
+      "upstreamSha256": "2bd2e38775b6627566cd3aa88a9b9cce8ebcd95b9ddcf6f37ed0a3b3ad1a6bc2",
+      "localSha256": "19cbf8cd9af766940b8a35e0f86f936fcdb87debc4b32905cbad9539348f35fc",
+      "inkViewBox": {
+        "x": 47,
+        "y": 17,
+        "width": 126,
+        "height": 257
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0224-tension.svg",
+      "exerciseNames": [
+        "Dumbbell curl"
+      ],
+      "catalogName": "Dumbbell curl",
+      "slug": "bicep-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0224-tension.svg",
+      "upstreamSha256": "51a8c62ff519b46fcf1e03d4c389bf442e1cc2042cd8ec19b95bd8d6b0fb7080",
+      "localSha256": "09c5c5ff0401dfa4855b84a71a65b707ea119705de26390345c4b8f1168ac63e",
+      "inkViewBox": {
+        "x": 47,
+        "y": 17,
+        "width": 126,
+        "height": 257
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0227-relaxation.svg",
+      "exerciseNames": [
+        "Hammer curl"
+      ],
+      "catalogName": "Hammer curl",
+      "slug": "hammer-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0227-relaxation.svg",
+      "upstreamSha256": "4f886cfeb3f0b4cb72bca14a9e17c2e195478f51e4b1e4f47a9a323b53d6c2a4",
+      "localSha256": "121c36fca75d88f564ac9f4c4acd019632c1729ad0288df118c4c470abcb1d6c",
+      "inkViewBox": {
+        "x": 47,
+        "y": 17,
+        "width": 125,
+        "height": 257
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0227-tension.svg",
+      "exerciseNames": [
+        "Hammer curl"
+      ],
+      "catalogName": "Hammer curl",
+      "slug": "hammer-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0227-tension.svg",
+      "upstreamSha256": "87740904ad028e76b1a3f17fd24f163e8f725308aa7586913e8799e040be2fa4",
+      "localSha256": "325994f42b25bc869cae2276f23d1503670a3208ded5c44b6bbead520d69c2c4",
+      "inkViewBox": {
+        "x": 47,
+        "y": 17,
+        "width": 125,
+        "height": 257
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0239-relaxation.svg",
+      "exerciseNames": [
+        "Preacher curl"
+      ],
+      "catalogName": "Preacher curl",
+      "slug": "preacher-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0239-relaxation.svg",
+      "upstreamSha256": "5d9e2dd7b2274265c824cc40b873502c2bb4746947c3f226d38f7ca200314202",
+      "localSha256": "ac4632fb07e723c36a4844010fb4d45f7b49ce3229c92529429296c548f1e68f",
+      "inkViewBox": {
+        "x": 13,
+        "y": 9,
+        "width": 167,
+        "height": 224
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0239-tension.svg",
+      "exerciseNames": [
+        "Preacher curl"
+      ],
+      "catalogName": "Preacher curl",
+      "slug": "preacher-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0239-tension.svg",
+      "upstreamSha256": "699f6eceba314da0a26016864ae2242a5e713394a398baecb0ad17be8a32fdaf",
+      "localSha256": "b37178cbfd9c0c78812098d1bb38ea165306a368d8f9ce9c312dafea575443b6",
+      "inkViewBox": {
+        "x": 13,
+        "y": 9,
+        "width": 167,
+        "height": 224
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0212-relaxation.svg",
+      "exerciseNames": [
+        "Cable curl"
+      ],
+      "catalogName": "Cable curl",
+      "slug": "cable-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0212-relaxation.svg",
+      "upstreamSha256": "36f24b84054ce72e37e48b7fd6dbae713985d635bd0cf1a3677a1b47f4affa5f",
+      "localSha256": "cdb9238e54ea10b34d1d2bc0bd5c4340ecb1f46bc862ba9e88f0324b8653bf5c",
+      "inkViewBox": {
+        "x": 56,
+        "y": 18,
+        "width": 117,
+        "height": 257
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0212-tension.svg",
+      "exerciseNames": [
+        "Cable curl"
+      ],
+      "catalogName": "Cable curl",
+      "slug": "cable-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0212-tension.svg",
+      "upstreamSha256": "8145d1478f964e68d39a754c30f93ba078ccb5703ee4ace40403ae083eed5288",
+      "localSha256": "7e2cc860b6af01d6b2761a5624dcecb64ee22b2011b72a605677c950efcdbaf9",
+      "inkViewBox": {
+        "x": 56,
+        "y": 18,
+        "width": 117,
+        "height": 257
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0194-relaxation.svg",
+      "exerciseNames": [
+        "Triceps extension",
+        "Overhead triceps extension",
+        "Dumbbell overhead tricep extension"
+      ],
+      "catalogName": "Triceps extension",
+      "slug": "dumbbell-overhead-tricep-extension",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0194-relaxation.svg",
+      "upstreamSha256": "74f27def10c16312dd049cec59aed493bb83f29573937372541fe6d981eeecd6",
+      "localSha256": "b9751cd57d50cc6c752090c25f14046ca245a816198ca638796d3bcb97283351",
+      "inkViewBox": {
+        "x": 45,
+        "y": 7,
+        "width": 165,
+        "height": 283
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0194-tension.svg",
+      "exerciseNames": [
+        "Triceps extension",
+        "Overhead triceps extension",
+        "Dumbbell overhead tricep extension"
+      ],
+      "catalogName": "Triceps extension",
+      "slug": "dumbbell-overhead-tricep-extension",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0194-tension.svg",
+      "upstreamSha256": "1d7db68ff17dc74c3c18dae5bbe5ba5742240639f3cd8c58cc65bee45359dd88",
+      "localSha256": "0d37135cf834a9aaa36bbd58a10ee92b4b63ad19e92b19ed98590ac52ffc993d",
+      "inkViewBox": {
+        "x": 45,
+        "y": 7,
+        "width": 165,
+        "height": 283
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0205-relaxation.svg",
+      "exerciseNames": [
+        "Triceps pushdown",
+        "Tricep pushdown"
+      ],
+      "catalogName": "Triceps pushdown",
+      "slug": "tricep-pushdown",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0205-relaxation.svg",
+      "upstreamSha256": "0ebbca1446e865af39aa3876b933d1417bde1ffdd32646b587f0e0947319826d",
+      "localSha256": "15aede75ee7d2a982425b8ab98157539b0be3e1760cfac2407ae59576a4193df",
+      "inkViewBox": {
+        "x": 38,
+        "y": 0,
+        "width": 108,
+        "height": 275
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0205-tension.svg",
+      "exerciseNames": [
+        "Triceps pushdown",
+        "Tricep pushdown"
+      ],
+      "catalogName": "Triceps pushdown",
+      "slug": "tricep-pushdown",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0205-tension.svg",
+      "upstreamSha256": "8420b165b53d6ec38b0205336962efff1a38ae87c77af0de6439ff2a089fa68d",
+      "localSha256": "3011f5ef4c30269f5f193fb5b9638f77c6b968fdeb2cad807d87c6b99a62712e",
+      "inkViewBox": {
+        "x": 38,
+        "y": 0,
+        "width": 108,
+        "height": 275
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0183-relaxation.svg",
+      "exerciseNames": [
+        "Skull crusher"
+      ],
+      "catalogName": "Skull crusher",
+      "slug": "skull-crusher",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0183-relaxation.svg",
+      "upstreamSha256": "d5aa9bb554685b97ff563f549db55287398dfe03e8a3379d59a362137a4b0e89",
+      "localSha256": "1ff2061613e88fd4e6ebf480b1c4cee6b9da66122ca768e0f7a244e6eb57b8b1",
+      "inkViewBox": {
+        "x": 8,
+        "y": 0,
+        "width": 263,
+        "height": 223
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0183-tension.svg",
+      "exerciseNames": [
+        "Skull crusher"
+      ],
+      "catalogName": "Skull crusher",
+      "slug": "skull-crusher",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0183-tension.svg",
+      "upstreamSha256": "3bfe43d83a442aaa189cbbc76998f1f8cd54e7735a81c2aed21d6e9235089014",
+      "localSha256": "38dde963f1a3c91c3f1eaf9149e5a92835bd8de7e5ff35f50079a45528581005",
+      "inkViewBox": {
+        "x": 8,
+        "y": 0,
+        "width": 263,
+        "height": 223
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0117-relaxation.svg",
+      "exerciseNames": [
+        "Leg curl"
+      ],
+      "catalogName": "Leg curl",
+      "slug": "leg-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0117-relaxation.svg",
+      "upstreamSha256": "d5362eeca1cc7f04ca7b988edb40eec52c5a2daf97bfdd4a3fb2471544680cdd",
+      "localSha256": "7a2e6925f4361083e3e54dd535e8d87b18969b721a94cee5e230e60abf95a630",
+      "inkViewBox": {
+        "x": 5,
+        "y": 6,
+        "width": 273,
+        "height": 169
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0117-tension.svg",
+      "exerciseNames": [
+        "Leg curl"
+      ],
+      "catalogName": "Leg curl",
+      "slug": "leg-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0117-tension.svg",
+      "upstreamSha256": "7bb10ab2bfa058b2941671f709fca170822e7819ec8cf3142a862ee13fce8c4f",
+      "localSha256": "6cbca7daabe58ccb4e911a10daabea8d63e567dec7c2b35e2f08ca06ddf5d09e",
+      "inkViewBox": {
+        "x": 5,
+        "y": 6,
+        "width": 273,
+        "height": 169
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0119-relaxation.svg",
+      "exerciseNames": [
+        "Seated leg curl"
+      ],
+      "catalogName": "Seated leg curl",
+      "slug": "seated-leg-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0119-relaxation.svg",
+      "upstreamSha256": "812b715ec31065069be1e5724777c8302ce3720ebcf2abb2817cc0cee61d3914",
+      "localSha256": "7aa6f7fd2c20b870251c8fbb77da218e216ba492a74c49c652b255e151897792",
+      "inkViewBox": {
+        "x": 6,
+        "y": 29,
+        "width": 144,
+        "height": 211
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0119-tension.svg",
+      "exerciseNames": [
+        "Seated leg curl"
+      ],
+      "catalogName": "Seated leg curl",
+      "slug": "seated-leg-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0119-tension.svg",
+      "upstreamSha256": "59b102b5ae6f6d7807e6bf45cb7a299ad95dede220533491a9cf90520c7fbf11",
+      "localSha256": "64dc8b6a8023219eed73fc6cead20fb2cdf2c042e7dddd353a60b1b7b724bad9",
+      "inkViewBox": {
+        "x": 6,
+        "y": 29,
+        "width": 144,
+        "height": 211
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0142-relaxation.svg",
+      "exerciseNames": [
+        "Leg extension"
+      ],
+      "catalogName": "Leg extension",
+      "slug": "leg-extension",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0142-relaxation.svg",
+      "upstreamSha256": "06b2c914c80eb7cfaa3d2889ca10d41ebfa1d837d02078eb481b828d39eaa6c2",
+      "localSha256": "8bcf292ccbf25434ef08396412372f7f078b7c6dd1f8c875a107e05120ce7f3d",
+      "inkViewBox": {
+        "x": 13,
+        "y": 29,
+        "width": 137,
+        "height": 212
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0142-tension.svg",
+      "exerciseNames": [
+        "Leg extension"
+      ],
+      "catalogName": "Leg extension",
+      "slug": "leg-extension",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0142-tension.svg",
+      "upstreamSha256": "2989e77732acc08769821cb8cfd40c1611b79e98e041fa6b1217178ec8ce8ff6",
+      "localSha256": "25e41d0f8a3567da0d9d01094e882f6720d43ad769c7688f763b8e3b35d3dda9",
+      "inkViewBox": {
+        "x": 13,
+        "y": 29,
+        "width": 137,
+        "height": 212
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0282-relaxation.svg",
+      "exerciseNames": [
+        "Standing calf raise"
+      ],
+      "catalogName": "Standing calf raise",
+      "slug": "standing-calf-raise",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0282-relaxation.svg",
+      "upstreamSha256": "5cc1509e0b4b28d8ad7d9977982bffa3685b96bbe710607643294fc9f504b10d",
+      "localSha256": "2e19f89c74ec38b5e24e966d102103a04eab94e8416c8f90092082c9cd32d3f8",
+      "inkViewBox": {
+        "x": 12,
+        "y": 7,
+        "width": 174,
+        "height": 293
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0282-tension.svg",
+      "exerciseNames": [
+        "Standing calf raise"
+      ],
+      "catalogName": "Standing calf raise",
+      "slug": "standing-calf-raise",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0282-tension.svg",
+      "upstreamSha256": "6070f528c9e3f213fe35a4da62ddbb1368b16f3dc66113c581de9fdf232e280c",
+      "localSha256": "23effd9bb6357645e2a3a9254f1dcbd736def7439f5fbfe48edaf01cb32858ba",
+      "inkViewBox": {
+        "x": 12,
+        "y": 7,
+        "width": 174,
+        "height": 293
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0279-relaxation.svg",
+      "exerciseNames": [
+        "Seated calf raise"
+      ],
+      "catalogName": "Seated calf raise",
+      "slug": "seated-calf-raise",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0279-relaxation.svg",
+      "upstreamSha256": "3cfa1b9047f945571b04d2647ababc6157fbbded91477caeb3f7aaa08c16b273",
+      "localSha256": "6165d36c155b10d9974c65e80f1c36c8543dbf6dd658f509d0e089de14a17b7d",
+      "inkViewBox": {
+        "x": 0,
+        "y": 16,
+        "width": 140,
+        "height": 206
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0279-tension.svg",
+      "exerciseNames": [
+        "Seated calf raise"
+      ],
+      "catalogName": "Seated calf raise",
+      "slug": "seated-calf-raise",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0279-tension.svg",
+      "upstreamSha256": "0b6c22fa000ed8b6bae83648a31e9e17dd1849175cc83ba3a68cab2f882d729b",
+      "localSha256": "5d22799b6452f8b0e854f5d0f751c77de7b3dfbbda7f95026ebd941600028191",
+      "inkViewBox": {
+        "x": 0,
+        "y": 16,
+        "width": 140,
+        "height": 206
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0156-relaxation.svg",
+      "exerciseNames": [
+        "Hip abduction",
+        "Hip abduction machine"
+      ],
+      "catalogName": "Hip abduction",
+      "slug": "hip-abduction-machine",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0156-relaxation.svg",
+      "upstreamSha256": "85ca12b9d57832b34e15b2df7ebe24060cef91508e9c12883c66372802805a4a",
+      "localSha256": "06a5af0b8afb25f75488d910a0650f189081b3785f36e1109bd697006100326d",
+      "inkViewBox": {
+        "x": 10,
+        "y": 13,
+        "width": 172,
+        "height": 212
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0156-tension.svg",
+      "exerciseNames": [
+        "Hip abduction",
+        "Hip abduction machine"
+      ],
+      "catalogName": "Hip abduction",
+      "slug": "hip-abduction-machine",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0156-tension.svg",
+      "upstreamSha256": "cbe8719f9265aaf83503142e0f0e88ed26f78a0a0242c779afe8853489ca393d",
+      "localSha256": "b3953832755d9589154b9b133c7d27452e5d5585ab726854cb99142f12ef063a",
+      "inkViewBox": {
+        "x": 10,
+        "y": 13,
+        "width": 172,
+        "height": 212
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0157-relaxation.svg",
+      "exerciseNames": [
+        "Hip adduction",
+        "Hip adduction machine"
+      ],
+      "catalogName": "Hip adduction",
+      "slug": "hip-adduction-machine",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0157-relaxation.svg",
+      "upstreamSha256": "6cfcd305c339a2beef54dce98723a6ae5bc5b6ed257a424f283d17f813dd0eb7",
+      "localSha256": "675ec66b8378c65c65ebe76e5e68e71a4251174467adfde61334339194f6539a",
+      "inkViewBox": {
+        "x": 10,
+        "y": 13,
+        "width": 172,
+        "height": 212
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0157-tension.svg",
+      "exerciseNames": [
+        "Hip adduction",
+        "Hip adduction machine"
+      ],
+      "catalogName": "Hip adduction",
+      "slug": "hip-adduction-machine",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0157-tension.svg",
+      "upstreamSha256": "1e543550a3995a33091e0372bb0eb8c63abc0b87643133d94a0f220acf34493b",
+      "localSha256": "9afe1545d3442eebedcd291166313c578a6b4412d0bd94d291a42a918fd2a245",
+      "inkViewBox": {
+        "x": 10,
+        "y": 13,
+        "width": 172,
+        "height": 212
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0018-relaxation.svg",
+      "exerciseNames": [
+        "Lateral raise",
+        "Dumbbell lateral raise"
+      ],
+      "catalogName": "Lateral raise",
+      "slug": "lateral-raise",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0018-relaxation.svg",
+      "upstreamSha256": "6f2c6500712f1526526072674cfb52c9914b1b88b40a85ae6a8f0667a508252b",
+      "localSha256": "4d546b0d5149cb2eca0e22612acec7e27faaf42f6b131c1391d1d1c70588e7ca",
+      "inkViewBox": {
+        "x": 2,
+        "y": 16,
+        "width": 230,
+        "height": 258
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0018-tension.svg",
+      "exerciseNames": [
+        "Lateral raise",
+        "Dumbbell lateral raise"
+      ],
+      "catalogName": "Lateral raise",
+      "slug": "lateral-raise",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0018-tension.svg",
+      "upstreamSha256": "abb8324108595cefa426602e29a17d1a09e5058e8240a91377f04ce14e05e9ed",
+      "localSha256": "5dbf5b72d8c8ff115938e253da06790ed755b45774f5920e7c7bf077fe678658",
+      "inkViewBox": {
+        "x": 2,
+        "y": 16,
+        "width": 230,
+        "height": 258
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0032-relaxation.svg",
+      "exerciseNames": [
+        "Rear-delt fly"
+      ],
+      "catalogName": "Rear-delt fly",
+      "slug": "rear-delt-fly",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0032-relaxation.svg",
+      "upstreamSha256": "cb02e9c412c7434679289aab4a0142da242ea5dd7f7e671a8ae8f8ee8e3fd098",
+      "localSha256": "cb240be7853278934a7f65b74f1bdea5b3bca1224013b594b8b172e3e51faa50",
+      "inkViewBox": {
+        "x": 5,
+        "y": 25,
+        "width": 181,
+        "height": 186
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0032-tension.svg",
+      "exerciseNames": [
+        "Rear-delt fly"
+      ],
+      "catalogName": "Rear-delt fly",
+      "slug": "rear-delt-fly",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0032-tension.svg",
+      "upstreamSha256": "7749faade150a74ff45293527ac02fb0ef093987f858b8dcc99d30a0d5d52618",
+      "localSha256": "b56572851a2bfba28415d7baa017a0fd83522273230de82c66037b469d6f13ed",
+      "inkViewBox": {
+        "x": 5,
+        "y": 25,
+        "width": 181,
+        "height": 186
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0048-relaxation.svg",
+      "exerciseNames": [
+        "Cable fly"
+      ],
+      "catalogName": "Cable fly",
+      "slug": "cable-fly",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0048-relaxation.svg",
+      "upstreamSha256": "b37b6e9874d81df3a650b43c61cb44322dc339f2f3c7cf2e4ab3b2d57fa22285",
+      "localSha256": "2fdb7fa7641ec8edb13b96105b7ca7307db93a6e2b76592e430a46b40d237663",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 266
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0048-tension.svg",
+      "exerciseNames": [
+        "Cable fly"
+      ],
+      "catalogName": "Cable fly",
+      "slug": "cable-fly",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0048-tension.svg",
+      "upstreamSha256": "bc1e50c0bcc8644b26a53f515a7d5c8ca1ba2b561bbb119a99959993ba3054d7",
+      "localSha256": "33c5754dc63d041b49e37b443c701ab22c5635e0992e2c00320d440a3b4785d0",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 224,
+        "height": 266
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0056-relaxation.svg",
+      "exerciseNames": [
+        "Dumbbell fly"
+      ],
+      "catalogName": "Dumbbell fly",
+      "slug": "dumbbell-fly",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0056-relaxation.svg",
+      "upstreamSha256": "cfec2854a0d8d661338e6917b245358d884a229a49e4aedc06e0e65051778cbe",
+      "localSha256": "91d69d385b678bb573ec4edc46e0ad3ba4da6a86b7c150e5a15dad909cb49f5e",
+      "inkViewBox": {
+        "x": 6,
+        "y": 0,
+        "width": 234,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0056-tension.svg",
+      "exerciseNames": [
+        "Dumbbell fly"
+      ],
+      "catalogName": "Dumbbell fly",
+      "slug": "dumbbell-fly",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0056-tension.svg",
+      "upstreamSha256": "316eca57076199f2199631bc90d3086f98e57e7002be0d77e7c51a39bbb62638",
+      "localSha256": "2a9c53e54cce9906c4d1e01f2214823791160ee7266f15c4002376eab9440503",
+      "inkViewBox": {
+        "x": 6,
+        "y": 0,
+        "width": 234,
+        "height": 272
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0005-relaxation.svg",
+      "exerciseNames": [
+        "Shrug",
+        "Dumbbell shrug"
+      ],
+      "catalogName": "Shrug",
+      "slug": "dumbbell-shrug",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0005-relaxation.svg",
+      "upstreamSha256": "ed08e50aa379fe6c327d95c62c8e8ee024b754788bb807242d704dec664df3bb",
+      "localSha256": "271801d97f124b36ab148d17ce85094dda9543a4131418f8233146b33d1f5675",
+      "inkViewBox": {
+        "x": 8,
+        "y": 6,
+        "width": 127,
+        "height": 259
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0005-tension.svg",
+      "exerciseNames": [
+        "Shrug",
+        "Dumbbell shrug"
+      ],
+      "catalogName": "Shrug",
+      "slug": "dumbbell-shrug",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0005-tension.svg",
+      "upstreamSha256": "43b5c27710396c2b6c2c23655352a517a17c1c3cf94b4d2a38801fba7f0ea914",
+      "localSha256": "6cd4690d289b727c2051dee7a6012c0c5a141cb35e88208ed49238e0b6c09894",
+      "inkViewBox": {
+        "x": 8,
+        "y": 6,
+        "width": 127,
+        "height": 259
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0291-relaxation.svg",
+      "exerciseNames": [
+        "Crunch"
+      ],
+      "catalogName": "Crunch",
+      "slug": "crunch",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0291-relaxation.svg",
+      "upstreamSha256": "8e8cb635bde64ae9b7bd09a90dc47d64b96679b98e7034e9a23f6f47ee92b231",
+      "localSha256": "9f36747a43ef5c82449adf3e972bb5fe23d86234dbcb4af6b04845bb8f0ac163",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 236,
+        "height": 114
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0291-tension.svg",
+      "exerciseNames": [
+        "Crunch"
+      ],
+      "catalogName": "Crunch",
+      "slug": "crunch",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0291-tension.svg",
+      "upstreamSha256": "c6833b67fcf3cf165e26c3dcc249dc05348f4ddaeded0dfcb5c12290a1f1517d",
+      "localSha256": "e330a07b0c1faa6798edd0859d9c66490b2f1bd7b4b03a428c2c9dfcb2aa7850",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 236,
+        "height": 114
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0287-relaxation.svg",
+      "exerciseNames": [
+        "Reverse crunch"
+      ],
+      "catalogName": "Reverse crunch",
+      "slug": "reverse-crunch",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0287-relaxation.svg",
+      "upstreamSha256": "27df8a8f1baf454c16aad68297f3e299d03ef3e95c4c388f18090c024d489cbb",
+      "localSha256": "8e83c5f9fe10f7f018848be1b8902c883f2103cbf7e97c68f96306607825bf8f",
+      "inkViewBox": {
+        "x": 11,
+        "y": 16,
+        "width": 224,
+        "height": 201
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0287-tension.svg",
+      "exerciseNames": [
+        "Reverse crunch"
+      ],
+      "catalogName": "Reverse crunch",
+      "slug": "reverse-crunch",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0287-tension.svg",
+      "upstreamSha256": "681bbd75f91d03671fcce5b3a0202a78ab426739740db817f88b37aea4791379",
+      "localSha256": "89cc74d5ef64de406fc868b20dec444b22c4b0bd7119be8293fed64bcdabc362",
+      "inkViewBox": {
+        "x": 11,
+        "y": 16,
+        "width": 224,
+        "height": 201
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0096-relaxation.svg",
+      "exerciseNames": [
+        "Neutral-grip lat pulldown"
+      ],
+      "catalogName": "Neutral-grip lat pulldown",
+      "slug": "close-grip-lat-pulldown",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0096-relaxation.svg",
+      "upstreamSha256": "bcbe873a1e331793e221f7e228b100be32291b5523be07dc8d2678d148cd9ed1",
+      "localSha256": "509b07252ae555b8c98509eb634e4edc51b621c2e73532daba78bf818b4d188b",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 118,
+        "height": 243
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0096-tension.svg",
+      "exerciseNames": [
+        "Neutral-grip lat pulldown"
+      ],
+      "catalogName": "Neutral-grip lat pulldown",
+      "slug": "close-grip-lat-pulldown",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0096-tension.svg",
+      "upstreamSha256": "5d1a04d36ffa25c45e292fde93591a710691a5a30e55ff069a34f81a8f40bc70",
+      "localSha256": "83d8766c939744cafee2bc8fae856bd1e034c4183a12c51d573690220ef8d22b",
+      "inkViewBox": {
+        "x": 0,
+        "y": 0,
+        "width": 118,
+        "height": 243
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0171-relaxation.svg",
+      "exerciseNames": [
+        "Seated dip machine"
+      ],
+      "catalogName": "Seated dip machine",
+      "slug": "assisted-dip",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0171-relaxation.svg",
+      "upstreamSha256": "bcc4f230e1e26226ff39ec8b0358c9190395593aa6628844194ccb59ac127c6c",
+      "localSha256": "c2c78b8e27ef21e22cd1213bfb62bdc60d4605a18140c6871aed0c7a94cd0245",
+      "inkViewBox": {
+        "x": 26,
+        "y": 2,
+        "width": 166,
+        "height": 225
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0171-tension.svg",
+      "exerciseNames": [
+        "Seated dip machine"
+      ],
+      "catalogName": "Seated dip machine",
+      "slug": "assisted-dip",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0171-tension.svg",
+      "upstreamSha256": "e0d7265aa6d071fd40e926b38ec05e77cdf3b1c321a0e04c10a8c940b0bbb1b9",
+      "localSha256": "3082bb83cc97bf44b615e5f965ec4404710d21b2180edaa9090a999ca2645a72",
+      "inkViewBox": {
+        "x": 26,
+        "y": 2,
+        "width": 166,
+        "height": 225
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0257-relaxation.svg",
+      "exerciseNames": [
+        "Reverse curl"
+      ],
+      "catalogName": "Reverse curl",
+      "slug": "reverse-curl",
+      "frame": "relaxation",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0257-relaxation.svg",
+      "upstreamSha256": "50147b4e948f77b74d833442678ec188e4f381a99a432392db6b58ccfdde7133",
+      "localSha256": "c26f95e267bf835f571a7d029e5240dc80be441690117271d25a1ce203462407",
+      "inkViewBox": {
+        "x": 37,
+        "y": 18,
+        "width": 114,
+        "height": 256
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-0257-tension.svg",
+      "exerciseNames": [
+        "Reverse curl"
+      ],
+      "catalogName": "Reverse curl",
+      "slug": "reverse-curl",
+      "frame": "tension",
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/dist/svg/0257-tension.svg",
+      "upstreamSha256": "7a9353085959b85cbce731e0c1c3022529cfcdb1abcd58b1b0623686bb7e479b",
+      "localSha256": "df98cdfdacc8cde4df2c6e9af5dc5af60a97dd8df8b0c26cb565dc6ccd359da8",
+      "inkViewBox": {
+        "x": 37,
+        "y": 18,
+        "width": 114,
+        "height": 256
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Retained original vector geometry and colors; selected the matching relaxation/tension poses; cropped both frames to one shared padded ink viewBox for aligned playback.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-dumbbell-shoulder-press-1.png",
+      "exerciseNames": [
+        "Seated dumbbell press",
+        "Dumbbell seated shoulder press"
+      ],
+      "catalogName": "Seated dumbbell press",
+      "slug": "seated-dumbbell-press",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/dumbbell-shoulder-press-1.png",
+      "upstreamSha256": "0c4a0da8bcc907c20e2e0a8e22d495ed8c1e733dc9c3edd7eaea713a519ec8a9",
+      "localSha256": "e402fffbbbca3f71fa8e69679e7a951705c63a4f381359ce9bc994b427c74c47",
+      "sharedImageBounds": {
+        "left": 251,
+        "top": 193,
+        "width": 589,
+        "height": 936
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 0,
+        "dy": 0
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-dumbbell-shoulder-press-2.png",
+      "exerciseNames": [
+        "Seated dumbbell press",
+        "Dumbbell seated shoulder press"
+      ],
+      "catalogName": "Seated dumbbell press",
+      "slug": "seated-dumbbell-press",
+      "frame": 2,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/dumbbell-shoulder-press-2.png",
+      "upstreamSha256": "d6532d2a90f0cc60aedfc03c7ef062aac68c786e0c48d7c93efd80a86fae6a64",
+      "localSha256": "e5687b4774beb49a180c9d5141ba06ddb7ebb45f57650eae2633e9d5e556b483",
+      "sharedImageBounds": {
+        "left": 251,
+        "top": 193,
+        "width": 589,
+        "height": 936
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 22,
+        "dy": -75
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-chin-ups-1.png",
+      "exerciseNames": [
+        "Chin-up",
+        "Chin ups"
+      ],
+      "catalogName": "Chin-up",
+      "slug": "chin-up",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/chin-ups-1.png",
+      "upstreamSha256": "70f3dc20cddbe79aa5761e9a0757271f6685f494cf071ca34cb47333c30b76d0",
+      "localSha256": "bf82fda1553a2c51f816982701a0f9efcee7406225cde88292e9e19e19c622d1",
+      "sharedImageBounds": {
+        "left": 252,
+        "top": 268,
+        "width": 614,
+        "height": 936
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 0,
+        "dy": 0
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-chin-ups-2.png",
+      "exerciseNames": [
+        "Chin-up",
+        "Chin ups"
+      ],
+      "catalogName": "Chin-up",
+      "slug": "chin-up",
+      "frame": 2,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/chin-ups-2.png",
+      "upstreamSha256": "ac522ab4422550d624ee5e04302d81eb963c1214d36af91c8980de32565a9c93",
+      "localSha256": "03ee27c978e8374bbc7b3c2dc3771cfdb5d16d068f1869236ef5cd4228462605",
+      "sharedImageBounds": {
+        "left": 252,
+        "top": 268,
+        "width": 614,
+        "height": 936
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 0,
+        "dy": -96
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-wide-grip-lat-pull-down-1.png",
+      "exerciseNames": [
+        "Lat pulldown",
+        "Wide-grip lat pulldown"
+      ],
+      "catalogName": "Lat pulldown",
+      "slug": "wide-grip-lat-pulldown",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/wide-grip-lat-pull-down-1.png",
+      "upstreamSha256": "c6b61f2653d1f0fdb0e1f52beab8482fcffae33dc90fe04bc2729be57a7fe410",
+      "localSha256": "cd5e71b90f217036f4dae1b2107135b5a179b8af65a0b6ee8bd2ebe0724316b5",
+      "sharedImageBounds": {
+        "left": 232,
+        "top": 267,
+        "width": 660,
+        "height": 937
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 0,
+        "dy": 0
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-wide-grip-lat-pull-down-2.png",
+      "exerciseNames": [
+        "Lat pulldown",
+        "Wide-grip lat pulldown"
+      ],
+      "catalogName": "Lat pulldown",
+      "slug": "wide-grip-lat-pulldown",
+      "frame": 2,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/wide-grip-lat-pull-down-2.png",
+      "upstreamSha256": "b3c1a2a0f64eeee0d045ded7779c8beb2ad54bb0a6b7eafc28c3e4038d9fb0b2",
+      "localSha256": "a32df4faba789de915935bf5c90bf4dbe401f3644c2c98ac27ff169b89bc8948",
+      "sharedImageBounds": {
+        "left": 232,
+        "top": 267,
+        "width": 660,
+        "height": 937
+      },
+      "registration": {
+        "scale": 1,
+        "dx": -22,
+        "dy": 0
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-seated-shoulder-press-machine-1.png",
+      "exerciseNames": [
+        "Machine shoulder press"
+      ],
+      "catalogName": "Machine shoulder press",
+      "slug": "machine-shoulder-press",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/seated-shoulder-press-machine-1.png",
+      "upstreamSha256": "342e6efa21eadc9ded31b01eb19c66ba3bd6be33f4ce92518b0bfffe21b6ae10",
+      "localSha256": "217996a14ae82d10fbac6c9f8f57b87bf2258087325e05815d33e07a5cc77d30",
+      "sharedImageBounds": {
+        "left": 257,
+        "top": 302,
+        "width": 658,
+        "height": 868
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 0,
+        "dy": 0
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into a clean PNG with a padded crop. Retained as a static image because the alternate pose changes scale and cannot be registered by translation.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-butterfly-machine-1.png",
+      "exerciseNames": [
+        "Pec deck"
+      ],
+      "catalogName": "Pec deck",
+      "slug": "pec-deck",
+      "frame": 1,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/butterfly-machine-1.png",
+      "upstreamSha256": "6cf64f9743c02e36e79af4fa1a70debaeed73ecb3894559abef2ffc272b1ed1b",
+      "localSha256": "d6fa664c62c96bb8eaef146c41c814d4e9f76e3cea6da00da27fe4b4b1cbd75f",
+      "sharedImageBounds": {
+        "left": 255,
+        "top": 268,
+        "width": 662,
+        "height": 936
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 0,
+        "dy": 0
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    },
+    {
+      "localFile": "everkinetic-butterfly-machine-2.png",
+      "exerciseNames": [
+        "Pec deck"
+      ],
+      "catalogName": "Pec deck",
+      "slug": "pec-deck",
+      "frame": 2,
+      "sourceUrl": "https://raw.githubusercontent.com/everkinetic/data/446bb9a3d0c3beb6b84f7c9d77dfc8af707a2ab6/src/images-web/butterfly-machine-2.png",
+      "upstreamSha256": "d18717aa3d071e58902c6aabe3f494b0a74d2155f4e461bc943dd7a40c26d59a",
+      "localSha256": "f42db44410ab9a0087ab502a0e234fa283fdb14d06f66c8c515ee745e28bbe2c",
+      "sharedImageBounds": {
+        "left": 255,
+        "top": 268,
+        "width": 662,
+        "height": 936
+      },
+      "registration": {
+        "scale": 1,
+        "dx": 71,
+        "dy": 31
+      },
+      "attribution": {
+        "creator": "Everkinetic (Greg Priday)",
+        "creatorUrl": "https://github.com/everkinetic/data",
+        "license": "CC BY-SA 4.0",
+        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+      },
+      "lifeAppChanges": "Decoded original raster artwork into clean PNG, retained original scale and colors, translated the second frame to align stationary apparatus, and cropped both to the same padded canvas.",
+      "adaptationLicense": "CC BY-SA 4.0",
+      "adaptationLicenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/"
+    }
+  ]
+}

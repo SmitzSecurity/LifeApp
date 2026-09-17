@@ -31,7 +31,7 @@ const envelope=z.object({kind:resourceKind,id:z.string().max(90),version:z.numbe
 export async function saveResource(body:unknown,db:Database,userId:string,profile:Profile|null,now:Date){
  if(!profile)return json({error:'Complete your setup first.'},400);
  const parsed=envelope.safeParse(body);if(!parsed.success)return json({error:'Invalid section record.'},400);
- const {kind,id,version}=parsed.data;if(kind==='ai-recovery')return json({error:'Recovery grants cannot be edited.'},400);if(kind==='visibility')return json({error:'Use the record Delete or Restore action.'},400);
+ const {kind,id,version}=parsed.data;if(kind==='transaction-import')return json({error:'Import receipts cannot be edited.'},400);if(kind==='ai-recovery')return json({error:'Recovery grants cannot be edited.'},400);if(kind==='visibility')return json({error:'Use the record Delete or Restore action.'},400);
  if(!profile.modules.includes(kind==='budget'||kind==='transaction'?'money':'fitness'))return json({error:'Enable this section in Settings first.'},400);
  const validation=resourceSchemas[kind].safeParse(parsed.data.data);
  if(!validation.success)return json({error:validation.error.issues[0]?.message||'Check this form.'},400);
@@ -117,11 +117,13 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
   if(w.restUntil&&Date.parse(w.restUntil)>now.valueOf()+901000)return json({error:'Rest timers can be up to 15 minutes.'},400);
   if(previous){
    const old=previous.data as Workout;
-   if(old.date!==w.date||old.routineId!==w.routineId||old.name!==w.name||JSON.stringify(old.exercises)!==JSON.stringify(w.exercises))return json({error:'Saved workouts keep their original routine.'},400);
+   if(old.date!==w.date||old.routineId!==w.routineId||old.name!==w.name||JSON.stringify(old.exercises)!==JSON.stringify(w.exercises))return json({error:'Saved workouts keep their original session plan.'},400);
    if(old.finishedAt&&!w.finishedAt)return json({error:'A finished workout cannot be reopened.'},400);
   }else{
    const routine=(await readResource(db,userId,'routine',w.routineId))?.data as Routine|undefined;
-   if(!routine||routine.archived||routine.name!==w.name||JSON.stringify(routine.exercises)!==JSON.stringify(w.exercises)||w.sets.length||w.finishedAt||w.restUntil)return json({error:'Start from a saved routine.'},400);
+   // A reviewed session may customize the template without overwriting it.
+   // The validated plan becomes immutable as soon as this fresh start saves.
+   if(!routine||routine.archived||w.sets.length||w.skippedSets?.length||w.finishedAt||w.restUntil||w.deleted)return json({error:'Start a fresh workout from one of your saved programs.'},400);
   }
   if(!w.finishedAt&&!w.deleted){const active=await db.prepare("SELECT resource_id FROM life_resources WHERE user_id=?1 AND kind='workout' AND active_slot='active'").bind(userId).first<{resource_id:string}>();if(active&&active.resource_id!==id)return json({error:'Finish your current workout before starting another.'},409);}
  }

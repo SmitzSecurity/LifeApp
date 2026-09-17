@@ -1,0 +1,88 @@
+/* The session fills the workspace; controls stay visible while its content scrolls. */
+.training-workspace .workout-session{display:flex;flex:1;min-width:0;min-height:0;width:100%;color:var(--foreground)}
+.training-workspace .workout-session :is(h2,h3,p){margin:0;overflow-wrap:anywhere}
+.training-workspace .workout-session button{min-height:44px;height:auto;max-width:100%;white-space:normal;line-height:1.4;font-size:calc(.875rem * var(--ui-text-scale,1));padding:10px 14px}
+.training-workspace .workout-session .session-stage{display:flex;flex:1;width:100%;min-width:0;min-height:0}
+.training-workspace .workout-session .session-focus{display:flex;flex:1;flex-direction:column;min-width:0;min-height:0;background:var(--card)}
+.training-workspace .workout-session .session-controls{display:flex;flex-shrink:0;justify-content:space-between;align-items:center;gap:12px;min-width:0;padding:12px clamp(12px,3vw,32px)}
+.training-workspace .workout-session .session-utilities{display:flex;align-items:center;gap:4px;min-width:0}
+.training-workspace .workout-session .session-controls button{width:44px;height:44px;min-width:44px;padding:10px;flex-shrink:0;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-controls button[aria-pressed=true]{color:var(--primary);background:var(--accent)}
+.training-workspace .workout-session .session-controls svg{width:20px;height:20px}
+.training-workspace .workout-session .session-content{display:flex;flex:1;flex-direction:column;padding:16px clamp(20px,4vw,64px) 20px;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable both-edges}
+.training-workspace .workout-session .session-content>*{flex-shrink:0}
+.training-workspace .workout-session .session-working-set{display:flex;flex:1 0 auto;flex-direction:column;padding-block:clamp(12px,3vh,32px)}
+.training-workspace .workout-session .session-exercise-heading{text-align:center}
+.training-workspace .workout-session .session-exercise-title{display:grid;grid-template-columns:44px minmax(0,auto) 44px;justify-content:center;align-items:center;width:100%}
+.training-workspace .workout-session .session-exercise-title h3{grid-column:2}
+.training-workspace .workout-session .session-exercise-guide{grid-column:3;display:flex;align-items:center;justify-content:center;width:44px;height:44px;color:var(--muted-foreground);border-radius:8px}
+.training-workspace .workout-session .session-exercise-guide:hover{color:var(--primary);background:var(--accent)}
+.training-workspace .workout-session .session-exercise-guide:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+.training-workspace .workout-session .session-exercise-guide svg{width:18px;height:18px}
+.training-workspace .workout-session .session-working-target{display:flex;flex:1 0 auto;flex-direction:column;justify-content:center;text-align:center;padding-block:24px}
+.training-workspace .workout-session .session-eyebrow{font-size:calc(.75rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-exercise-heading h3{font-size:calc(clamp(1.4rem,2.3vw,1.85rem) * var(--ui-text-scale,1));line-height:1.3;font-weight:650;letter-spacing:-.02em;margin:6px 0}
+.training-workspace .workout-session .session-next-exercise{font-size:calc(.75rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground);margin:4px 0 14px}
+.training-workspace .workout-session .session-set-number{font-size:calc(.9375rem * var(--ui-text-scale,1));font-weight:600;line-height:1.5;margin-top:14px}
+.training-workspace .workout-session .session-targets{display:flex;justify-content:center;flex-wrap:wrap;gap:4px 16px;color:var(--muted-foreground);font-size:calc(.8125rem * var(--ui-text-scale,1));line-height:1.5;margin-top:5px}
+.training-workspace .workout-session .session-previous-performance{margin-top:7px;font-size:calc(.75rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-previous-performance strong{font-weight:500;font-variant-numeric:tabular-nums}
+.training-workspace .workout-session .session-ready{text-align:center;font-size:calc(.75rem * var(--ui-text-scale,1));line-height:1.5;margin:0 0 12px;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-set-entry{width:100%;max-width:720px;padding:0;margin:0 auto;min-width:0;border:0}
+.training-workspace .workout-session .session-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.training-workspace .workout-session .session-inputs label{display:grid;grid-template-rows:subgrid;grid-row:span 3;row-gap:7px;min-width:0;font-size:calc(.8125rem * var(--ui-text-scale,1));line-height:1.4}
+.training-workspace .workout-session .session-inputs input{width:100%;min-width:0;min-height:60px;border:1px solid var(--input);border-radius:8px;padding:10px 12px;background:var(--input-background);color:var(--foreground);font-size:max(16px,calc(1.5rem * var(--ui-text-scale,1)));line-height:1.25;font-variant-numeric:tabular-nums}
+.training-workspace .workout-session .session-inputs small{font-size:calc(.75rem * var(--ui-text-scale,1));color:var(--muted-foreground);line-height:1.5}
+.training-workspace .workout-session .session-warmup{display:flex;align-items:center;gap:10px;min-height:44px;margin:14px 0;font-size:calc(.8125rem * var(--ui-text-scale,1));line-height:1.5;cursor:pointer}
+.training-workspace .workout-session .session-warmup input{width:20px;height:20px;flex-shrink:0;margin:0;accent-color:var(--primary)}
+.training-workspace .workout-session .session-warmup small{display:block;font-size:calc(.75rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-save-set{width:100%;min-height:50px;font-weight:600;font-size:calc(.9375rem * var(--ui-text-scale,1))}
+.training-workspace .workout-session .session-cancel-correction{width:100%;margin-top:6px}
+.training-workspace .workout-session .session-skip-set{display:flex;margin:6px auto 0;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-stage-rest .session-focus{display:grid;grid-template: minmax(0,1fr)/minmax(0,1fr)}
+.training-workspace .workout-session .session-stage-rest .session-controls{grid-area:1/1;align-self:start;z-index:1}
+.training-workspace .workout-session .session-stage-rest .session-content{grid-area:1/1;padding-block:0}
+.training-workspace .workout-session .session-rest{text-align:center;display:grid;flex:1 0 auto;grid-template-rows:minmax(0,1fr) auto minmax(0,1fr);justify-items:center;align-items:center;width:100%}
+.training-workspace .workout-session .session-rest-clock{grid-row:2;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;max-width:440px}
+.training-workspace .workout-session .session-rest-clock>.session-eyebrow{font-size:calc(.9375rem * var(--ui-text-scale,1))}
+.training-workspace .workout-session .session-timer{font-size:calc(clamp(4.5rem,9vmin,6.5rem) * var(--ui-text-scale,1));line-height:1.05;letter-spacing:-.045em;font-weight:650;font-variant-numeric:tabular-nums;color:var(--primary);padding:16px 0 28px}
+.training-workspace .workout-session .session-rest-actions{width:100%;max-width:420px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+.training-workspace .workout-session .session-rest-actions button{min-height:52px}
+.training-workspace .workout-session .session-up-next{grid-row:1;width:100%;max-width:36rem}
+.training-workspace .workout-session .session-up-next>span{font-size:calc(.8125rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-up-next h3{font-size:calc(1.15rem * var(--ui-text-scale,1));line-height:1.4;margin:8px 0}
+.training-workspace .workout-session .session-up-next p,.training-workspace .workout-session .session-rest-complete{font-size:calc(.8125rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground)}
+.training-workspace .workout-session .session-rest-complete{grid-row:1}
+.training-workspace .workout-session .session-all-done{text-align:center;display:flex;flex:1 0 auto;flex-direction:column;align-items:center;justify-content:center;padding-block:16px}
+.training-workspace .workout-session .session-complete-icon{display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:50%;background:var(--secondary);color:var(--success);margin:0 auto 20px}
+.training-workspace .workout-session .session-complete-icon svg{width:26px;height:26px}
+.training-workspace .workout-session .session-all-done h3{font-size:calc(1.6rem * var(--ui-text-scale,1));line-height:1.3;margin:10px 0}
+.training-workspace .workout-session .session-all-done>p:not(.session-eyebrow){font-size:calc(.875rem * var(--ui-text-scale,1));line-height:1.6;color:var(--muted-foreground);max-width:38ch;margin-inline:auto}
+.training-workspace .workout-session .session-all-done>button{margin-top:22px;min-height:50px;width:100%;max-width:350px}
+@media(max-width:760px){
+ .training-workspace .workout-session .session-controls{padding:8px 12px}
+ .training-workspace .workout-session .session-content{padding:14px 20px 12px}
+ .training-workspace .workout-session .session-inputs{column-gap:12px}
+}
+@media(max-width:380px){
+ .training-workspace .workout-session .session-content{padding:12px 16px}
+ .training-workspace .workout-session .session-controls{gap:8px;padding:6px 8px}
+ .training-workspace .workout-session .session-utilities{gap:0}
+ .training-workspace .workout-session .session-inputs{column-gap:10px}
+ .training-workspace .workout-session .session-inputs input{font-size:max(16px,calc(1.4rem * var(--ui-text-scale,1)));padding:10px;min-height:58px}
+ .training-workspace .workout-session .session-rest-actions{gap:8px}
+}
+@media(max-height:1100px){
+ .training-workspace .workout-session .session-working-set{padding-block:8px}
+ .training-workspace .workout-session .session-working-target{padding-block:8px}
+ .training-workspace .workout-session .session-next-exercise{margin-bottom:4px}
+ .training-workspace .workout-session .session-set-number{margin-top:8px}
+ .training-workspace .workout-session .exercise-symbol{width:clamp(180px,calc(100dvh - 670px),320px);max-height:280px}
+}
+@media(max-height:650px){
+ .training-workspace .workout-session .session-stage-rest .session-focus{display:flex}
+ .training-workspace .workout-session .session-stage-rest .session-controls{align-self:stretch}
+ .training-workspace .workout-session .session-stage-rest .session-content{padding-block:16px}
+ .training-workspace .workout-session .session-rest{display:flex;flex-direction:column;gap:24px;padding-block:12px}
+ .training-workspace .workout-session .session-rest-clock{flex:1 0 auto;padding-block:12px}
+}

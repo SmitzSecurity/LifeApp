@@ -8,7 +8,8 @@ import {handleLife} from '../lib/life/service.ts';
 import {renderReportMarkdown} from '../lib/life/report-markdown.ts';
 import {reportEmail} from '../lib/life/email-service.ts';
 import {exercisePresets,presetExercise,repTarget} from '../lib/life/exercise-presets.ts';
-import {exerciseSchema,workoutSchema,nextSet,structuredWorkoutSchema} from '../lib/life/modules.ts';
+import {exerciseSchema,workoutSchema,nextSet,structuredWorkoutSchema,workoutTotals} from '../lib/life/modules.ts';
+import {createWorkoutSession,extendWorkoutRest,skipCurrentSet,sameRoutinePlan} from '../lib/life/workout-session.ts';
 import {validateBackup,previewMigration} from '../lib/life/migration-preview.ts';
 import {AI_MODEL,RESERVATION_MICROS,geminiProvider} from '../lib/life/ai-provider.ts';
 const now=new Date('2026-09-14T12:00:00.000Z');
@@ -54,6 +55,77 @@ test('three warm-ups preserve all three working sets, survive reload, and correc
  restored.sets.splice(1,1);assert.equal(nextSet(restored).setNumber,2);
 });
 
+test('skipped planned targets advance without fabricated work, preserve warm-up serials and survive corrections',()=>{
+ const first={...presetExercise('Bench press'),sets:3},second={...presetExercise('Lat pulldown'),sets:1};
+ let workout={date:'2026-09-14',routineId:randomUUID(),name:'Skip flow',exercises:[first,second],sets:[],restUntil:'2026-09-14T12:01:00.000Z',finishedAt:null};
+ const initial=structuredClone(workout);
+ workout=skipCurrentSet(workout);
+ assert.deepEqual(initial.sets,[]);assert.equal(initial.skippedSets,undefined);
+ assert.deepEqual(workout.skippedSets,[{exerciseId:first.id,workingSetNumber:1}]);
+ assert.equal(workout.restUntil,null);assert.equal(workout.finishedAt,null);
+ assert.equal(nextSet(workout).workingSetNumber,2);assert.equal(nextSet(workout).setNumber,1);
+ workout.sets.push({exerciseId:first.id,setNumber:1,reps:8,load:45,warmup:true,completedAt:now.toISOString()});
+ assert.equal(nextSet(workout).workingSetNumber,2);assert.equal(nextSet(workout).setNumber,2);
+ workout.sets.push({exerciseId:first.id,setNumber:2,reps:6,load:135,warmup:false,completedAt:now.toISOString()});
+ assert.equal(nextSet(workout).workingSetNumber,3);
+ workout=workoutSchema.parse(JSON.parse(JSON.stringify(skipCurrentSet(workout))));
+ assert.equal(nextSet(workout).exercise.id,second.id);assert.equal(nextSet(workout).setNumber,1);
+ assert.equal(recordedVolume([{id:randomUUID(),version:1,data:workout}],'2026-09-14','2026-09-14').sets,1);
+ assert.equal(workoutTotals(workout).sets,2);assert.equal(workoutTotals(workout).reps,14);
+ workout.sets[1].warmup=true;
+ assert.equal(nextSet(workout).exercise.id,first.id);assert.equal(nextSet(workout).workingSetNumber,2);assert.equal(nextSet(workout).setNumber,3);
+ workout.sets[1].warmup=false;
+ workout=skipCurrentSet(workout);
+ assert.equal(nextSet(workout),null);assert.equal(workout.finishedAt,null);
+ assert.throws(()=>skipCurrentSet(workout),/no remaining sets/);
+ assert.throws(()=>skipCurrentSet({...initial,finishedAt:now.toISOString()}),/active workout/);
+ assert.throws(()=>skipCurrentSet({...initial,deleted:true}),/active workout/);
+ const empty=skipCurrentSet({...initial,exercises:[second],restUntil:null});
+ assert.deepEqual(workoutTotals(empty),{sets:0,reps:0,volume:[{id:second.id,name:second.name,unit:second.unit,volume:0}]});
+});
+
+test('skip validation rejects duplicate, unknown and out-of-plan targets and combined over-completion',()=>{
+ const e={...presetExercise('Bench press'),sets:2};
+ const workout={date:'2026-09-14',routineId:randomUUID(),name:'Skip validation',exercises:[e],sets:[],restUntil:null,finishedAt:null};
+ const valid={exerciseId:e.id,workingSetNumber:1};
+ for(const skippedSets of [[valid,valid],[{...valid,exerciseId:randomUUID()}],[{...valid,workingSetNumber:0}],[{...valid,workingSetNumber:3}],[{...valid,workingSetNumber:1.5}],[{...valid,reps:0}]])assert.equal(workoutSchema.safeParse({...workout,skippedSets}).success,false);
+ const actual=n=>({exerciseId:e.id,setNumber:n,reps:8,load:100,warmup:false,completedAt:now.toISOString()});
+ assert.equal(workoutSchema.safeParse({...workout,skippedSets:[valid],sets:[actual(1),actual(2)]}).success,false);
+ const manyWarmups={...workout,skippedSets:[valid],sets:Array.from({length:20},(_,i)=>({...actual(i+1),warmup:true}))};
+ assert.equal(workoutSchema.safeParse(manyWarmups).success,true);
+ assert.equal(nextSet(manyWarmups).setNumber,21);assert.equal(nextSet(manyWarmups).workingSetNumber,2);
+ assert.equal(workoutSchema.safeParse(workout).success,true);
+});
+
+test('skip writes retain exact retry, reload and export state without changing actual totals or finishing',async t=>{
+ const f=fixture(t);await f.setup();await f.setup('b');
+ const routine={id:randomUUID(),version:0,data:{name:'Skip session',preferences:'',archived:false,exercises:[{...presetExercise('Bench press'),sets:2}]}};
+ const savedRoutine=(await (await f.call({action:'resource',record:{kind:'routine',...routine}})).json()).record;
+ const save=({id,version,data},account='a')=>f.call({action:'resource',record:{kind:'workout',id,version,data}},account);
+ const draft=createWorkoutSession(savedRoutine,'2026-09-14');
+ assert.equal((await save({...draft,data:skipCurrentSet(draft.data)})).status,400);
+ const saved=(await (await save(draft)).json()).record;
+ const skipped={...saved,data:skipCurrentSet({...saved.data,restUntil:'2026-09-14T12:01:00.000Z'})};
+ const response=await save(skipped);assert.equal(response.status,200);
+ const confirmed=(await response.json()).record;
+ assert.equal(confirmed.version,2);assert.deepEqual((await (await save(skipped)).json()).record,confirmed);
+ assert.equal((await save(skipped,'b')).status,400);
+ const reload=(await (await f.call(null,'a','?kind=workout')).json()).records[0];
+ assert.deepEqual(reload,confirmed);assert.equal(nextSet(reload.data).workingSetNumber,2);
+ assert.deepEqual(reload.data.exercises,saved.data.exercises);assert.deepEqual(reload.data.sets,[]);
+ assert.equal((await save({...saved,data:{...saved.data,restUntil:null}})).status,409);
+ assert.equal((await (await f.call(null,'a','?training-summary')).json()).current.sets,0);
+ assert.equal(f.raw.prepare("SELECT active_slot FROM life_resources WHERE resource_id=?").get(saved.id).active_slot,'active');
+ const allSkipped=(await (await save({...confirmed,data:skipCurrentSet(confirmed.data)})).json()).record;
+ assert.equal(nextSet(allSkipped.data),null);assert.equal(allSkipped.data.finishedAt,null);
+ assert.equal(f.raw.prepare("SELECT active_slot FROM life_resources WHERE resource_id=?").get(saved.id).active_slot,'active');
+ const exported=await (await f.call(null,'a','?export')).text();validateBackup(exported);
+ assert.ok(exported.includes('skippedSets'));
+ const finished=(await (await save({...allSkipped,data:{...allSkipped.data,finishedAt:now.toISOString()}})).json()).record;
+ assert.deepEqual(finished.data.skippedSets,allSkipped.data.skippedSets);
+ assert.equal(f.raw.prepare("SELECT active_slot FROM life_resources WHERE resource_id=?").get(saved.id).active_slot,null);
+});
+
 test('new set serials save against the original immutable plan and cannot over-log working sets',async t=>{
  const f=fixture(t);await f.setup();const e=presetExercise('Lat pulldown'),r={id:randomUUID(),version:0,data:{name:'Pull',exercises:[e],preferences:'',archived:false}};
  assert.equal((await f.call({action:'resource',record:{kind:'routine',...r}})).status,200);
@@ -63,6 +135,174 @@ test('new set serials save against the original immutable plan and cannot over-l
  assert.equal((await f.call({action:'resource',record:w})).status,200);assert.equal((await f.call({action:'resource',record:w})).status,200);
  w.data.sets.push({...w.data.sets[5],setNumber:7});w.version=2;assert.equal((await f.call({action:'resource',record:w})).status,400);
  w.data.sets.pop();w.data.deleted=true;assert.equal((await f.call({action:'resource',record:w})).status,200);assert.equal(f.raw.prepare("SELECT active_slot FROM life_resources WHERE kind='workout'").get().active_slot,null);
+});
+
+test('unchanged session previews normalize property order and absent optional fields without hiding real or invalid edits',()=>{
+ const first=presetExercise('Bench press'),legacy=presetExercise('Lat pulldown');
+ delete legacy.repMax;delete legacy.muscles;
+ const saved={name:'Saved template',preferences:'',archived:false,exercises:[first,legacy]};
+ const reverseKeys=value=>Object.fromEntries(Object.entries(value).reverse());
+ const preview=reverseKeys({...saved,weeklySessions:undefined,exercises:[reverseKeys({...first,muscles:reverseKeys(first.muscles)}),reverseKeys({...legacy,repMax:undefined,muscles:undefined})]});
+ assert.notEqual(JSON.stringify(saved),JSON.stringify(preview));
+ assert.equal(sameRoutinePlan(saved,preview),true);
+ assert.equal(sameRoutinePlan(preview,saved),true);
+ for(const changed of [
+  {...preview,name:'Today’s edited name'},
+  {...preview,exercises:preview.exercises.map((exercise,index)=>index?exercise:{...exercise,load:exercise.load+5})},
+  {...preview,exercises:preview.exercises.map((exercise,index)=>index?exercise:{...exercise,name:'Custom bench press'})},
+  {...preview,exercises:[preview.exercises[0]]},
+  {...preview,exercises:[...preview.exercises].reverse()},
+  {...preview,weeklySessions:0}
+ ])assert.equal(sameRoutinePlan(saved,changed),false);
+ const invalid={...preview,exercises:[{...first,load:NaN},legacy]};
+ assert.equal(sameRoutinePlan(saved,invalid),false);
+ assert.equal(sameRoutinePlan(invalid,invalid),false);
+ assert.equal(sameRoutinePlan(saved,undefined),false);
+});
+
+test('session preview order is a copied plan and rest extensions retain remaining time within the existing cap',()=>{
+ const first=presetExercise('Bench press'),second=presetExercise('Lat pulldown');
+ const routine={id:randomUUID(),version:1,data:{name:'Full body',preferences:'',archived:false,exercises:[first,second]}};
+ const preview={...routine,data:{...routine.data,exercises:[second,first]}};
+ const session=createWorkoutSession(preview,'2026-09-14');
+ assert.deepEqual(session.data.exercises.map(e=>e.id),[second.id,first.id]);
+ assert.deepEqual(session.data.exercises.map(e=>e.name),[second.name,first.name]);
+ session.data.exercises[0].reps=99;
+ assert.notEqual(preview.data.exercises[0].reps,99);
+ assert.deepEqual(routine.data.exercises.map(e=>e.id),[first.id,second.id]);
+ assert.throws(()=>createWorkoutSession({...preview,data:{...preview.data,exercises:[first,first]}},'2026-09-14'));
+ assert.equal(extendWorkoutRest('2026-09-14T12:01:00.000Z',now.valueOf()),'2026-09-14T12:01:20.000Z');
+ assert.equal(extendWorkoutRest('2026-09-14T11:59:00.000Z',now.valueOf()),'2026-09-14T12:00:20.000Z');
+ assert.equal(extendWorkoutRest(null,now.valueOf()),'2026-09-14T12:00:20.000Z');
+ assert.equal(extendWorkoutRest('2026-09-14T12:14:50.000Z',now.valueOf()),'2026-09-14T12:15:00.000Z');
+ assert.throws(()=>extendWorkoutRest(null,now.valueOf(),NaN));
+});
+
+test('starting a reordered preview preserves the saved program and rejects duplicate exercises or later snapshot edits',async t=>{
+ const f=fixture(t);await f.setup();await f.setup('b');
+ const routine={id:randomUUID(),version:0,data:{name:'Preview program',preferences:'',archived:false,exercises:[presetExercise('Bench press'),presetExercise('Lat pulldown')]}};
+ const savedRoutine=(await (await f.call({action:'resource',record:{kind:'routine',...routine}})).json()).record;
+ const preview={...savedRoutine,data:{...savedRoutine.data,exercises:[...savedRoutine.data.exercises].reverse()}};
+ const draft=createWorkoutSession(preview,'2026-09-14');
+ const save=({id,version,data})=>f.call({action:'resource',record:{kind:'workout',id,version,data}});
+ for(const exercises of [[],[preview.data.exercises[0],preview.data.exercises[0]]]){
+  assert.equal((await save({...draft,id:randomUUID(),data:{...draft.data,exercises}})).status,400);
+ }
+ assert.equal((await f.call({action:'resource',record:{kind:'workout',...draft}},'b')).status,400);
+ const response=await save(draft);assert.equal(response.status,200,await response.clone().text());
+ const saved=(await response.json()).record;
+ assert.deepEqual((await (await save(draft)).json()).record,saved);
+ const routines=(await (await f.call(null,'a','?kind=routine')).json()).records;
+ assert.deepEqual(routines[0].data.exercises.map(e=>e.id),routine.data.exercises.map(e=>e.id));
+ const reloaded=(await (await f.call(null,'a','?kind=workout')).json()).records[0];
+ assert.equal(nextSet(reloaded.data).exercise.id,preview.data.exercises[0].id);
+ assert.equal((await save({...saved,data:{...saved.data,exercises:routines[0].data.exercises}})).status,400);
+ assert.equal((await save({...saved,data:{...saved.data,exercises:saved.data.exercises.map((e,i)=>i?e:{...e,reps:e.reps+1})}})).status,400);
+ assert.equal((await save(createWorkoutSession(savedRoutine,'2026-09-14'))).status,409);
+ assert.equal((await f.call({action:'resource',record:{kind:'routine',id:savedRoutine.id,version:savedRoutine.version,data:{...savedRoutine.data,name:'Changed program',exercises:savedRoutine.data.exercises.map(e=>({...e,sets:2}))}}})).status,200);
+ assert.deepEqual((await (await save(draft)).json()).record,saved);
+ validateBackup(await (await f.call(null,'a','?export')).text());
+});
+
+test('customized session snapshots add, remove and edit exercises without changing their saved template',async t=>{
+ const f=fixture(t);await f.setup();await f.setup('b');
+ const save=(kind,{id,version,data},account='a')=>f.call({action:'resource',record:{kind,id,version,data}},account);
+ const confirmed=async(kind,record)=>{const response=await save(kind,record);assert.equal(response.status,200,await response.clone().text());return (await response.json()).record;};
+ const template=await confirmed('routine',{id:randomUUID(),version:0,data:{name:'Saved template',preferences:'Original equipment',archived:false,exercises:[presetExercise('Bench press'),presetExercise('Lat pulldown')]}});
+ const retained=template.data.exercises[1],added={...presetExercise('Squat'),sets:2,reps:5,repMax:8,load:22.5,unit:'kg',restSeconds:45};
+ const preview={...template,data:{...template.data,name:'Today’s adjusted session',exercises:[added,{...retained,name:'Custom cable pull',sets:4,reps:9,repMax:12,load:62.5,unit:'lb',restSeconds:75,muscles:{direct:['lats'],indirect:['biceps']}}]}};
+ const draft=createWorkoutSession(preview,'2026-09-14');
+ assert.equal((await save('workout',draft,'b')).status,400);
+ assert.equal((await save('workout',{...draft,data:{...draft.data,routineId:randomUUID()}})).status,400);
+ const archived=await confirmed('routine',{id:randomUUID(),version:0,data:{...template.data,archived:true}});
+ assert.equal((await save('workout',{...draft,data:{...draft.data,routineId:archived.id}})).status,400);
+ for(const changed of [
+  {exercises:[]},{exercises:[added,added]},{exercises:Array.from({length:31},()=>({...added,id:randomUUID()}))},
+  {exercises:[{...added,sets:0}]},{exercises:[{...added,sets:21}]},{exercises:[{...added,reps:9,repMax:8}]},
+  {exercises:[{...added,load:-1}]},{exercises:[{...added,unit:'oz'}]},{exercises:[{...added,restSeconds:901}]},
+  {exercises:[{...added,muscles:{direct:['invented'],indirect:[]}}]},
+  {sets:[{exerciseId:added.id,setNumber:1,reps:5,load:22.5,completedAt:now.toISOString()}]},
+  {skippedSets:[{exerciseId:added.id,workingSetNumber:1}]},{restUntil:now.toISOString()},{finishedAt:now.toISOString()},{deleted:true}
+ ])assert.equal((await save('workout',{...draft,data:{...draft.data,...changed}})).status,400,JSON.stringify(changed));
+ const saved=await confirmed('workout',draft);
+ assert.equal(saved.version,1);assert.deepEqual(await confirmed('workout',draft),saved);
+ assert.deepEqual(saved.data.exercises,preview.data.exercises.map(e=>exerciseSchema.parse(e)));
+ assert.equal(saved.data.name,preview.data.name);
+ const routines=(await (await f.call(null,'a','?kind=routine')).json()).records;
+ assert.deepEqual(routines.find(r=>r.id===template.id),template);
+ const reloaded=(await (await f.call(null,'a','?kind=workout')).json()).records.find(w=>w.id===saved.id);
+ assert.deepEqual(reloaded,saved);assert.equal(nextSet(reloaded.data).exercise.id,added.id);
+ assert.equal((await save('workout',createWorkoutSession(template,'2026-09-14'))).status,409);
+ const changedTemplate=await confirmed('routine',{...template,data:{...template.data,name:'Updated preset',exercises:[{...template.data.exercises[0],sets:1}]}});
+ assert.equal(changedTemplate.version,2);
+ assert.deepEqual(await confirmed('workout',draft),saved);
+ for(const changed of [{name:'Altered session'},{date:'2026-09-13'},{routineId:archived.id},{exercises:changedTemplate.data.exercises},{exercises:[...saved.data.exercises].reverse()}])assert.equal((await save('workout',{...saved,data:{...saved.data,...changed}})).status,400);
+ const logged={...saved,data:{...saved.data,sets:[{exerciseId:added.id,setNumber:1,reps:6,load:25,completedAt:now.toISOString()}]}};
+ const result=await confirmed('workout',logged);assert.deepEqual(result.data.exercises,saved.data.exercises);
+ assert.equal((await (await f.call(null,'a','?training-summary')).json()).current.sets,1);
+ validateBackup(await (await f.call(null,'a','?export')).text());
+});
+
+test('saving a customized preview to its template or a new template remains a separate versioned write',async t=>{
+ const f=fixture(t);await f.setup();
+ const save=(kind,{id,version,data})=>f.call({action:'resource',record:{kind,id,version,data}});
+ const confirmed=async(kind,record)=>{const response=await save(kind,record);assert.equal(response.status,200,await response.clone().text());return (await response.json()).record;};
+ const original=await confirmed('routine',{id:randomUUID(),version:0,data:{name:'Original',preferences:'',archived:false,exercises:[presetExercise('Bench press')]}});
+ const overwrite={...original,data:{...original.data,exercises:[{...original.data.exercises[0],sets:2,load:55}]}};
+ const updated=await confirmed('routine',overwrite);assert.equal(updated.version,2);
+ assert.deepEqual(await confirmed('routine',overwrite),updated);
+ assert.equal((await save('routine',{...overwrite,data:{...overwrite.data,name:'Stale overwrite'}})).status,409);
+ const copy={id:randomUUID(),version:0,data:{...updated.data,name:'New template',exercises:[...updated.data.exercises,presetExercise('Lat pulldown')]}};
+ const created=await confirmed('routine',copy);assert.equal(created.version,1);
+ assert.deepEqual(await confirmed('routine',copy),created);
+ assert.equal((await (await f.call(null,'a','?kind=workout')).json()).records.length,0);
+ const session=createWorkoutSession(created,'2026-09-14');
+ const started=await confirmed('workout',session);assert.deepEqual(await confirmed('workout',session),started);
+ assert.equal(started.data.routineId,created.id);assert.equal(started.data.exercises.length,2);
+ const routines=(await (await f.call(null,'a','?kind=routine')).json()).records;
+ assert.deepEqual(routines.find(r=>r.id===original.id),updated);assert.equal(routines.length,2);
+});
+
+test('warm-up, rest extend and skip, finish and cancel keep exact saves, resume state and active-slot accounting',async t=>{
+ const f=fixture(t);await f.setup();
+ const routine={id:randomUUID(),version:0,data:{name:'Session flow',preferences:'',archived:false,exercises:[{...presetExercise('Bench press'),sets:1}]}};
+ const savedRoutine=(await (await f.call({action:'resource',record:{kind:'routine',...routine}})).json()).record;
+ const save=({id,version,data})=>f.call({action:'resource',record:{kind:'workout',id,version,data}});
+ const confirmed=async record=>{const response=await save(record);assert.equal(response.status,200,await response.clone().text());return (await response.json()).record;};
+ let saved=await confirmed(createWorkoutSession(savedRoutine,'2026-09-14'));
+ const target=nextSet(saved.data),warmup={exerciseId:target.exercise.id,setNumber:target.setNumber,reps:6,load:45,warmup:true,completedAt:now.toISOString()};
+ saved=await confirmed({...saved,data:{...saved.data,sets:[warmup],restUntil:'2026-09-14T12:01:00.000Z'}});
+ assert.equal(nextSet(saved.data).workingSetNumber,1);
+ const extension={...saved,data:{...saved.data,restUntil:extendWorkoutRest(saved.data.restUntil,now.valueOf())}};
+ saved=await confirmed(extension);
+ assert.deepEqual(await confirmed(extension),saved);
+ assert.equal(saved.version,3);
+ assert.deepEqual(saved.data.sets,[warmup]);
+ const reloaded=(await (await f.call(null,'a','?kind=workout')).json()).records[0];
+ assert.equal(reloaded.data.restUntil,'2026-09-14T12:01:20.000Z');
+ assert.equal(nextSet(reloaded.data).setNumber,2);
+ const skip={...saved,data:{...saved.data,restUntil:null}};
+ saved=await confirmed(skip);assert.deepEqual(await confirmed(skip),saved);
+ assert.deepEqual(saved.data.sets,[warmup]);
+ const working={...warmup,setNumber:2,warmup:false,reps:8,load:95};
+ saved=await confirmed({...saved,data:{...saved.data,sets:[warmup,working]}});
+ assert.equal(nextSet(saved.data),null);
+ const finish={...saved,data:{...saved.data,finishedAt:now.toISOString(),restUntil:null}};
+ saved=await confirmed(finish);assert.deepEqual(await confirmed(finish),saved);
+ assert.equal(f.raw.prepare("SELECT active_slot FROM life_resources WHERE resource_id=?").get(saved.id).active_slot,null);
+ assert.equal((await save({...saved,data:{...saved.data,finishedAt:null}})).status,400);
+ assert.equal((await (await f.call(null,'a','?training-summary')).json()).current.sets,1);
+ let cancelled=await confirmed(createWorkoutSession(savedRoutine,'2026-09-14'));
+ cancelled=await confirmed({...cancelled,data:{...cancelled.data,sets:[working]}});
+ assert.equal((await (await f.call(null,'a','?training-summary')).json()).current.sets,2);
+ const cancel={...cancelled,data:{...cancelled.data,deleted:true,restUntil:null}};
+ cancelled=await confirmed(cancel);assert.deepEqual(await confirmed(cancel),cancelled);
+ assert.equal(f.raw.prepare("SELECT active_slot FROM life_resources WHERE resource_id=?").get(cancelled.id).active_slot,null);
+ assert.equal((await (await f.call(null,'a','?training-summary')).json()).current.sets,1);
+ const resumed=await confirmed(createWorkoutSession(savedRoutine,'2026-09-14'));
+ assert.equal(resumed.data.finishedAt,null);
+ assert.equal((await (await f.call(null,'a','?kind=workout')).json()).records[0].id,resumed.id);
+ validateBackup(await (await f.call(null,'a','?export')).text());
 });
 
 test('written AI is an unsaved draft; confirmation counts once and creates account-scoped personal definitions',async t=>{

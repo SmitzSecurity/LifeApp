@@ -4,6 +4,7 @@ import {dateSchema} from './domain.ts';
 import {monthSchema,categorySchema,recurringSchema,refineRecurringSchedule,refineRecurringLoan} from './modules.ts';
 import {debtSchema} from './debt.ts';
 import {recurringFrequencySchema,customScheduleSchema} from './budget-schedule.ts';
+import {transactionContextSchema,transactionInstruction} from './transaction-build-schema.ts';
 
 export const budgetImageSchema=z.object({mimeType:z.enum(['image/jpeg','image/png','image/webp']),data:z.string().min(16).max(1_400_000).regex(/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/)}).strict().superRefine((image,c)=>{
  let valid=false;try{const bytes=atob(image.data);valid=image.mimeType==='image/jpeg'?bytes.startsWith('\xff\xd8\xff'):image.mimeType==='image/png'?bytes.startsWith('\x89PNG\r\n\x1a\n'):bytes.startsWith('RIFF')&&bytes.slice(8,12)==='WEBP';}catch{}
@@ -20,10 +21,11 @@ export const budgetDocumentSchema=z.object({mimeType:z.literal('application/pdf'
 });
 export type BudgetDocument=z.infer<typeof budgetDocumentSchema>;
 export type BudgetAttachment=BudgetImage|BudgetDocument;
-export type BudgetBuildIntent='loans';
-export const budgetBuildInput=z.object({requestId:z.string().uuid(),text:z.string().trim().max(BUDGET_TEXT_LIMIT),month:monthSchema,intent:z.literal('loans').optional(),image:budgetImageSchema.optional(),document:budgetDocumentSchema.optional(),recoveryOf:z.string().uuid().optional(),consent:z.literal(true)}).strict().refine(b=>!(b.image&&b.document),'Attach one file at a time.').refine(b=>b.text.length>=10||!!b.image||!!b.document,'Paste your details or attach a file.');
+export type BudgetBuildIntent='loans'|'transactions';
+export const budgetBuildInput=z.object({requestId:z.string().uuid(),text:z.string().trim().max(BUDGET_TEXT_LIMIT),month:monthSchema,intent:z.enum(['loans','transactions']).optional(),image:budgetImageSchema.optional(),document:budgetDocumentSchema.optional(),recoveryOf:z.string().uuid().optional(),consent:z.literal(true)}).strict().refine(b=>!(b.image&&b.document),'Attach one file at a time.').refine(b=>b.text.length>=10||!!b.image||!!b.document,'Paste your details or attach a file.');
 const fingerprint=z.object({mimeType:z.string(),sha256:z.string().regex(/^[0-9a-f]{64}$/)}).strict();
-export const budgetSnapshotSchema=z.object({description:z.string().max(BUDGET_TEXT_LIMIT),month:monthSchema,intent:z.literal('loans').optional(),image:fingerprint.optional(),document:fingerprint.optional(),recoveryOf:z.string().uuid().optional(),moneyGoals:z.unknown()}).strict();
+const snapshotFields={description:z.string().max(BUDGET_TEXT_LIMIT),month:monthSchema,image:fingerprint.optional(),document:fingerprint.optional(),recoveryOf:z.string().uuid().optional()};
+export const budgetSnapshotSchema=z.union([z.object({...snapshotFields,intent:z.literal('loans').optional(),moneyGoals:z.unknown()}).strict(),z.object({...snapshotFields,intent:z.literal('transactions'),transactionContext:transactionContextSchema}).strict()]);
 const amount=z.number().int().min(0).max(100_000_000),name=z.string().trim().min(1).max(100);
 // AI may leave irrelevant schedule controls blank. Only those unused controls
 // receive defaults; fields that determine the actual due date remain required.
@@ -111,6 +113,7 @@ const draftItem=recurringSchema.innerType().extend({amountCents:amount}).superRe
 export const budgetBuildResult=z.object({notes:z.string().max(3000),categories:z.array(categorySchema).max(20),recurring:z.array(draftItem).max(30)}).strict();
 export type BudgetBuildResult=z.infer<typeof budgetBuildResult>;
 export function parseBudgetDraft(text:string,intent?:BudgetBuildIntent):BudgetBuildResult{
+ if(intent==='transactions')throw Error('Transaction drafts require their category context and separate validation.');
  const parsed:unknown=JSON.parse(text.replace(/^\s*```(?:json)?\s*/i,'').replace(/\s*```\s*$/,''));
  const raw=suggestedBudget.parse(intent==='loans'?normalizeLoanTiming(parsed):parsed);
  if(intent==='loans'){
@@ -152,4 +155,4 @@ Amounts are nonnegative USD integer cents. Unknown originalBalanceCents, annualR
 Choose paymentStatus only after checking both the amount and exact supported timing. Scheduled loan payments require frequency monthly-day with an explicit day, or monthly-weekday with an explicit week and weekday (Sunday 0). amountCents is the stated total payment, never the outstanding balance. otherPaymentCents is the stated tax/insurance/fees portion, or 0 if none identified. Preserve explicit ISO startDate/endDate and installment count only when supported by the source; installment counts require a startDate. Do not use annual, weekly, biweekly or custom debt schedules. If payment amount, required day, week, weekday or supported repayment schedule is unknown, use paymentStatus balance-only, amountCents 0, frequency monthly-day, omit day/week/weekday and all startDate/endDate/installments/paymentDueDay/month/custom fields. This creates no bill: the internal day default is unused. Describe any known payment amount or partial/unsupported schedule in notes so the user can confirm it later. Never substitute day 1, a guessed date or the import month for missing payment timing.
 Credit-card debt always uses kind transfer, no category, and interestMethod statement. balanceCents is the complete statement balance including billed interest; omit accruedInterestCents or use 0, and set otherPaymentCents 0. Do not project revolving payoff or infer a minimum payment. An explicitly known monthly deadline can be a scheduled transfer reminder with amountCents 0 and variable true; a missing payment date requires balance-only. paymentDueDay is only a separate stated creditor deadline, not permission to guess a payment day. All other loan types use kind expense. Variable statement payments are marked variable.
 Notes must identify missing terms, partial payment facts, source conflicts, group omissions and any loans omitted by the 30-item limit. Keep notes concise, preferably below 2400 characters and always at most 3000. Return empty arrays with a clear explanation if no loan can be represented safely. This is a draft for explicit user review and category assignment, never a final financial recommendation.`;
-export const budgetInstructionForIntent=(intent?:BudgetBuildIntent)=>intent==='loans'?loanInstruction:budgetInstruction;
+export const budgetInstructionForIntent=(intent?:BudgetBuildIntent)=>intent==='transactions'?transactionInstruction:intent==='loans'?loanInstruction:budgetInstruction;

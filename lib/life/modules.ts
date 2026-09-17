@@ -49,11 +49,15 @@ export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense',
 export const exerciseSchema=z.object({id:uuid,name:title,muscles:muscleTargetsSchema.optional(),sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
 export const routineSchema=z.object({name:title,weeklySessions:z.number().int().min(0).max(7).optional(),preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
 export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(40),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
-export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(1200),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable(),deleted:z.boolean().optional()}).strict().superRefine((w,c)=>{
+export const skippedSetSchema=z.object({exerciseId:uuid,workingSetNumber:z.number().int().min(1).max(20)}).strict();
+export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(1200),skippedSets:z.array(skippedSetSchema).max(600).optional(),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable(),deleted:z.boolean().optional()}).strict().superRefine((w,c)=>{
  if(new Set(w.exercises.map(e=>e.id)).size!==w.exercises.length)c.addIssue({code:'custom',message:'Exercise IDs must be unique.'});
  if(new Set(w.sets.map(s=>s.exerciseId+':'+s.setNumber)).size!==w.sets.length)c.addIssue({code:'custom',message:'A set can only be logged once.'});
- for(const e of w.exercises){const logged=w.sets.filter(s=>s.exerciseId===e.id);if(logged.filter(s=>!s.warmup).length>e.sets||logged.filter(s=>s.warmup).length>20)c.addIssue({code:'custom',message:'Keep the planned working sets and at most 20 warm-ups per exercise.'});}
+ const skipped=w.skippedSets||[];
+ if(new Set(skipped.map(s=>s.exerciseId+':'+s.workingSetNumber)).size!==skipped.length)c.addIssue({code:'custom',path:['skippedSets'],message:'A working set can only be skipped once.'});
+ for(const e of w.exercises){const logged=w.sets.filter(s=>s.exerciseId===e.id);if(logged.filter(s=>!s.warmup).length+skipped.filter(s=>s.exerciseId===e.id).length>e.sets||logged.filter(s=>s.warmup).length>20)c.addIssue({code:'custom',message:'Keep the planned working sets and at most 20 warm-ups per exercise.'});}
  for(const s of w.sets){const e=w.exercises.find(e=>e.id===s.exerciseId);if(!e)c.addIssue({code:'custom',message:'This set is not in your workout.'});}
+ for(const [index,s] of skipped.entries()){const e=w.exercises.find(e=>e.id===s.exerciseId);if(!e||s.workingSetNumber>e.sets)c.addIssue({code:'custom',path:['skippedSets',index],message:'Choose a working set from this workout’s plan.'});}
 });
 export type Budget=z.infer<typeof budgetSchema>;
 export type Transaction=z.infer<typeof transactionSchema>;
@@ -67,9 +71,12 @@ export const structuredWorkoutSchema=workoutSchema.innerType().pick({name:true,e
 export type StructuredWorkout=z.infer<typeof structuredWorkoutSchema>;
 export const workoutNoteSchema=z.object({date:dateSchema,text:z.string().trim().min(1).max(5000),minutes:z.number().int().min(1).max(1440).nullable(),voided:z.boolean(),deleted:z.boolean().optional(),structured:structuredWorkoutSchema.optional()}).strict();
 export type WorkoutNote=z.infer<typeof workoutNoteSchema>;
-export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note','visibility','ai-recovery']);
+// Import receipts contain only opaque identities and hashes. They keep a reviewed
+// batch idempotent even after its transactions are edited or permanently deleted.
+export const transactionImportReceiptSchema=z.object({requestId:uuid,buildId:uuid,requestHash:z.string().regex(/^[0-9a-f]{64}$/),sourceHash:z.string().regex(/^[0-9a-f]{64}$/),transactionIds:z.array(uuid).min(1).max(50),months:z.array(monthSchema).min(1).max(24)}).strict().superRefine((r,c)=>{if(new Set(r.transactionIds).size!==r.transactionIds.length||new Set(r.months).size!==r.months.length)c.addIssue({code:'custom',message:'Import identities must be unique.'});});
+export const resourceKind=z.enum(['budget','transaction','routine','workout','cardio','workout-note','visibility','ai-recovery','transaction-import']);
 export type ResourceKind=z.infer<typeof resourceKind>;
-export const resourceSchemas={'ai-recovery':workoutRecoverySchema,budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema,visibility:z.object({target:z.enum(['analysis','build']),id:z.string().min(1).max(80),deleted:z.boolean()}).strict()};
+export const resourceSchemas={'transaction-import':transactionImportReceiptSchema,'ai-recovery':workoutRecoverySchema,budget:budgetSchema,transaction:transactionSchema,routine:routineSchema,workout:workoutSchema,cardio:cardioSchema,'workout-note':workoutNoteSchema,visibility:z.object({target:z.enum(['analysis','build']),id:z.string().min(1).max(80),deleted:z.boolean()}).strict()};
 export function parseMoney(value:string):number{
  if(!/^\d{1,7}(\.\d{1,2})?$/.test(value.trim()))throw new Error('Enter an amount with at most two decimal places.');
  const [whole,fraction='']=value.trim().split('.');const n=Number(whole)*100+Number(fraction.padEnd(2,'0'));
@@ -104,9 +111,13 @@ export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],mont
 export function nextSet(w:Workout){
  for(const exercise of w.exercises){
   const logged=w.sets.filter(s=>s.exerciseId===exercise.id),working=logged.filter(s=>!s.warmup).length;
-  if(working>=exercise.sets)continue;
+  const skipped=new Set((w.skippedSets||[]).filter(s=>s.exerciseId===exercise.id).map(s=>s.workingSetNumber));
+  // Logs retain stable serials even when warm-ups are added or corrected.
+  // Skips occupy planned positions only and never become performed sets.
+  const remaining=Array.from({length:exercise.sets},(_,i)=>i+1).filter(n=>!skipped.has(n));
+  if(working>=remaining.length)continue;
   let setNumber=1;while(logged.some(s=>s.setNumber===setNumber))setNumber++;
-  return {exercise,setNumber,workingSetNumber:working+1};
+  return {exercise,setNumber,workingSetNumber:remaining[working]};
  }
  return null;
 }

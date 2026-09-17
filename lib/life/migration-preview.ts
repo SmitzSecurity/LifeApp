@@ -1,4 +1,5 @@
 import {BUDGET_INPUT_BYTES,budgetSnapshotSchema,budgetBuildResult} from './budget-build-schema.ts';
+import {transactionBuildResult,transactionBuildResultForContext,transactionContextSchema} from './transaction-build-schema.ts';
 import {trashRowSchema} from './trash.ts';
 import {incomeAllocationId} from './income-planning.ts';
 import {workoutBuildResult,trainingResult} from './workout-ai-schema.ts';
@@ -82,7 +83,7 @@ export function validateBackup(text:string):Backup{
   const at=`resources[${i}]`,raw=parseJSON(r.payload,at);
   const parsed=resourceSchemas[r.kind].safeParse(raw);requireThat(parsed.success,'invalid_payload',at);
   const data=parsed.data;
-  const expectedPeriod=r.kind==='budget'?r.resource_id:r.kind==='routine'||r.kind==='visibility'||r.kind==='ai-recovery'?'':(data as Transaction|Workout).date.slice(0,7);
+  const expectedPeriod=r.kind==='budget'?r.resource_id:r.kind==='routine'||r.kind==='visibility'||r.kind==='ai-recovery'||r.kind==='transaction-import'?'':(data as Transaction|Workout).date.slice(0,7);
   requireThat(r.period===expectedPeriod,'period_mismatch',at);
   requireThat(r.active_slot===(r.kind==='workout'&&!(data as Workout).finishedAt&&!(data as Workout).deleted?'active':null),'active_workout_mismatch',at);
   if(r.kind==='budget')requireThat(monthSchema.safeParse(r.resource_id).success,'invalid_id',at);
@@ -95,6 +96,13 @@ export function validateBackup(text:string):Backup{
     if(t.kind==='expense')requireThat(budget.data.categories.some(c=>c.id===t.categoryId),'missing_category',at);
     if(t.recurringId)requireThat(budget.data.recurring.some(x=>x.id===t.recurringId),'missing_recurring_item',at);
    }
+  }else if(r.kind==='transaction-import'){
+   const receipt=resourceSchemas['transaction-import'].parse(data);requireThat(r.resource_id===receipt.buildId&&r.version===1,'invalid_import_receipt',at);
+   const source=(b.routineBuilds||[]).find(job=>job.request_id==='budget:'+receipt.buildId&&job.status==='complete');requireThat(source,'missing_import_source',at);
+   const snapshot=validate(z.record(z.unknown()),parseJSON(source.input_snapshot,at),at);
+   if(!snapshot.purged){requireThat(snapshot.intent==='transactions'&&source.result_json,'invalid_import_source',at);const draft=validate(transactionBuildResult,parseJSON(source.result_json,at),at);requireThat(receipt.transactionIds.every(id=>draft.transactions.some(t=>t.id===id)),'invalid_import_row',at);}
+   for(const id of receipt.transactionIds)requireThat(resources.has('transaction:'+id)||(b.trash||[]).some(t=>t.kind==='transaction'&&t.record_id===id&&t.purged_at),'missing_import_transaction',at);
+   for(const month of receipt.months)requireThat(resources.has('budget:'+month),'missing_import_month',at);
   }else if(r.kind==='ai-recovery'){
    const grant=resourceSchemas['ai-recovery'].parse(data);requireThat(r.resource_id===grant.sourceId,'invalid_id',at);requireThat((b.routineBuilds||[]).some(job=>job.request_id===(grant.purpose==='budget'?'budget:':'workout:')+grant.sourceId&&job.status===(grant.purpose==='budget'?'uncertain':'failed')&&(grant.purpose!=='budget'||!validate(z.record(z.unknown()),parseJSON(job.input_snapshot,at),at).recoveryOf)),'missing_recovery_source',at);
    if(grant.operatorAcknowledgement){
@@ -153,7 +161,11 @@ export function validateBackup(text:string):Backup{
    requireThat(r.finished_at&&r.cost_micros!==null&&r.input_tokens!==null&&r.output_tokens!==null&&r.thought_tokens!==null,'missing_usage',at);
    requireThat(r.thought_tokens<=r.output_tokens,'invalid_usage',at);
    requireThat(r.status==='complete'?(purged||r.result_json)&&r.error_code===null:r.result_json===null&&!!r.error_code,'invalid_routine_status',at);
-   if(r.result_json)validate<unknown>(r.request_id.startsWith('budget:')?budgetBuildResult:r.request_id.startsWith('workout:')?workoutBuildResult:r.request_id.startsWith('training:')?trainingResult:routineBuildResult,parseJSON(r.result_json,at),at);
+   if(r.result_json){
+    const snapshot=validate(z.record(z.unknown()),parseJSON(r.input_snapshot,at),at);
+    const schema=r.request_id.startsWith('budget:')?snapshot.intent==='transactions'?transactionBuildResultForContext(validate(transactionContextSchema,snapshot.transactionContext,at)):budgetBuildResult:r.request_id.startsWith('workout:')?workoutBuildResult:r.request_id.startsWith('training:')?trainingResult:routineBuildResult;
+    validate<unknown>(schema,parseJSON(r.result_json,at),at);
+   }
   }else{
    requireThat(r.cost_micros===null&&r.result_json===null&&r.input_tokens===null&&r.output_tokens===null&&r.thought_tokens===null,'unreconciled_usage_mismatch',at);
    requireThat(r.status==='generating'?r.finished_at===null&&r.error_code===null:r.finished_at!==null&&!!r.error_code,'invalid_routine_status',at);

@@ -13,10 +13,12 @@ import {saveAnalysisFeedback} from './analysis-feedback.ts';
 import {periodConsentStatus,savePeriodConsent} from './period-consent.ts';
 import {readDashboard} from './dashboard.ts';
 import {readTrainingSummary} from './training-summary.ts';
+import {readExercisePerformance} from './exercise-performance.ts';
 import {cadenceSchema} from './reviews.ts';
 import { completionIssues } from './reviews.ts';
 import { listResources, saveResource } from './resource-service.ts';
 import {saveBudgetItem} from './budget-items.ts';
+import {saveTransactionImport} from './transaction-import.ts';
 import { profileSchema, entryInputSchema, dateSchema, emptyEntry, todayIn, score, type Entry, type Profile } from './domain.ts';
 
 // The caller supplies verified server identity, never an id from JSON or query parameters.
@@ -34,6 +36,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
    if(new URL(request.url).searchParams.has('annual-fund'))return await readAnnualFund(request,db,userId);
    if(new URL(request.url).searchParams.has('trash'))return await listTrash(db,userId,Number(new URL(request.url).searchParams.get('offset')||0));
    if(new URL(request.url).searchParams.has('training-summary'))return await readTrainingSummary(db,userId,now);
+   if(new URL(request.url).searchParams.has('exercise-performance'))return await readExercisePerformance(request,db,userId);
    if(new URL(request.url).searchParams.has('personal-exercises'))return await personalExercises(db,userId);
    if(new URL(request.url).searchParams.has('workout-builds'))return await listRoutineBuilds(db,userId,ai,now,'workout',new URL(request.url).searchParams.get('summary')==='1');
    if(new URL(request.url).searchParams.has('training-analyses'))return await listRoutineBuilds(db,userId,ai,now,'training',new URL(request.url).searchParams.get('summary')==='1');
@@ -56,7 +59,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   const origin=request.headers.get('origin');
   if(request.headers.get('sec-fetch-site')==='cross-site'||(origin&&origin!==new URL(request.url).origin))return json({error:'Open LifeApp directly to save changes.'},403);
   if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Expected JSON.'},415);
-  const budgetUpload=new URL(request.url).searchParams.has('budget-build'),limit=budgetUpload?BUDGET_UPLOAD_BYTES:65536;
+  const budgetUpload=new URL(request.url).searchParams.has('budget-build'),transactionImport=new URL(request.url).searchParams.has('transaction-import'),limit=budgetUpload?BUDGET_UPLOAD_BYTES:transactionImport?262144:65536;
   if(Number(request.headers.get('content-length')||0)>limit)return json({error:'This entry or file is too large.'},413);
   const reader=request.body?.getReader(),chunks:Uint8Array[]=[];let size=0;
   if(reader)for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>limit){await reader.cancel();return json({error:'This entry or file is too large.'},413);}chunks.push(part.value);}
@@ -65,6 +68,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   if(!body||typeof body!=='object')return json({error:'Invalid request.'},400);
   const b=body as Record<string,unknown>;
   if(budgetUpload&&b.action!=='budget-build')return json({error:'Use this endpoint only for budget building.'},400);
+  if(transactionImport&&b.action!=='transaction-import')return json({error:'Use this endpoint only for reviewed transaction imports.'},400);
   if(b.action==='budget-build')return await buildRoutines(db,userId,b.build,ai,now,'budget');
   if(b.action==='trash')return await changeTrash(db,userId,b.change,now);
   if(b.action==='record-deletion')return await setRecordDeleted(db,userId,b.change,now);
@@ -79,6 +83,7 @@ export async function handleLife(request:Request,userId:string|null,db:Database,
   if(b.action==='ai')return await generateAI(db,userId,b.review,ai,now);
   if(b.action==='resource')return await saveResource(b.record,db,userId,await getProfile(db,userId),now);
   if(b.action==='budget-item')return await saveBudgetItem(b.change,db,userId,await getProfile(db,userId),now);
+  if(b.action==='transaction-import')return await saveTransactionImport(b.import,db,userId,await getProfile(db,userId),now);
   if(b.action==='annual-fund-settings')return await saveAnnualFundSettings(b.change,db,userId,now);
   if(b.action==='profile'){
    const parsed=profileSchema.safeParse(b.profile);

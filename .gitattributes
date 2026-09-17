@@ -1,2 +1,5 @@
 # D1 REST trigger parsing requires LF line endings.
 drizzle/0010_central_trash.sql text eol=lf
+# Artwork hashes must remain stable across Windows and Linux checkouts.
+public/exercise-art/** text eol=lf
+public/exercise-art/*.png binary

@@ -1,6 +1,6 @@
 "use client";
 import {formatTimestampDate} from '@/lib/life/date-display';
-import {useEffect,useRef,useState} from 'react';
+import {useEffect,useRef,useState,type ReactNode} from 'react';
 import {Button} from '@/components/ui/button';
 import {ArrowUpRight,History} from 'lucide-react';
 import {request} from './shared';
@@ -9,7 +9,7 @@ import WorkoutPanel from './workout-panel';
 import {useAIStatus} from './use-ai-status';
 type Build={id:string;status:string;createdAt:string;deleted?:boolean;result:{text:string}|null};
 type State={builds:Build[];available:boolean};
-export default function TrainingAnalysis({onBusy}:{onBusy:(v:boolean)=>void}){
+export default function TrainingAnalysis({onBusy,subtitle}:{onBusy:(v:boolean)=>void;subtitle?:ReactNode}){
  const [builds,setBuilds]=useState<Build[]>([]),[busy,setBusy]=useState(false),[generating,setGenerating]=useState(false),[dismissed,setDismissed]=useState(false),[available,setAvailable]=useState(false),[pending,setPending]=useState<string|null>(null),[error,setError]=useState(''),[history,setHistory]=useState(false),[reading,setReading]=useState<string|null>(null);
  const [deletePending,setDeletePending]=useState<Build|null>(null),mounted=useRef(false),generation=useRef({epoch:0,id:null as string|null});
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
@@ -23,7 +23,7 @@ export default function TrainingAnalysis({onBusy}:{onBusy:(v:boolean)=>void}){
  const canRetry=status.delayed&&!!pending&&!generating&&!builds.some(b=>b.id===pending);
  return <>
  <section className="analysis-card training-analysis" aria-label="Training analysis">
-  <div className={"section-heading"+(!dismissed&&(generating||!!pending||builds.some(b=>b.status==='generating'))?' is-generating':'')}><h3>Training analysis</h3><div className="training-analysis-actions">
+  <div className={"section-heading"+(!dismissed&&(generating||!!pending||builds.some(b=>b.status==='generating'))?' is-generating':'')}><div className="training-analysis-heading"><h3>Training analysis</h3>{subtitle&&<div className="training-analysis-subtitle">{subtitle}</div>}</div><div className="training-analysis-actions">
    <Button variant="ghost" aria-label={canRetry?'Retry this analysis':'Analyze this week'} disabled={busy||!!deletePending||generating||(!canRetry&&(!!pending||!available||unconfirmed))} onClick={()=>void generate()}>{canRetry?'Retry analysis':!dismissed&&(generating||!!pending)?'Analyzing…':'Analyze'}</Button>
    {!dismissed&&(generating||!!pending||builds.some(b=>b.status==='generating'))&&<Button variant="ghost" disabled={busy} onClick={cancelWait}>Cancel</Button>}
    {builds.length>0&&<Button variant="ghost" size="icon" aria-label="Past training analyses" title="Past weeks" disabled={busy} onClick={()=>setHistory(true)}><History aria-hidden="true"/></Button>}

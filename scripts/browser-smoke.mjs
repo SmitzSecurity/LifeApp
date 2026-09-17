@@ -15,14 +15,26 @@ const mock=createFetchMock();mock.disableNetConnect();
 const analysisFixture=process.argv.includes('--analysis');
 const budgetWorkflowOutput=JSON.parse(readFileSync('tests/fixtures/budget-workflow.json','utf8'));
 const loanWorkflowOutput=JSON.parse(readFileSync('tests/fixtures/loan-workflow.json','utf8'));
+function transactionFixtureOutput(snapshot){
+ const month=snapshot.month,previous=new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5,7))-2,1)).toISOString().slice(0,7);
+ const categories=snapshot.transactionContext?.categoriesByMonth.find(row=>row.month===month)?.categories||[];
+ const category=name=>categories.find(row=>row.name===name)?.id||null;
+ return {notes:'Synthetic receipt and statement draft. Review each transaction before saving.',transactions:[
+  {date:month+'-02',kind:'expense',amountCents:4275,note:'Example grocery receipt',categoryId:category('Groceries'),warning:''},
+  {date:month+'-01',kind:'expense',amountCents:1200,note:'Synthetic transaction 1',categoryId:category('Bills'),warning:''},
+  {date:previous+'-14',kind:'expense',amountCents:1850,note:'Example taxi receipt',categoryId:null,warning:''},
+  {date:null,kind:'expense',amountCents:null,note:'Unreadable receipt',categoryId:null,warning:'Confirm the date and total from the source.'}
+ ]};
+}
 if(process.argv.includes('--loan-missing-day'))loanWorkflowOutput.recurring[2].day=null;
-if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':generateContent',method:'POST'}).reply(200,async(options)=>{const instruction=JSON.parse(await new Response(options.body).text()).systemInstruction.parts[0].text;return JSON.stringify({responseId:'synthetic-browser-analysis',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:process.argv.includes('--loan-workflow')&&instruction.includes('LOAN BUILDER MODE:')?JSON.stringify(loanWorkflowOutput):process.argv.includes('--budget-workflow')&&instruction.includes('You organize a pasted budget')?JSON.stringify(budgetWorkflowOutput):instruction.includes('You organize a pasted budget')?JSON.stringify({notes:'Synthetic budget draft. Confirm the amounts and dates before adding.',categories:[{name:'Bills',limitCents:50000},{name:'Groceries',limitCents:40000}],recurring:[{title:'Medical loan',kind:'expense',category:'Bills',amountCents:10000,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,startDate:new Date().toISOString().slice(0,7)+'-01',endDate:null,installments:6,debt:{originalBalanceCents:60000,balanceCents:60000,balanceDate:new Date(Date.now()-86400000).toISOString().slice(0,10),annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0}},{title:'Monthly salary',kind:'income',category:'',amountCents:400000,day:1,frequency:'monthly-weekday',week:'last',weekday:5,variable:false,startDate:null,endDate:null,installments:null,debt:null}]}):instruction.includes('You organize a completed workout')?JSON.stringify({notes:'Synthetic editable draft. Confirm completed sets.',name:'Written push',exercises:[{name:'Bench press',unit:'lb',reps:6,repMax:10,restSeconds:150,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:8,load:100,warmup:true},{reps:8,load:135,warmup:false},{reps:7,load:135,warmup:false}]},{name:'Custom cable press',unit:'lb',reps:8,repMax:12,restSeconds:120,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:12,load:30,warmup:false}]}]}):instruction.includes('You organize workout descriptions')?JSON.stringify({notes:'Synthetic draft. Choose starting loads before training.',routines:[{name:'Push day',preferences:'About 45 minutes',exercises:[{name:'Bench press',sets:3,reps:6,repMax:10,restSeconds:150,load:0,unit:'lb'},{name:'Lateral raise',sets:3,reps:12,repMax:20,restSeconds:90,load:0,unit:'lb'}]}]}):instruction.includes("LifeApp's training analysis assistant")?'### Your training this week\n\nYou logged five working sets across two sessions, with warm-ups kept separate. Your pressing work is contributing to chest and triceps coverage.\n\n### Next session\n\n- Keep the planned working sets after your warm-ups.\n- Compare loads and reps on the same movement before deciding to progress.':'### A steady rhythm\n\nYou made room for the things that matter, even on a full day. Reading and a short walk gave the day a steady rhythm.\n\n**The useful pattern is consistency:** small actions were easier to keep than a perfect plan. Your spending stayed within the categories you chose, and the upcoming electric bill is still an estimate.\n\n### Tomorrow\n\n- Protect one small block for your journal and movement. Keep it manageable, and adjust your plan when you have the actual bill amount.'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:120,thoughtsTokenCount:0,totalTokenCount:220}});}).persist();
+if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':generateContent',method:'POST'}).reply(200,async(options)=>{const requestBody=JSON.parse(await new Response(options.body).text()),instruction=requestBody.systemInstruction.parts[0].text;return JSON.stringify({responseId:'synthetic-browser-analysis',modelVersion:AI_MODEL,candidates:[{content:{parts:[{text:instruction.includes('TRANSACTION IMPORT MODE:')?JSON.stringify(transactionFixtureOutput(JSON.parse(requestBody.contents[0].parts[0].text))):process.argv.includes('--loan-workflow')&&instruction.includes('LOAN BUILDER MODE:')?JSON.stringify(loanWorkflowOutput):process.argv.includes('--budget-workflow')&&instruction.includes('You organize a pasted budget')?JSON.stringify(budgetWorkflowOutput):instruction.includes('You organize a pasted budget')?JSON.stringify({notes:'Synthetic budget draft. Confirm the amounts and dates before adding.',categories:[{name:'Bills',limitCents:50000},{name:'Groceries',limitCents:40000}],recurring:[{title:'Medical loan',kind:'expense',category:'Bills',amountCents:10000,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,startDate:new Date().toISOString().slice(0,7)+'-01',endDate:null,installments:6,debt:{originalBalanceCents:60000,balanceCents:60000,balanceDate:new Date(Date.now()-86400000).toISOString().slice(0,10),annualRatePercent:0,interestMethod:'monthly',otherPaymentCents:0}},{title:'Monthly salary',kind:'income',category:'',amountCents:400000,day:1,frequency:'monthly-weekday',week:'last',weekday:5,variable:false,startDate:null,endDate:null,installments:null,debt:null}]}):instruction.includes('You organize a completed workout')?JSON.stringify({notes:'Synthetic editable draft. Confirm completed sets.',name:'Written push',exercises:[{name:'Bench press',unit:'lb',reps:6,repMax:10,restSeconds:150,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:8,load:100,warmup:true},{reps:8,load:135,warmup:false},{reps:7,load:135,warmup:false}]},{name:'Custom cable press',unit:'lb',reps:8,repMax:12,restSeconds:120,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:12,load:30,warmup:false}]}]}):instruction.includes('You organize workout descriptions')?JSON.stringify({notes:'Synthetic draft. Choose starting loads before training.',routines:[{name:'Push day',preferences:'About 45 minutes',exercises:[{name:'Bench press',sets:3,reps:6,repMax:10,restSeconds:150,load:0,unit:'lb'},{name:'Lateral raise',sets:3,reps:12,repMax:20,restSeconds:90,load:0,unit:'lb'}]}]}):instruction.includes("LifeApp's training analysis assistant")?'### Your training this week\n\nYou logged five working sets across two sessions, with warm-ups kept separate. Your pressing work is contributing to chest and triceps coverage.\n\n### Next session\n\n- Keep the planned working sets after your warm-ups.\n- Compare loads and reps on the same movement before deciding to progress.':'### A steady rhythm\n\nYou made room for the things that matter, even on a full day. Reading and a short walk gave the day a steady rhythm.\n\n**The useful pattern is consistency:** small actions were easier to keep than a perfect plan. Your spending stayed within the categories you chose, and the upcoming electric bill is still an estimate.\n\n### Tomorrow\n\n- Protect one small block for your journal and movement. Keep it manageable, and adjust your plan when you have the actual bill amount.'}]},finishReason:'STOP'}],usageMetadata:{promptTokenCount:100,candidatesTokenCount:120,thoughtsTokenCount:0,totalTokenCount:220}});}).persist();
 // Read the full outbound body before replying: a static mock can reset the
 // Windows Miniflare transport while a large document is still being uploaded.
 if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':countTokens',method:'POST'}).reply(200,async options=>{await new Response(options.body).arrayBuffer();return JSON.stringify({totalTokens:100000});}).persist();
 const calmFixture=process.argv.includes('--calm');
 const editingFixture=process.argv.includes('--editing');
 const dictationFixture=process.argv.includes('--dictation');
+const lightFixture=process.argv.includes('--light'),largeTextFixture=process.argv.includes('--large-text');
 const mf=new Miniflare({modules:true,modulesRules:[{type:'ESModule',include:['**/*.js']}],scriptPath:'dist-standalone/server/index.js',compatibilityDate:'2026-05-22',compatibilityFlags:['nodejs_compat'],d1Databases:['DB'],fetchMock:mock,
  bindings:{...(analysisFixture?{LIFEAPP_AI_ENABLED:'true',LIFEAPP_AI_PAID_PROJECT:'true',GEMINI_API_KEY:'synthetic',LIFEAPP_REVIEW_PLANNER_ENABLED:'true',LIFEAPP_AUTOMATIC_REVIEWS_ENABLED:'true'}:{}),LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:secret,GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'smoke@example.test',LIFEAPP_EMAIL_FROM:'reports@lifeapp.smitzgroup.com',LIFEAPP_EMAIL_ENABLED:calmFixture?'true':'false'},
  email:calmFixture?{send_email:[{name:'REPORT_EMAILS',allowed_sender_addresses:['reports@lifeapp.smitzgroup.com'],destination_address:'smoke@example.test'}]}:undefined,
@@ -34,7 +46,7 @@ const stamp=Date.now(),id='browser-smoke',userId='google:'+id;
 await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic browser fixture','smoke@example.test',stamp).run();
 await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('smoke-session',stamp+3600000,'synthetic-browser-token',stamp,id).run();
 await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('smoke-account','smoke-google-sub','google',id,stamp).run();
-await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(process.argv.includes('--light')?{appearance:{mode:'light',custom:{oled:{},light:{}}}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
+await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(lightFixture||largeTextFixture?{appearance:{mode:lightFixture?'light':'oled',custom:{oled:{},light:{}},...(largeTextFixture?{typography:{font:'system',scale:130}}:{})}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
 const historyFixture=process.argv.includes('--history');
 for(let days=1;days<=(historyFixture?400:2);days++){
  const date=new Date(stamp-days*86400000).toISOString().slice(0,10);
@@ -50,11 +62,23 @@ if(process.argv.includes('--training')){
  const {presetExercise}=await import('../lib/life/exercise-presets.ts');
  const {exerciseSchema}=await import('../lib/life/modules.ts');
  const {todayIn}=await import('../lib/life/domain.ts');
- const today=todayIn('America/New_York'),iso=new Date(stamp).toISOString();
+ const today=todayIn('America/New_York'),iso=new Date(stamp).toISOString(),performanceFixture=process.argv.includes('--exercise-performance');
  for(const [name,names,weeklySessions] of [['Push day',['Bench press','Overhead press','Lateral raise','Triceps pushdown'],2],['Pull day',['Barbell row','Lat pulldown','Biceps curl'],2],['Leg day',['Squat','Romanian deadlift','Calf raise'],1]]){
-  const rid=crypto.randomUUID(),exercises=names.map(name=>exerciseSchema.parse(presetExercise(name))),data={name,preferences:'Synthetic muscle coverage fixture',exercises,weeklySessions,archived:false};
+  const programNames=performanceFixture&&name==='Pull day'?[...names,'Bench press']:names;
+  const rid=crypto.randomUUID(),exercises=programNames.map(name=>exerciseSchema.parse(presetExercise(name))),data={name,preferences:'Synthetic muscle coverage fixture',exercises,weeklySessions,archived:false};
   await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'routine',rid,'',JSON.stringify(data),iso).run();
-  if(name==='Push day')await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'workout',crypto.randomUUID(),today.slice(0,7),JSON.stringify({date:today,routineId:rid,name,exercises,sets:[{exerciseId:exercises[0].id,setNumber:1,reps:8,load:100,completedAt:iso},{exerciseId:exercises[0].id,setNumber:2,reps:8,load:100,completedAt:iso},{exerciseId:exercises[0].id,setNumber:3,reps:8,load:40,warmup:true,completedAt:iso}],restUntil:null,finishedAt:iso}),iso).run();
+  if(name==='Push day'){
+   const completedAt=performanceFixture?new Date(stamp-120*60000).toISOString():iso;
+   await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'workout',crypto.randomUUID(),today.slice(0,7),JSON.stringify({date:today,routineId:rid,name,exercises,sets:[{exerciseId:exercises[0].id,setNumber:1,reps:8,load:100,completedAt},{exerciseId:exercises[0].id,setNumber:2,reps:8,load:100,completedAt},{exerciseId:exercises[0].id,setNumber:3,reps:8,load:40,warmup:true,completedAt}],restUntil:null,finishedAt:completedAt}),iso).run();
+  }
+  if(performanceFixture&&name==='Pull day'){
+   // A newer completed bench block has its own exercise/program IDs. The
+   // warm-up occupies serial 1; working sets 1–3 should compare 9/145, 8/150,
+   // and 6/155 lb when a new Push day is started.
+   const bench=exercises.find(exercise=>exercise.name==='Bench press'),completedAt=new Date(stamp-60*60000).toISOString();
+   const sets=[{reps:12,load:45,warmup:true},{reps:9,load:145},{reps:8,load:150},{reps:6,load:155}].map((set,index)=>({exerciseId:bench.id,setNumber:index+1,...set,completedAt}));
+   await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'workout',crypto.randomUUID(),today.slice(0,7),JSON.stringify({date:today,routineId:rid,name,exercises,sets,restUntil:null,finishedAt:completedAt}),completedAt).run();
+  }
  }
 }
 if(process.argv.includes('--workout-recovery')){
@@ -76,6 +100,10 @@ if(process.argv.includes('--budget-recovery')){
 }
 const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token','synthetic-browser-token',secret,{secure:true,httpOnly:true,path:'/'})).split(';')[0];
 let loseEntryResponse=process.argv.includes('--unconfirmed-entry');
+let loseRoutineResponse=process.argv.includes('--unconfirmed-routine');
+let loseWorkoutResponse=process.argv.includes('--unconfirmed-workout');
+let loseWorkoutEndResponse=process.argv.includes('--unconfirmed-workout-end');
+let loseTransactionImportResponse=process.argv.includes('--unconfirmed-transaction-import');
 const server=createServer(async(req,res)=>{
  try{
   const pathname=new URL(req.url,'http://localhost').pathname;
@@ -87,20 +115,24 @@ const server=createServer(async(req,res)=>{
    const count=await db.prepare('SELECT count(*) n FROM life_entries').first();
    res.writeHead(200,{'Content-Type':'application/json'});res.end(JSON.stringify({count:count.n,entries:entries.results}));return;
   }
-  let body,entryWrite=false,aiWrite=false;
+  let body,entryWrite=false,aiWrite=false,routineWrite=false,workoutWrite=false,workoutEndWrite=false,transactionImportWrite=false;
   if(req.method==='POST'&&(pathname==='/api/life'||calmFixture&&pathname==='/api/life/email')){
    const chunks=[];let size=0;
-   for await(const chunk of req){size+=chunk.length;if(size>(req.url.includes('budget-build')?BUDGET_UPLOAD_BYTES:65536)){res.writeHead(413);res.end();return;}chunks.push(chunk);}
+   for await(const chunk of req){size+=chunk.length;if(size>(req.url.includes('budget-build')?BUDGET_UPLOAD_BYTES:req.url.includes('transaction-import')?262144:65536)){res.writeHead(413);res.end();return;}chunks.push(chunk);}
    body=Buffer.concat(chunks).toString('utf8');
    let parsed;try{parsed=JSON.parse(body);}catch{res.writeHead(400);res.end();return;}
    entryWrite=parsed?.action==='entry';
+   transactionImportWrite=parsed?.action==='transaction-import';
    aiWrite=['ai','budget-build','routine-build','training-analysis'].includes(parsed?.action);
-   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource','budget-item','annual-fund-settings','record-deletion','trash',...(analysisFixture?['ai','budget-build','routine-build','workout-build','training-analysis','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
+   routineWrite=parsed?.action==='resource'&&parsed?.record?.kind==='routine';
+   workoutWrite=parsed?.action==='resource'&&parsed?.record?.kind==='workout';
+   workoutEndWrite=workoutWrite&&!!(parsed.record.data?.finishedAt||parsed.record.data?.deleted);
+   if(pathname==='/api/life'&&parsed?.action!=='history'&&!(editingFixture&&['entry','profile','resource','budget-item','transaction-import','annual-fund-settings','record-deletion','trash',...(analysisFixture?['ai','budget-build','routine-build','workout-build','training-analysis','analysis-feedback','period-consent','automatic-consent']:[])].includes(parsed?.action))){res.writeHead(405);res.end('This synthetic fixture blocks that action.');return;}
   }else if(req.method!=='GET'){res.writeHead(405);res.end('This synthetic smoke fixture is read-only.');return;}
   // Cloudflare serves static assets before invoking the Worker. Reproduce that here.
   const file=resolve(assets,'.'+decodeURIComponent(pathname));
   if(req.method==='GET'&&file.startsWith(assets+sep)&&existsSync(file)&&statSync(file).isFile()){
-   const mime={'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png'}[extname(file)]||'application/octet-stream';
+   const mime={'.js':'text/javascript','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.html':'text/html; charset=utf-8'}[extname(file)]||'application/octet-stream';
    res.writeHead(200,{'Content-Type':mime});res.end(readFileSync(file));return;
   }
   // This loopback-only test proxy supplies a synthetic identity to an isolated Worker.
@@ -112,7 +144,19 @@ const server=createServer(async(req,res)=>{
   if(aiWrite&&process.argv.includes('--slow-ai'))await new Promise(resolve=>setTimeout(resolve,8000));
   const response=await mf.dispatchFetch('https://life.test'+req.url,{method:req.method,body,headers,redirect:'manual'});
   if(aiWrite&&process.argv.includes('--lose-ai-response')&&response.ok){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost AI acknowledgement.'}));return;}
+  if(loseTransactionImportResponse&&transactionImportWrite&&response.ok){loseTransactionImportResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost transaction import acknowledgement. Retry the same save.'}));return;}
   if(loseEntryResponse&&entryWrite&&response.ok){loseEntryResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost acknowledgement. Retry the same save.'}));return;}
+  // Lose only the acknowledgement: dispatchFetch has already committed the
+  // synthetic D1 write. An exact retry must recover the same record/version.
+  if(response.ok&&loseRoutineResponse&&routineWrite){
+   loseRoutineResponse=false;
+   res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost program acknowledgement. Retry the same save.'}));return;
+  }
+  if(response.ok&&(loseWorkoutResponse&&workoutWrite||loseWorkoutEndResponse&&workoutEndWrite)){
+   if(workoutWrite)loseWorkoutResponse=false;
+   if(workoutEndWrite)loseWorkoutEndResponse=false;
+   res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost workout acknowledgement. Retry the same save.'}));return;
+  }
   res.writeHead(response.status,Object.fromEntries([...response.headers].filter(([key])=>key!=='set-cookie')));
   if(dictationFixture&&response.headers.get('content-type')?.includes('text/html'))res.end((await response.text()).replace('<head>','<head><script src="/__fixture/dictation.js"></script>'));
   else res.end(Buffer.from(await response.arrayBuffer()));

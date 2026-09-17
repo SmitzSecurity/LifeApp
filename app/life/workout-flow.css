@@ -1,0 +1,79 @@
+/* One aligned selector and preview; an active session owns the workout tab. */
+.workout-exit-options,.workout-start-options,.workout-start-options fieldset{display:grid;gap:12px;min-width:0}
+.workout-exit-options p,.workout-start-options p{margin:0}
+.workout-start-options fieldset{border:0;padding:0;margin:0}
+.workout-start-options .compact-field{margin:8px 0 0}
+.workout-exit-options>button,.workout-start-options fieldset>button{min-height:44px;height:auto;white-space:normal;line-height:1.5}
+.session-information-summary{margin-bottom:18px}
+.session-information-summary h3{margin:0 0 6px}
+.session-information-summary p{color:var(--muted-foreground);font-size:var(--ui-label,.8125rem)}
+.session-information-summary progress{width:100%;height:5px;accent-color:var(--primary)}
+.compact-app .workspace:has(>[data-page=workouts]){max-width:1280px;margin-inline:auto}
+.life-compact-theme .training-workspace.workout-flow{width:100%;padding-top:16px}
+.workout-flow .workout-selector-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.workout-flow .workout-selector-heading>div{min-width:0}
+.life-compact-theme .workout-flow .workout-selector-heading h2{font-size:calc(1.3rem * var(--ui-text-scale,1));margin:0 0 4px}
+.workout-flow .workout-selector-heading p{margin:0;font-size:var(--ui-copy,.875rem)}
+.workout-flow .workout-selector-heading>button{flex-shrink:0}
+.workout-flow .workout-programs{margin-bottom:16px;min-width:0}
+.life-compact-theme .workout-flow .program-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;max-height:none;overflow:visible}
+.life-compact-theme .workout-flow .program-row{margin:0;padding:10px;align-items:center;gap:6px}
+.workout-flow .program-row>button:last-child{flex-shrink:0}
+.workout-flow .workout-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:stretch}
+.workout-flow .workout-preview-grid:has(>.coverage-card:only-child){grid-template-columns:minmax(0,1fr)}
+.life-compact-theme .workout-flow .workout-preview-grid>.training-card{padding:16px;border-radius:12px}
+.life-compact-theme .training-workspace.workout-flow .coverage-visual:has(.muscle-overview),.workout-flow .coverage-visual{grid-template-columns:minmax(0,1fr);gap:16px}
+.life-compact-theme .workout-flow .coverage-visual .muscle-map{height:260px;max-height:260px}
+.life-compact-theme .training-workspace.workout-flow .muscle-overview ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.life-compact-theme .training-workspace.workout-flow .muscle-overview button span{overflow-wrap:anywhere}
+.workout-flow .muscle-overview li{border:0;border-bottom:1px solid var(--border)}
+.workout-flow .muscle-overview button{gap:6px}
+.workout-flow .map-legend{flex-wrap:wrap}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis>.training-analysis{margin:0 0 20px;padding:16px 18px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis .training-analysis>.section-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin:0 0 10px}
+.workout-flow .workout-analysis .training-analysis-heading{flex:1;min-width:0}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis .training-analysis h3{font-size:calc(1rem * var(--ui-text-scale,1));font-weight:600;line-height:1.4;margin:0}
+.workout-flow .training-analysis-subtitle{display:flex;flex-direction:column;gap:3px;margin-top:7px;color:var(--muted-foreground);overflow-wrap:anywhere}
+.workout-flow .training-analysis-subtitle strong{font-weight:500;font-size:var(--ui-label,.8125rem);line-height:1.5}
+.workout-flow .training-analysis-subtitle small{font-size:var(--ui-meta,.75rem);line-height:1.5}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis .training-analysis-actions{flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:100%;margin-top:-5px}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis .training-analysis-actions button{min-height:44px;height:auto;white-space:normal;line-height:1.4}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis .training-analysis-disclosure{display:block;color:var(--muted-foreground);font-size:var(--ui-meta,.75rem);line-height:1.5}
+.life-compact-theme .training-workspace.workout-flow .workout-analysis .training-analysis-summary{margin:0 0 8px}
+.life-compact-theme .training-workspace.workout-flow .workout-footer{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:4px 12px;width:100%;margin-top:14px;padding:8px 0}
+.life-compact-theme .training-workspace.workout-flow .workout-footer button{min-height:44px;height:auto;font-size:var(--ui-label,.8125rem);line-height:1.5;padding:8px 4px;color:var(--primary);white-space:normal;max-width:100%}
+.workout-flow .workout-resume{display:flex;align-items:center;justify-content:space-between;gap:14px;background:var(--accent);color:var(--accent-foreground);border:1px solid var(--primary);border-radius:10px;padding:14px;margin-bottom:16px}
+.workout-flow .workout-resume>div{display:grid;gap:3px;min-width:0}
+.workout-flow .workout-resume strong{overflow-wrap:anywhere}
+.workout-flow .workout-resume small,.workout-flow .workout-resume span{font-size:var(--ui-meta,.75rem)}
+.workout-flow .workout-resume>button{flex-shrink:0}
+/* Follow the shell's available height, including changes from a mobile keyboard. */
+.life-compact-theme .signed-in-app .workspace:has(>[data-page=workouts] .workout-in-session){max-width:none;padding:0;overflow:hidden;scrollbar-gutter:auto}
+.signed-in-app [data-page=workouts]:has(.workout-in-session){height:100%;min-height:0;gap:0}
+.signed-in-app [data-page=workouts]>[data-state=active]:has(>.workout-in-session){display:flex;flex-direction:column;min-height:0}
+.life-compact-theme .training-workspace.workout-flow.workout-in-session{display:flex;flex:1;flex-direction:column;min-height:0;padding:0}
+.workout-in-session>:is(.error,.analysis-note,.notice){flex-shrink:0;margin:8px 16px}
+.workout-flow .workout-session-view{display:flex;flex:1;min-width:0;min-height:0}
+@media(max-width:900px){
+ .life-compact-theme .workout-flow .program-list{grid-template-columns:minmax(0,1fr)}
+ .workout-flow .workout-preview-grid{grid-template-columns:minmax(0,1fr)}
+ .life-compact-theme .training-workspace.workout-flow .coverage-visual:has(.muscle-overview),.workout-flow .coverage-visual{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}
+ .life-compact-theme .training-workspace.workout-flow .muscle-overview ul{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:480px){
+ .life-compact-theme .training-workspace.workout-flow{padding-top:12px}
+ .workout-flow .workout-selector-heading{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start}
+ .workout-flow .workout-selector-heading>div{display:contents}
+ .workout-flow .workout-selector-heading h2{grid-column:1;grid-row:1}
+ .workout-flow .workout-selector-heading>button{grid-column:2;grid-row:1}
+ .workout-flow .workout-selector-heading p{grid-column:1/-1;grid-row:2}
+ .life-compact-theme .workout-flow .workout-selector-heading h2{font-size:calc(1.1rem * var(--ui-text-scale,1))}
+ .life-compact-theme .workout-flow .workout-preview-grid>.training-card{padding:12px}
+ .life-compact-theme .training-workspace.workout-flow .coverage-visual:has(.muscle-overview),.workout-flow .coverage-visual{grid-template-columns:minmax(0,1fr)}
+ .life-compact-theme .training-workspace.workout-flow .muscle-overview ul{grid-template-columns:repeat(2,minmax(0,1fr));column-gap:8px}
+ .workout-flow .muscle-overview button{padding-inline:0;gap:4px;overflow-wrap:anywhere}
+ .life-compact-theme .training-workspace.workout-flow .workout-analysis>.training-analysis{padding:12px;margin-bottom:16px}
+ .life-compact-theme .training-workspace.workout-flow .workout-footer{column-gap:16px}
+ .workout-flow .workout-resume{flex-wrap:wrap;gap:10px;padding:12px}
+ .workout-flow .workout-resume>button{width:100%}
+}

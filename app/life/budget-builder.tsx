@@ -14,7 +14,7 @@ import LoanDialog from './loan-builder';
 import {useAIStatus} from './use-ai-status';
 import {CurrencyInput,useBudgetDirty,useItemSave,type DirtyReporter} from './budget-fields';
 
-type Build={id:string;month?:string;intent?:'loans';status:string;deleted?:boolean;errorCode?:string|null;resolvedBlocker?:boolean;result:BudgetBuildResult|null};
+type Build={id:string;month?:string;intent?:'loans'|'transactions';status:string;deleted?:boolean;errorCode?:string|null;resolvedBlocker?:boolean;result:BudgetBuildResult|null};
 type Recovery={sourceId:string;expiresAt:string};
 type Input={requestId:string;text:string;month:string;intent?:'loans';consent:true;image?:BudgetAttachment['image'];document?:BudgetAttachment['document'];recoveryOf?:string};
 type NewCategory={name:string;amount:string;assignTo?:string};
@@ -76,7 +76,7 @@ export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{inte
  function applyAllowance(id:string,cents:number){if(!draft)return;try{setDraft(applyBudgetReviewAllowance(draft,allowanceTargets[id]||'',cents));operation.setError('');}catch(e){operation.setError((e as Error).message);}}
  function categoryForm(){return newCategory&&<div className="budget-review-new-category"><label className="compact-field">New category name<input value={newCategory.name} maxLength={100} placeholder="e.g. Household" onChange={e=>setNewCategory({...newCategory,name:e.target.value})}/></label><CurrencyInput label="Monthly allowance" value={newCategory.amount} onChange={amount=>setNewCategory({...newCategory,amount})}/><div className="budget-review-inline-actions"><Button variant="secondary" onClick={addCategory}>Add category</Button><Button variant="ghost" onClick={()=>setNewCategory(null)}>Cancel</Button></div></div>;}
  const unconfirmed=builds.some(b=>['generating','uncertain'].includes(b.status)&&!b.resolvedBlocker&&b.id!==recovery?.sourceId);
- const visibleBuilds=builds.filter(b=>!b.deleted&&(loanMode?b.intent==='loans':b.intent!=='loans'));
+ const visibleBuilds=builds.filter(b=>!b.deleted&&(loanMode?b.intent==='loans':!b.intent));
  const ItemDialog=editing?.debt?LoanDialog:RecurringDialog;
  return <Dialog open onOpenChange={open=>{if(!open)close();}}><DialogContent className="budget-builder-dialog" showCloseButton={!closeLocked} onInteractOutside={e=>e.preventDefault()}>
  <DialogHeader><DialogTitle>{draft?(loanMode?'Review your loans':'Review your budget'):(loanMode?'Build loans with AI':'Build budget with AI')}</DialogTitle><DialogDescription>{draft?`Review the items for ${formatMonth(plan.id)}. Choose a category for each expense. Nothing changes until you add this draft.`:loanMode?'Paste loan details, attach a statement, or paste a screenshot. Review the balances and terms before saving.':'Paste your budget or attach a file. You’ll review everything before it is added.'}</DialogDescription></DialogHeader>

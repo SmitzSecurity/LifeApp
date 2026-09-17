@@ -9,6 +9,7 @@ import {validateBackup} from '../lib/life/migration-preview.ts';
 import {budgetOutputSchema,loanOutputSchema} from '../lib/life/budget-build-schema.ts';
 import {beginBudgetReview,addBudgetReviewCategory,budgetReviewImport} from '../lib/life/budget-build-review.ts';
 import {budgetSummary} from '../lib/life/modules.ts';
+import {transactionOutputSchema} from '../lib/life/transaction-build-schema.ts';
 
 const digest=value=>createHash('sha256').update(value).digest('hex');
 const output={notes:'Synthetic compiled budget draft.',categories:[{name:'Groceries',limitCents:40000}],recurring:[]};
@@ -28,7 +29,7 @@ async function fixture(t,{countTokens=100000,rejectGeneration=false,draft=output
  for(const operation of ['countTokens','generateContent'])mock.intercept({path:`/v1beta/models/${AI_MODEL}:${operation}`,method:'POST'}).reply(rejectGeneration&&operation==='generateContent'?400:200,async options=>{
   const body=JSON.parse(await new Response(options.body).text());calls.push({operation,body});
   if(operation==='generateContent'){
-   assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(body.systemInstruction.parts[0].text.includes('LOAN BUILDER MODE:')?loanOutputSchema:budgetOutputSchema)));
+   assert.ok(body.systemInstruction.parts[0].text.endsWith('Required JSON shape:\n'+JSON.stringify(body.systemInstruction.parts[0].text.includes('TRANSACTION IMPORT MODE:')?transactionOutputSchema:body.systemInstruction.parts[0].text.includes('LOAN BUILDER MODE:')?loanOutputSchema:budgetOutputSchema)));
    assert.equal(body.generationConfig.responseMimeType,undefined);assert.equal(body.generationConfig.responseJsonSchema,undefined);
    assert.equal(body.generationConfig.responseFormat,undefined);assert.equal(body.generationConfig.responseSchema,undefined);
    if(rejectGeneration)return JSON.stringify({error:{code:400,status:'INVALID_ARGUMENT',message:'Synthetic request rejected'}});
@@ -194,4 +195,42 @@ test('compiled missing loan due day keeps all fifteen loans reviewable and statu
  assert.equal(f.calls.filter(call=>call.operation==='generateContent').length,1);
  assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='budget'").first()).n,0);
  assert.ok(validateBackup(await (await f.call(undefined,'?export')).text()));
+});
+
+test('compiled receipt extraction and multi-month transaction adoption are atomic, retry-safe and portable',{timeout:60000},async t=>{
+ const month=new Date().toISOString().slice(0,7),past=new Date(Date.UTC(new Date().getUTCFullYear(),new Date().getUTCMonth()-1,1)).toISOString().slice(0,7);
+ const category=randomUUID(),newCategory=randomUUID();
+ const draft={notes:'Synthetic receipt review.',transactions:[
+  {date:month+'-01',kind:'expense',amountCents:4275,note:'Grocery receipt',categoryId:category,warning:''},
+  {date:past+'-01',kind:'expense',amountCents:1850,note:'Historical taxi',categoryId:null,warning:''},
+  {date:month+'-01',kind:'transfer',amountCents:30000,note:'Card payment',categoryId:null,warning:''},
+ ]};
+ const f=await fixture(t,{draft});
+ const current={currency:'USD',categories:[{id:category,name:'Groceries',limitCents:25000,archived:false}],recurring:[],goals:{spending:'',saving:'',investing:''}};
+ const historical={...current,categories:current.categories.map(c=>({...c,limitCents:0}))};
+ const savedPlanResponse=await f.call({action:'budget-item',change:{kind:'initialize',month,initial:current}});
+ assert.equal(savedPlanResponse.status,200,await savedPlanResponse.clone().text());
+ const savedPlan=(await savedPlanResponse.json()).record;
+ const build={requestId:randomUUID(),month,intent:'transactions',text:'Synthetic grocery receipt and past taxi/card statement.',document:pdfDocument(),consent:true};
+ const response=await f.call({action:'budget-build',build},'?budget-build'),built=await response.json();
+ assert.equal(response.status,200,JSON.stringify(built));assert.equal(built.build.status,'complete');
+ assert.equal(built.build.intent,'transactions');assert.equal(built.build.result.transactions[0].categoryId,category);
+ const providerSnapshot=JSON.parse(f.calls.find(c=>c.operation==='generateContent').body.contents[0].parts[0].text);
+ assert.equal(providerSnapshot.moneyGoals,undefined);assert.equal(providerSnapshot.transactionContext.categoriesByMonth[0].categories[0].id,category);
+ const reviewed={requestId:randomUUID(),buildId:build.requestId,months:[{month,initial:savedPlan.data,categories:[]},{month:past,initial:historical,categories:[{id:newCategory,name:'Travel',limitCents:0,archived:false}]}],transactions:built.build.result.transactions.map(row=>({id:row.id,version:0,data:{date:row.date,kind:row.kind,amountCents:row.amountCents,note:row.note,categoryId:row.kind==='expense'?(row.date.startsWith(past)?newCategory:category):'',categoryName:'',recurringId:null,voided:false,deleted:false}}))};
+ const invalid=structuredClone(reviewed);invalid.transactions[1].data.categoryId=randomUUID();
+ assert.equal((await f.call({action:'transaction-import',import:invalid},'?transaction-import')).status,409);
+ assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='transaction'").first()).n,0,'No partial rows after invalid category');
+ assert.equal(await f.db.prepare("SELECT resource_id FROM life_resources WHERE kind='budget' AND resource_id=?1").bind(past).first(),null,'No partial historical month');
+ const adopted=await f.call({action:'transaction-import',import:reviewed},'?transaction-import'),result=await adopted.json();
+ assert.equal(adopted.status,200,JSON.stringify(result));assert.equal(result.records.length,3);
+ assert.equal(result.plans.find(p=>p.id===past).data.recurring.length,0);
+ const replay=await f.call({action:'transaction-import',import:reviewed},'?transaction-import');assert.equal(replay.status,200);assert.equal((await replay.json()).alreadyImported,true);
+ assert.equal((await f.db.prepare("SELECT COUNT(*) n FROM life_resources WHERE kind='transaction'").first()).n,3);
+ const records=(await (await f.call(undefined,'?kind=transaction&month='+month)).json()).records;
+ const totals=budgetSummary(savedPlan.data,records,month);assert.equal(totals.expenses,4275);assert.equal(totals.income,0);
+ const changed=structuredClone(reviewed);changed.transactions[0].data.amountCents++;
+ assert.equal((await f.call({action:'transaction-import',import:changed},'?transaction-import')).status,409);
+ assert.ok(validateBackup(await (await f.call(undefined,'?export=1')).text()));
+ assert.equal(f.calls.filter(c=>c.operation==='generateContent').length,1);
 });

@@ -1,0 +1,29 @@
+.training-workspace .routine-preview{display:flex;flex-direction:column;min-width:0;padding:16px;}
+.training-workspace .routine-preview-heading{display:grid;grid-template-columns:minmax(0,1fr) max-content;align-items:start;column-gap:8px;row-gap:2px;}
+.training-workspace .routine-preview .routine-preview-eyebrow{grid-column:1/-1;grid-row:1;margin:0;font-size:calc(.72rem * var(--ui-text-scale,1));line-height:1.4;font-weight:600;color:var(--muted-foreground);}
+.training-workspace .routine-preview-heading h3{grid-column:1;grid-row:2;min-width:0;min-height:44px;margin:0;padding-block:8px;font-size:calc(1.15rem * var(--ui-text-scale,1));line-height:1.35;overflow-wrap:anywhere;}
+.training-workspace .routine-preview-summary{grid-column:1/-1;grid-row:3;margin:3px 0 0;font-size:calc(.78rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground);}
+.training-workspace .routine-preview button{min-width:44px;min-height:44px;height:auto;padding:9px 12px;white-space:normal;font-size:calc(.8rem * var(--ui-text-scale,1));line-height:1.3;}
+.training-workspace .routine-preview button:focus-visible{outline:2px solid var(--ring);outline-offset:2px;}
+.training-workspace .routine-preview .routine-preview-edit{grid-column:2;grid-row:2;align-self:start;justify-self:end;white-space:nowrap;padding-inline:8px;gap:6px;}
+.training-workspace .routine-preview-order-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px 8px;margin:16px 0 6px;}
+.training-workspace .routine-preview-order-heading>p{margin:0;font-size:calc(.76rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground);}
+.training-workspace .routine-preview-exercises{list-style:none;padding:0;margin:0;}
+.training-workspace .routine-preview-exercise{display:grid;grid-template-columns:26px minmax(0,1fr);align-items:center;gap:10px;padding:14px 0;border-top:1px solid var(--border);}
+.training-workspace .routine-preview-number{display:flex;align-items:center;justify-content:center;width:26px;height:26px;align-self:start;margin-top:1px;border-radius:50%;background:var(--accent);color:var(--accent-foreground);font-size:calc(.76rem * var(--ui-text-scale,1));font-weight:600;font-variant-numeric:tabular-nums;}
+.training-workspace .routine-preview-exercise-copy{min-width:0;}
+.training-workspace .routine-preview-exercise-copy h4{margin:0;font-size:calc(.88rem * var(--ui-text-scale,1));font-weight:600;line-height:1.4;overflow-wrap:anywhere;}
+.training-workspace .routine-preview-exercise-copy p{margin:4px 0 0;font-size:calc(.8rem * var(--ui-text-scale,1));line-height:1.45;}
+.training-workspace .routine-preview-exercise-copy small{display:block;margin-top:3px;font-size:calc(.73rem * var(--ui-text-scale,1));line-height:1.5;color:var(--muted-foreground);}
+.training-workspace .routine-preview-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border);padding-top:14px;margin-top:auto;}
+.training-workspace .routine-preview-footer>p{margin:0;min-width:0;color:var(--muted-foreground);font-size:calc(.76rem * var(--ui-text-scale,1));line-height:1.5;}
+.training-workspace .routine-preview-footer>button{flex-shrink:0;}
+@media(max-width:900px){.training-workspace .workout-preview-grid>.routine-preview{order:-1;}}
+@media(max-width:600px){
+ .training-workspace .routine-preview{padding:12px;}
+ .training-workspace .routine-preview-exercise{grid-template-columns:22px minmax(0,1fr);gap:8px;padding:12px 0;}
+ .training-workspace .routine-preview-number{width:22px;height:26px;background:transparent;color:var(--muted-foreground);}
+ .training-workspace .routine-preview-order-heading{margin-top:10px;}
+ .training-workspace .routine-preview-footer{flex-direction:column;align-items:stretch;gap:8px;}
+ .training-workspace .routine-preview-footer>button{width:100%;}
+}

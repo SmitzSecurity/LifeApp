@@ -63,8 +63,8 @@
 .life-compact-theme .budget-workspace .forecast-totals{gap:16px;font-size:var(--ui-label);padding-bottom:8px}
 .life-compact-theme .budget-workspace .forecast-totals strong{font-size:var(--ui-copy);font-weight:600;margin-top:2px}
 .life-compact-theme .budget-workspace .needs-amount{padding-left:8px}
-.life-compact-theme .budget-workspace .budget-footer{font-size:var(--ui-meta);padding:10px 0;gap:4px 12px;align-items:center}
-.life-compact-theme .budget-workspace .budget-footer-actions{gap:16px}
+.life-compact-theme .budget-workspace .budget-footer{font-size:var(--ui-meta);padding:10px 0;gap:4px 12px;align-items:center;justify-content:flex-end}
+.life-compact-theme .budget-workspace .budget-footer-actions{gap:16px;justify-content:flex-end;width:100%}
 .life-compact-theme .budget-workspace .budget-goals-link{gap:8px}
 .life-compact-theme .budget-workspace .budget-footer button{min-height:44px;font-size:var(--ui-label)}
 .life-compact-theme .budget-workspace .budget-goals-link small{font-size:var(--ui-meta)}
@@ -147,7 +147,7 @@
 .life-compact-theme .imported-allowance{font-size:var(--ui-meta)}
 
 @media(max-width:700px){
- .life-compact-theme .budget-workspace .budget-footer{align-items:flex-start;gap:0}
+ .life-compact-theme .budget-workspace .budget-footer{align-items:flex-end;gap:0}
  .life-compact-theme .budget-workspace .budget-footer-actions{gap:20px}
 }
 @media(max-width:600px){
@@ -283,3 +283,6 @@
  .life-compact-theme .compact-app .budget-workspace .annual-fund-card{padding:10px}
  .life-compact-theme .budget-workspace .budget-footer-actions{flex-wrap:wrap;gap:4px 16px}
 }
+.life-compact-theme .budget-workspace{padding-bottom:76px}
+.life-compact-theme .compact-app .budget-workspace .budget-add-transaction{position:absolute;z-index:25;right:22px;bottom:calc(80px + var(--app-bottom-inset,0px));width:60px;height:60px;min-height:60px;border-radius:50%;box-shadow:0 5px 20px #0006;background:var(--primary);color:var(--primary-foreground)}
+.life-compact-theme .compact-app .budget-workspace .budget-add-transaction svg{width:30px;height:30px}
