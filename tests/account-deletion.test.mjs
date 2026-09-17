@@ -40,6 +40,15 @@ function fixture(){
 function dump(raw){return raw.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map(({name})=>[name,raw.prepare('SELECT * FROM '+name).all()]);}
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
 
+test('account deletion bounds a chunked body before looking up a session',async()=>{
+ let pulls=0,cancelled=false,sessionRead=false;
+ const body=new ReadableStream({pull(controller){pulls++;controller.enqueue(new Uint8Array(512));},cancel(){cancelled=true;}},{highWaterMark:0});
+ const request=new Request('https://life.test/api/auth/delete-account',{method:'POST',headers:{Origin:'https://life.test','Content-Type':'application/json'},body,duplex:'half'});
+ const auth={api:{getSession(){sessionRead=true;throw Error('Must not authenticate an oversized request');}}};
+ const response=await handleAccountDeletion(request,auth,env,{},now);
+ assert.equal(response.status,413);assert.equal(sessionRead,false);assert.equal(cancelled,true);assert.ok(pulls<=3);
+});
+
 test('deletion removes the signed-in account, all sessions and private records; another account is unchanged',async()=>{
  const f=fixture();try{
   await f.setup();await f.setup('b');

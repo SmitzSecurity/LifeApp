@@ -4,6 +4,7 @@ import {z} from 'zod/v3';
 import type {Database} from './service.ts';
 import {savedDayQuery} from './saved-day-link.ts';
 import type {Cadence} from './reviews.ts';
+import {readBoundedText} from '../request-body.ts';
 
 export const EMAIL_POLICY='full-report-v1';
 export const EMAIL_BATCH_SIZE=2;
@@ -49,7 +50,8 @@ export async function handleEmailSettings(request:Request,userId:string|null,db:
  if(request.method!=='POST')return json({error:'Method not allowed.'},405);
  if(request.headers.get('origin')!==new URL(request.url).origin||request.headers.get('sec-fetch-site')==='cross-site')return json({error:'Open LifeApp directly to change report emails.'},403);
  if(!request.headers.get('content-type')?.startsWith('application/json'))return json({error:'Expected JSON.'},415);
- const text=await request.text();if(new TextEncoder().encode(text).length>2048)return json({error:'Request too large.'},413);
+ const read=await readBoundedText(request,2048);if(!read.ok)return json({error:read.status===413?'Request too large.':'Invalid request.'},read.status);
+ const text=read.text;
  let body;try{body=JSON.parse(text);}catch{return json({error:'Invalid request.'},400);}
  return saveEmailConsent(db,userId,body,settings,now);
 }

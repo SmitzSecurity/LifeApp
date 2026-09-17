@@ -151,6 +151,7 @@
  .life-compact-theme .budget-workspace .budget-footer-actions{gap:20px}
 }
 @media(max-width:600px){
+ .life-compact-theme .recurring-dialog .recurring-schedule-limits{grid-template-columns:minmax(0,1fr)}
  .life-compact-theme .budget-workspace{padding-top:10px}
  .life-compact-theme .budget-toolbar>.compact-field{width:155px;max-width:54%}
  .life-compact-theme .compact-app .budget-metrics>div{padding:8px 10px}

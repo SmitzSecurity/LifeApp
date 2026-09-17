@@ -4,6 +4,7 @@ import {Button} from '@/components/ui/button';
 import type {Routine,Saved} from '@/lib/life/modules';
 import type {RoutineBuildResult} from '@/lib/life/routine-build-schema';
 import {repTarget} from '@/lib/life/exercise-presets';
+import {definiteClientRejection} from '@/lib/life/write-retry';
 import {request,useUnsaved,useWorkoutCancel,WorkoutToolVisible} from './shared';
 import {useAIStatus} from './use-ai-status';
 import Dictation from './dictation';
@@ -20,9 +21,9 @@ export default function RoutineBuilder({onDirty,onReview,reviewDisabled,embedded
  });
  const cancel=useWorkoutCancel(()=>{generation.current++;status.stop();setText('');setError('');setBusy(false);},busy&&!pending);
  async function generate(){
-  const input=pending||{requestId:crypto.randomUUID(),text:text.trim(),consent:true as const},ticket=++generation.current;pendingRef.current=input;setPending(input);setBusy(true);setError('');
+  const retrying=!!pending,input=pending||{requestId:crypto.randomUUID(),text:text.trim(),consent:true as const},ticket=++generation.current;pendingRef.current=input;setPending(input);setBusy(true);setError('');
   try{const data=await request('',{action:'routine-build',build:input});if(!mounted.current||ticket!==generation.current)return;setBuilds(old=>[data.build,...old.filter(b=>b.id!==data.build.id)]);if(data.build.status!=='generating'){pendingRef.current=null;setPending(null);if(data.build.result)setText('');}}
-  catch(e){if(!mounted.current||ticket!==generation.current)return;setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500)){pendingRef.current=null;setPending(null);}}
+  catch(e){if(!mounted.current||ticket!==generation.current)return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying)){pendingRef.current=null;setPending(null);}}
   finally{if(mounted.current&&ticket===generation.current){setBusy(false);void status.check();}}
  }
  async function remove(build:Build){setBusy(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'build',id:'routine:'+build.id,deleted:!build.deleted}});await status.check();}catch(e){setError((e as Error).message);}finally{setBusy(false);}}

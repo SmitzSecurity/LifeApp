@@ -9,7 +9,7 @@ import type {TransactionBuildResult} from '@/lib/life/transaction-build-schema';
 import {addTransactionReviewCategory,beginTransactionReview,editTransactionReviewRow,reviewMonthPlan,transactionReviewCategories,transactionReviewRecords,type TransactionReview,type TransactionReviewMonth,type TransactionReviewRow} from '@/lib/life/transaction-review';
 import {type Budget,type Saved,type Transaction} from '@/lib/life/modules';
 import {BUDGET_FILE_ACCEPT,budgetAttachmentText,prepareBudgetFile,type BudgetAttachment} from './budget-file';
-import {CurrencyInput,useBudgetDirty,type DirtyReporter} from './budget-fields';
+import {CurrencyInput,useBudgetDirty,definiteBudgetRejection,type DirtyReporter} from './budget-fields';
 import {TransactionEditor,blankTransaction} from './budget-transactions';
 import {Choice,request} from './shared';
 import {DateInput} from './date-input';
@@ -33,9 +33,9 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
  const [mode,setMode]=useState<'manual'|'ai'>('manual'),[manual]=useState(()=>blankTransaction(plan.id===today.slice(0,7)?today:plan.id+'-01')),[manualLocked,setManualLocked]=useState(false),[manualDirty,setManualDirty]=useState(false);
  const [text,setText]=useState(''),[attachment,setAttachment]=useState<BudgetAttachment>(),[preparing,setPreparing]=useState(false),[busy,setBusy]=useState(false),[reading,setReading]=useState(false),[saving,setSaving]=useState(false);
  const [builds,setBuilds]=useState<Build[]>([]),[loaded,setLoaded]=useState(false),[available,setAvailable]=useState(false),[blockedReason,setBlockedReason]=useState(''),[pending,setPending]=useState<BuildInput|null>(null),[pendingImport,setPendingImport]=useState<ImportInput|null>(null),[error,setError]=useState('');
- const [draft,setDraft]=useState<TransactionReview|null>(null),[newCategory,setNewCategory]=useState<{rowId:string;name:string;amount:string}|null>(null);
+ const [draft,setDraft]=useState<TransactionReview|null>(null),[newCategory,setNewCategory]=useState<{rowId:string;name:string;amount:string}|null>(null),[removing,setRemoving]=useState(false),[pendingRemoval,setPendingRemoval]=useState<string|null>(null);
  const mounted=useRef(true),generation=useRef(0),reviewGeneration=useRef(0),pendingRef=useRef<BuildInput|null>(null),reviewed=useRef<string|null>(null),plans=useRef<Saved<Budget>[]>([]),camera=useRef<HTMLInputElement>(null),files=useRef<HTMLInputElement>(null),writeLock=useRef(false);
- const locked=busy||preparing||reading||saving||!!pending||!!pendingImport,closeLocked=manualLocked||saving||!!pendingImport;
+ const locked=busy||preparing||reading||saving||removing||!!pending||!!pendingImport||!!pendingRemoval,closeLocked=manualLocked||saving||removing||!!pendingImport||!!pendingRemoval;
  const childDirty:DirtyReporter=useCallback((_id,value)=>setManualDirty(value),[]);
  useBudgetDirty('transaction-window',manualDirty||locked||!!text||!!attachment||!!draft,onDirty);
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;generation.current++;reviewGeneration.current++;};},[]);
@@ -78,6 +78,7 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
  }
  async function generate(){
   if(writeLock.current)return;
+  const retrying=!!pending;
   let input:BuildInput;
   try{input=pending||{requestId:crypto.randomUUID(),text:budgetAttachmentText(text,attachment),month:plan.id,intent:'transactions',consent:true,...(attachment?.image?{image:attachment.image}:{}),...(attachment?.document?{document:attachment.document}:{})};}
   catch(e){setError((e as Error).message);return;}
@@ -88,7 +89,7 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
    const build=result.build as Build;setBuilds(old=>[build,...old.filter(item=>item.id!==build.id)]);
    if(build.status!=='generating'){pendingRef.current=null;setPending(null);}
    if(build.result&&reviewed.current!==build.id){reviewed.current=build.id;void review(build);}else if(build.status==='failed')setError(buildFailure(build));
-  }catch(e){if(mounted.current&&ticket===generation.current){setError((e as Error).message);const code=(e as {status?:number}).status;if(code&&code<500){pendingRef.current=null;setPending(null);}}}
+  }catch(e){if(mounted.current&&ticket===generation.current){setError((e as Error).message);const code=(e as {status?:number}).status;if(definiteBudgetRejection(code,retrying)){pendingRef.current=null;setPending(null);}}}
   finally{writeLock.current=false;if(mounted.current&&ticket===generation.current){setBusy(false);void status.check();}}
  }
  function editRow(id:string,patch:Partial<TransactionReviewRow>){
@@ -109,8 +110,21 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
   finally{if(mounted.current&&ticket===reviewGeneration.current)setReading(false);}
  }
  function addCategory(){if(!draft||!newCategory)return;try{setDraft(addTransactionReviewCategory(draft,newCategory.rowId,newCategory.name,newCategory.amount));setNewCategory(null);setError('');}catch(e){setError((e as Error).message);}}
+ async function removeBuild(buildId:string){
+  if(writeLock.current)return;
+  const retrying=!!pendingRemoval,id=pendingRemoval||buildId;
+  if(!pendingRemoval&&!builds.some(build=>build.id===id&&['complete','failed'].includes(build.status)))return;
+  writeLock.current=true;setPendingRemoval(id);setRemoving(true);setError('');
+  try{
+   await request('',{action:'record-deletion',change:{kind:'build',id:'budget:'+id,deleted:true}});
+   if(!mounted.current)return;
+   setPendingRemoval(null);setBuilds(current=>current.map(build=>build.id===id?{...build,deleted:true}:build));void status.check();
+  }catch(e){if(mounted.current){setError((e as Error).message);const code=(e as {status?:number}).status;if(definiteBudgetRejection(code,retrying))setPendingRemoval(null);}}
+  finally{writeLock.current=false;if(mounted.current)setRemoving(false);}
+ }
  async function save(){
   if(!draft||writeLock.current)return;
+  const retrying=!!pendingImport;
   let input:ImportInput;
   try{
    if(pendingImport)input=pendingImport;
@@ -122,7 +136,7 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
   }catch(e){setError((e as Error).message);return;}
   writeLock.current=true;setPendingImport(input);setSaving(true);setError('');
   try{const result=await request('?transaction-import',{action:'transaction-import',import:input}) as ImportResult;if(!mounted.current)return;setPendingImport(null);onImported(result);onClose();}
-  catch(e){if(mounted.current){setError((e as Error).message);const code=(e as {status?:number}).status;if(code&&code<500)setPendingImport(null);}}
+  catch(e){if(mounted.current){setError((e as Error).message);const code=(e as {status?:number}).status;if(definiteBudgetRejection(code,retrying))setPendingImport(null);}}
   finally{writeLock.current=false;if(mounted.current)setSaving(false);}
  }
  const visibleBuilds=builds.filter(build=>build.intent==='transactions'&&!build.deleted),unconfirmed=builds.some(build=>['generating','uncertain'].includes(build.status)&&!build.resolvedBlocker),selected=draft?.rows.filter(row=>row.selected&&!row.alreadyAdded)||[];
@@ -162,7 +176,7 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
     <p className="transaction-ai-consent">Extract with AI sends your text, attached content and saved category names to Google Gemini. Review everything before it is saved. LifeApp keeps the extracted text and draft, not the original file.</p>
     {loaded&&!available&&<p className="transaction-field-hint">AI extraction is currently unavailable. You can still log a transaction manually.</p>}
     {blockedReason&&<p className="transaction-field-hint">{blockedReason}</p>}
-    {visibleBuilds.length>0&&<section className="transaction-saved-drafts"><h3>Saved drafts</h3>{visibleBuilds.map(build=><div key={build.id}><span><strong>{build.month?formatMonth(build.month):'Transactions'}</strong><small>{build.result?`${build.result.transactions.length} transactions`:build.status==='failed'?buildFailure(build):build.resolvedBlocker?'Previous outcome unconfirmed; reviewed.':build.status==='uncertain'?'Outcome unconfirmed. New AI requests are paused.':'Extracting…'}</small></span>{build.result&&<Button variant="secondary" disabled={locked} onClick={()=>void review(build)}>Review</Button>}</div>)}</section>}
+    {visibleBuilds.length>0&&<section className="transaction-saved-drafts"><h3>Saved drafts</h3>{visibleBuilds.map(build=><div key={build.id}><span><strong>{build.month?formatMonth(build.month):'Transactions'}</strong><small>{build.result?`${build.result.transactions.length} transactions`:build.status==='failed'?buildFailure(build):build.resolvedBlocker?'Previous outcome unconfirmed; reviewed.':build.status==='uncertain'?'Outcome unconfirmed. New AI requests are paused.':'Extracting…'}</small></span><div className="transaction-draft-actions">{build.result&&<Button variant="secondary" disabled={locked} onClick={()=>void review(build)}>Review</Button>}{['complete','failed'].includes(build.status)&&<Button variant="ghost" disabled={locked} onClick={()=>void removeBuild(build.id)}>Delete</Button>}</div></div>)}</section>}
    </>}
    {pending&&<p className="transaction-field-hint" role="status">Extracting your transactions… You can close this window; a submitted request may finish in Saved drafts.</p>}
    {reading&&<p className="transaction-field-hint" role="status">Loading categories and checking for duplicates…</p>}
@@ -170,6 +184,6 @@ export default function TransactionWindow({plan,today,annualFundEnabled,onSaveTr
    {status.error&&<p className="error" role="alert">Could not check saved drafts. {status.delayed?'Check your connection and reopen this window.':'Trying again automatically…'}</p>}
    {error&&<p className="error" role="alert">{error}</p>}
   </div>
-  {(mode==='ai'||draft)&&<DialogFooter><Button variant="ghost" disabled={closeLocked} onClick={close}>Cancel</Button>{draft?<><Button variant="ghost" disabled={locked} onClick={()=>{reviewGeneration.current++;setDraft(null);setNewCategory(null);setError('');}}>Back</Button><Button disabled={saving||busy||reading||!pendingImport&&(alreadyImported||!!newCategory||!!unassigned.length||!selected.length)} onClick={()=>void save()}>{saving?'Saving…':pendingImport?'Retry save':`Save ${selected.length===1?'transaction':'transactions'}`}</Button></>:<Button disabled={busy||preparing||reading||manualLocked||!loaded||!available||!!pending&&!status.delayed||!pending&&(!!blockedReason||unconfirmed||text.trim().length<10&&!attachment)} onClick={()=>void generate()}>{busy?'Extracting…':pending?'Retry extraction':'Extract with AI'}</Button>}</DialogFooter>}
+  {(mode==='ai'||draft)&&<DialogFooter><Button variant="ghost" disabled={closeLocked} onClick={close}>Cancel</Button>{pendingRemoval?<Button disabled={removing} onClick={()=>void removeBuild(pendingRemoval)}>{removing?'Deleting…':'Retry delete'}</Button>:draft?<><Button variant="ghost" disabled={locked} onClick={()=>{reviewGeneration.current++;setDraft(null);setNewCategory(null);setError('');}}>Back</Button><Button disabled={saving||busy||reading||!pendingImport&&(alreadyImported||!!newCategory||!!unassigned.length||!selected.length)} onClick={()=>void save()}>{saving?'Saving…':pendingImport?'Retry save':`Save ${selected.length===1?'transaction':'transactions'}`}</Button></>:<Button disabled={busy||preparing||reading||manualLocked||!loaded||!available||!!pending&&!status.delayed||!pending&&(!!blockedReason||unconfirmed||text.trim().length<10&&!attachment)} onClick={()=>void generate()}>{busy?'Extracting…':pending?'Retry extraction':'Extract with AI'}</Button>}</DialogFooter>}
  </DialogContent></Dialog>;
 }

@@ -18,6 +18,14 @@ export type ReportRow={deleted?:boolean;user_id:string;request_id:string;entry_d
 const json=(data:unknown,status=200)=>Response.json(data,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
 export const publicReport=(r:ReportRow)=>({id:r.request_id,deleted:!!r.deleted,date:r.entry_date,cadence:r.cadence||'daily',from:r.window_start||r.entry_date,revision:r.revision,sourceVersion:r.source_version,predecessorId:r.predecessor_id,critique:r.critique,status:r.status,text:r.report_text,inputTokens:r.input_tokens,outputTokens:r.output_tokens,thoughtTokens:r.thought_tokens,costMicros:r.cost_micros,reservedMicros:r.reserved_micros,model:r.model,createdAt:r.created_at,errorCode:r.error_code});
 const requestSchema=z.object({date:dateSchema,cadence:cadenceSchema.default('daily'),requestId:z.string().uuid(),sourceVersion:z.number().int().positive(),predecessorId:z.string().max(80).nullable(),critique:z.string().trim().max(1000),consent:z.literal(true)}).strict();
+const regenerationCritique=(critique:string)=>critique||'Regenerate using the current saved context and guidance.';
+function matchesRequest(row:ReportRow,input:z.infer<typeof requestSchema>){
+ if(row.entry_date!==input.date||(row.cadence||'daily')!==input.cadence)return false;
+ // Originals have one deterministic period identity. Regenerations use the
+ // caller's retry ID and must retain the exact reviewed source and request.
+ return !input.predecessorId||(row.predecessor_id===input.predecessorId&&row.source_version===input.sourceVersion&&row.critique===regenerationCritique(input.critique));
+}
+const changedRequest=()=>json({error:'This request belongs to a different analysis. Start a new request for changed feedback or saved context.'},409);
 async function getReport(db:Database,userId:string,id:string){return db.prepare('SELECT * FROM life_ai_reviews WHERE user_id=?1 AND request_id=?2').bind(userId,id).first<ReportRow>();}
 const inMonth=(now:Date)=>now.toISOString().slice(0,7)+'-01T00:00:00.000Z';
 export async function listAI(db:Database,userId:string,date:string|null,settings:AISettings,now:Date,cadence:Cadence='daily'){
@@ -36,7 +44,7 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  let window;try{window=analysisWindow(cadence,input.date);}catch(e){return json({error:(e as Error).message},400);}
  const requestId=input.predecessorId?input.requestId:`${cadence}:${input.date}`;
  const existing=await getReport(db,userId,requestId);
- if(existing)return existing.entry_date===input.date&&(existing.cadence||'daily')===cadence?json({report:publicReport(existing)},existing.status==='generating'?202:200):json({error:'This request belongs to a different analysis. Refresh and try again.'},409);
+ if(existing)return matchesRequest(existing,input)?json({report:publicReport(existing)},existing.status==='generating'?202:200):changedRequest();
  if(!settings.enabled||!settings.provider)return json({error:'LifeApp’s AI connection needs to be activated by the app owner.'},503);
  if(now.valueOf()>=Date.parse(PRICE_EXPIRES))return json({error:'AI pricing needs a server-side update before more reviews can run.'},503);
  const consent=automatic?(periodic?await readPeriodConsent(db,userId):await readAutomaticConsent(db,userId)):null;
@@ -65,7 +73,7 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
  const evidence:ReviewRecord[]=prior.results.filter(r=>{const key=r.cadence+':'+r.entry_date;if(!allowed.includes(r.cadence)||seen.has(key))return false;seen.add(key);return true;}).sort((a,b)=>allowed.indexOf(a.cadence)-allowed.indexOf(b.cadence)).map(r=>({id:r.request_id,cadence:r.cadence,from:r.window_start||r.entry_date,through:r.entry_date,status:'complete',revision:r.revision,content:r.report_text}));
  const suppressedOccurrences=budget?await readSuppressedOccurrences(db,userId,month,now):[];
  const context=periodic?buildPeriodContext(profile,cadence,window.from,window.through,entries,activity,evidence):buildReviewContext({profile,from:input.date,through:input.date,entries:[entry],budget:budget||undefined,suppressedOccurrences,...activity});
- const critique=input.predecessorId?(input.critique||'Regenerate using the current saved context and guidance.'):'';
+ const critique=input.predecessorId?regenerationCritique(input.critique):'';
  const snapshot=JSON.stringify({context,previousReview:previous?.deleted?null:previous?.report_text||null,...(previous?.deleted?{previousReviewExcluded:true}:{}),revisionRequest:critique||null,...(consent?{automaticConsent:{version:consent.version,policyVersion:periodic?PERIOD_POLICY:AUTOMATIC_POLICY,startDate:consent.startDate,acceptedAt:consent.acceptedAt}}:{})});
  if(new TextEncoder().encode(snapshot+systemInstruction).length>MAX_INPUT_BYTES)return json({error:'This day’s context exceeds the initial AI limit. It needs a larger-context review path.'},413);
  const revision=previous?previous.revision+1:1;
@@ -86,7 +94,7 @@ export async function generateAI(db:Database,userId:string,body:unknown,settings
   AND EXISTS(SELECT 1 FROM life_daily_job_status WHERE user_id=?1 AND entry_date=?3 AND state='ready' AND source_version=?5)
  )`):''}
  ON CONFLICT DO NOTHING RETURNING request_id`).bind(userId,requestId,input.date,revision,periodic?profile.version:entry.version,previous?.request_id||null,critique,snapshot,AI_MODEL,PRICE_VERSION,RESERVATION_MICROS,now.toISOString(),inMonth(now),limits.userCapMicros,spending.globalCapMicros,now.toISOString().slice(0,10)+'T00:00:00.000Z',pr.version,cadence,window.from,entries.reduce((n,e)=>n+e.version,0),entries.length,spending.ownerUserId,...(automatic?[automatic.consentVersion,periodic?PERIOD_POLICY:AUTOMATIC_POLICY]:[])).first<{request_id:string}>();
- if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return json({report:publicReport(duplicate)},202);return json({error:'The analysis limit has been reached, or the saved context changed. Refresh first; if the limit remains, try again tomorrow.'},429);}
+ if(!admitted){const duplicate=await getReport(db,userId,requestId);if(duplicate)return matchesRequest(duplicate,input)?json({report:publicReport(duplicate)},duplicate.status==='generating'?202:200):changedRequest();return json({error:'The analysis limit has been reached, or the saved context changed. Refresh first; if the limit remains, try again tomorrow.'},429);}
  try{
   const result=await settings.provider.generate(snapshot);
   const exceeded=result.costMicros>RESERVATION_MICROS,valid=result.text.trim().length>0&&result.finishReason==='STOP'&&!exceeded;

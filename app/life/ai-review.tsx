@@ -5,6 +5,7 @@ import {Button} from '@/components/ui/button';
 import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter} from '@/components/ui/alert-dialog';
 import type {Entry,Profile} from '@/lib/life/domain';
 import type {Cadence} from '@/lib/life/reviews';
+import {definiteClientRejection} from '@/lib/life/write-retry';
 import {request} from './shared';
 import AnalysisText from './analysis-text';
 import {useAIStatus} from './use-ai-status';
@@ -26,25 +27,25 @@ export default function AIReview({entry,date,cadence='daily',profile,synced,head
  const reports=[...(data?.reports||[])].sort((a,b)=>b.revision-a.revision),latest=reports[0],shown=reports.find(r=>r.status==='complete'&&!r.deleted),unconfirmed=!!latest&&latest.status!=='complete';
  const ready=cadence!=='daily'||!!entry?.complete&&!entry?.deleted;
  const canGenerate=!!data?.available&&synced&&ready&&!unconfirmed&&!busy&&!generating&&!pending&&!deletePending&&!feedbackPending&&(!latest||data.regenerationsRemaining>0);
- async function remove(report:AnalysisReport){const target=deletePending||report,ticket=scopeEpoch.current,current=()=>mounted.current&&scopeEpoch.current===ticket;setDeletePending(target);setBusy(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'analysis',id:target.id,deleted:!target.deleted}});if(!current())return;setDeletePending(null);await status.check();if(!current())return;onGenerated?.();setNotice(target.deleted?'Analysis restored.':'Analysis moved to Trash.');}catch(e){if(!current())return;setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500))setDeletePending(null);await status.check();}finally{if(current())setBusy(false);}}
+ async function remove(report:AnalysisReport){const retrying=!!deletePending,target=deletePending||report,ticket=scopeEpoch.current,current=()=>mounted.current&&scopeEpoch.current===ticket;setDeletePending(target);setBusy(true);setError('');try{await request('',{action:'record-deletion',change:{kind:'analysis',id:target.id,deleted:!target.deleted}});if(!current())return;setDeletePending(null);await status.check();if(!current())return;onGenerated?.();setNotice(target.deleted?'Analysis restored.':'Analysis moved to Trash.');}catch(e){if(!current())return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying))setDeletePending(null);await status.check();}finally{if(current())setBusy(false);}}
  async function runGeneration(nextProfile:Profile,critique=''){
-  const input=pendingInput||{cadence,date:targetDate,requestId,sourceVersion:cadence==='daily'?entry!.version:nextProfile.version,predecessorId:latest?.id||null,critique,consent:true as const},ticket=scopeEpoch.current,run=generation.current.epoch+1,id=input.predecessorId?input.requestId:input.cadence+':'+input.date;generation.current={epoch:run,id};const current=()=>mounted.current&&scopeEpoch.current===ticket&&generation.current.epoch===run;
+  const retrying=!!pendingInput,input=pendingInput||{cadence,date:targetDate,requestId,sourceVersion:cadence==='daily'?entry!.version:nextProfile.version,predecessorId:latest?.id||null,critique,consent:true as const},ticket=scopeEpoch.current,run=generation.current.epoch+1,id=input.predecessorId?input.requestId:input.cadence+':'+input.date;generation.current={epoch:run,id};const current=()=>mounted.current&&scopeEpoch.current===ticket&&generation.current.epoch===run;
   setPendingInput(input);setPending(id);setGenerating(true);setDismissed(false);
   try{await request('',{action:'ai',review:input});if(!current())return;setRequestId(crypto.randomUUID());await status.check();}
-  catch(e){if(!current())return;setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500)){setPending(null);setPendingInput(null);generation.current.id=null;}await status.check();}
+  catch(e){if(!current())return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying)){setPending(null);setPendingInput(null);generation.current.id=null;}await status.check();}
   finally{if(current())setGenerating(false);}
  }
  async function generate(){setError('');setNotice('');await runGeneration(profile);}
  function cancelWait(){setDismissed(true);}
  function openFeedback(){setFeedbackId(crypto.randomUUID());setFeedback('');setFeedbackOpen(true);setError('');}
  async function saveFeedback(regenerate:boolean){
-  if(!shown||!feedback.trim())return;const input=feedbackPending||{id:feedbackId,text:feedback,reportId:shown.id,date:targetDate,cadence,profileVersion:profile.version,regenerate},ticket=scopeEpoch.current,current=()=>mounted.current&&scopeEpoch.current===ticket;setFeedbackPending(input);setBusy(true);setError('');
+  if(!shown||!feedback.trim())return;const retrying=!!feedbackPending,input=feedbackPending||{id:feedbackId,text:feedback,reportId:shown.id,date:targetDate,cadence,profileVersion:profile.version,regenerate},ticket=scopeEpoch.current,current=()=>mounted.current&&scopeEpoch.current===ticket;setFeedbackPending(input);setBusy(true);setError('');
   try{
    const {regenerate:run,...payload}=input;const result=await request('',{action:'analysis-feedback',feedback:payload});if(!current())return;setFeedbackPending(null);
    onProfileSaved(result.profile);setNotice('Feedback saved for future analyses.');
    setFeedback('');setFeedbackOpen(false);
    setBusy(false);if(run)await runGeneration(result.profile,input.text);
-  }catch(e){if(!current())return;setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500))setFeedbackPending(null);if(regenerate)await status.check();}finally{if(current())setBusy(false);}
+  }catch(e){if(!current())return;setError((e as Error).message);if(definiteClientRejection((e as {status?:number}).status,retrying))setFeedbackPending(null);if(regenerate)await status.check();}finally{if(current())setBusy(false);}
  }
  const canRetry=status.delayed&&!!pending&&!!pendingInput&&!generating&&!reports.some(r=>r.id===pending)&&!busy&&!deletePending&&!feedbackPending;
  return <section className="analysis-card" aria-label={heading}>

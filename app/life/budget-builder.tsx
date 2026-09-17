@@ -12,7 +12,7 @@ import {Choice,request} from './shared';
 import RecurringDialog,{recurringDescription} from './budget-recurring';
 import LoanDialog from './loan-builder';
 import {useAIStatus} from './use-ai-status';
-import {CurrencyInput,useBudgetDirty,useItemSave,type DirtyReporter} from './budget-fields';
+import {CurrencyInput,useBudgetDirty,useItemSave,definiteBudgetRejection,type DirtyReporter} from './budget-fields';
 
 type Build={id:string;month?:string;intent?:'loans'|'transactions';status:string;deleted?:boolean;errorCode?:string|null;resolvedBlocker?:boolean;result:BudgetBuildResult|null};
 type Recovery={sourceId:string;expiresAt:string};
@@ -59,7 +59,7 @@ export default function BudgetBuilder({plan,onSave,onClose,onDirty,intent}:{inte
   let input:Input;try{input=pending||{requestId:crypto.randomUUID(),text:budgetAttachmentText(text,attachment),month:plan.id,...(intent?{intent}:{}),consent:true as const,...(attachment?.image?{image:attachment.image}:{}),...(attachment?.document?{document:attachment.document}:{}),...(recovery?{recoveryOf:recovery.sourceId}:{})};}catch(e){setError((e as Error).message);return;}
   const ticket=++generation.current;pendingRef.current=input;setPending(input);setBusy(true);setError('');
   try{const result=await request('?budget-build',{action:'budget-build',build:input});if(!mounted.current||ticket!==generation.current)return;setBuilds(old=>[result.build,...old.filter(b=>b.id!==result.build.id).map(b=>input.recoveryOf===b.id?{...b,resolvedBlocker:true}:b)]);if(result.build.status!=='generating'){pendingRef.current=null;setPending(null);}if(input.recoveryOf)setRecovery(null);if(result.build.result&&reviewed.current!==result.build.id){reviewed.current=result.build.id;review(result.build);}else if(result.build.status==='failed')setError(failedBuild(result.build));}
-  catch(e){if(!mounted.current||ticket!==generation.current)return;setError((e as Error).message);if((e as {status?:number}).status&&((e as {status:number}).status<500)){pendingRef.current=null;setPending(null);}}
+  catch(e){if(!mounted.current||ticket!==generation.current)return;setError((e as Error).message);if(definiteBudgetRejection((e as {status?:number}).status,!!pending)){pendingRef.current=null;setPending(null);}}
   finally{if(mounted.current&&ticket===generation.current){setBusy(false);void status.check();}}
 
  }

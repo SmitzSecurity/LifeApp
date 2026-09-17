@@ -1,5 +1,12 @@
 import {workoutSchema,routineSchema,nextSet,type Routine,type Saved,type Workout} from './modules.ts';
 
+// A later authentication/validation rejection cannot prove whether an earlier
+// lost acknowledgement committed. Release its frozen retry only after a 409
+// has been reconciled against a newer version of that exact saved record.
+export function definiteWorkoutRejection(status:number|undefined,wasUnconfirmed:boolean,submittedVersion:number,reconciledVersion?:number):boolean{
+ return !!status&&status>=400&&status<500&&(!wasUnconfirmed||status===409&&reconciledVersion!==undefined&&reconciledVersion>submittedVersion);
+}
+
 // Normalize optional fields and key order before deciding whether a preview
 // needs template choices. Invalid numeric drafts are never equal to saved data.
 export function sameRoutinePlan(a:Routine,b:Routine|undefined):boolean{

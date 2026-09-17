@@ -237,6 +237,10 @@
 .life-compact-theme .compact-app .organized-settings{display:flex;flex:1;flex-direction:column;width:100%;max-width:none;min-height:0;padding:0;margin:0;border:0;border-radius:0}
 .organized-settings .settings-fields{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;padding:14px 24px}
 .organized-settings .settings-fields-inner{width:100%;max-width:820px;margin-inline:auto;min-width:0}
+.organized-settings .settings-input-lock{border:0;padding:0;margin:0;min-width:0}
+.settings-conflict{padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:12px;background:var(--card)}
+.settings-conflict p{margin:0 0 10px}
+.settings-conflict .action-row{flex-wrap:wrap;gap:8px}
 .organized-settings .settings-fields-inner:has(.palette-editor[open]){max-width:1140px}
 .life-compact-theme .compact-app .organized-settings>.settings-save{position:relative;bottom:auto;z-index:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex-shrink:0;gap:16px;padding:8px 16px;margin:0;background:var(--nav);border:0;border-top:1px solid var(--border)}
 .life-compact-theme .compact-app .organized-settings>.settings-save>button{width:100%;min-height:44px;font-size:var(--ui-copy,.875rem)}

@@ -48,7 +48,17 @@ export default function RecurringDialog({item,previous,plan,onSave,onClose,onDir
  function edit(patch:Partial<Recurring>){setDraft({...draft,...patch});operation.setError('');}
  function frequencyChanged(frequency:string){edit({frequency:frequency as Recurring['frequency'],custom:frequency==='custom'?draft.custom||{unit:'months',interval:1,days:[draft.day]}:undefined,month:frequency==='annual'||frequency==='custom'&&draft.custom?.unit==='years'?draft.month??Number(plan.id.slice(5,7)):undefined,paymentDueDay:['monthly-day','monthly-weekday'].includes(frequency)?draft.paymentDueDay:undefined});}
  async function save(change?:BudgetItemChange){
-  try{if(!change&&endMode==='date'&&!draft.endDate)throw Error('Choose the final eligible date.');const cents=draft.kind==='transfer'&&!amount.trim()?0:parseMoney(amount);const mutation=change||{kind:'recurring' as const,month:plan.id,previous,item:recurringSchema.parse({...draft,amountCents:cents,variable:draft.kind==='transfer'&&cents===0?true:draft.variable}),...(!plan.version?{initial:plan.data}:{})};if(await operation.submit(mutation))onClose();}
+  try{
+   // Saved-record deletion and exact retries must not validate or commit the
+   // current form draft. It may contain an intentionally unfinished amount.
+   let mutation=change;
+   if(!mutation){
+    if(endMode==='date'&&!draft.endDate)throw Error('Choose the final eligible date.');
+    const cents=draft.kind==='transfer'&&!amount.trim()?0:parseMoney(amount);
+    mutation={kind:'recurring',month:plan.id,previous,item:recurringSchema.parse({...draft,amountCents:cents,variable:draft.kind==='transfer'&&cents===0?true:draft.variable}),...(!plan.version?{initial:plan.data}:{})};
+   }
+   if(await operation.submit(mutation))onClose();
+  }
   catch(e){operation.setError(e instanceof Error&&'issues' in e?((e as unknown as {issues:{message:string}[]}).issues[0]?.message||'Check the schedule details.'):'Enter a valid amount and schedule.');}
  }
  if(draft.debt)return <LoanDialog item={draft} previous={previous} plan={plan} onSave={onSave} onClose={onClose} onDirty={onDirty} draftMode={draftMode} initialAmount={amount}/>;
@@ -71,7 +81,7 @@ export default function RecurringDialog({item,previous,plan,onSave,onClose,onDir
  {isAnnualExpense(draft)&&(annualFundEnabled||draft.excludeFromAnnualFund!==undefined)&&<label className="inline-check"><input type="checkbox" checked={!draft.excludeFromAnnualFund} onChange={event=>edit({excludeFromAnnualFund:!event.target.checked})}/>Include in the annual bills fund target</label>}
  {(draft.frequency==='weekly'||draft.frequency==='biweekly')&&<p className="field-hint">The start date sets the weekday and the first payment.</p>}
  {draft.paymentDueDay&&<p className="field-hint">The recurring day is your statement or reminder date. The separate payment due day is shown with it.</p>}
- <div className="form-grid"><div className="compact-field"><DateInput label={isAdvancedSchedule(draft)?'First occurrence / starts on':'Starts on'} required={isAdvancedSchedule(draft)} clearable={!isAdvancedSchedule(draft)} value={draft.startDate||''} onValueChange={startDate=>edit({startDate:startDate||undefined})}/></div><label className="compact-field">Ends<Choice label="Schedule end" value={endMode} options={[{value:'never',label:'No end date'},{value:'date',label:'On a date'},{value:'count',label:'After installments'}]} onChange={value=>{setEndMode(value);edit({endDate:value==='date'?draft.endDate||plan.id+'-28':undefined,installments:value==='count'?draft.installments||6:undefined,startDate:value==='count'?draft.startDate||plan.id+'-01':draft.startDate});}}/></label>
+ <div className="form-grid recurring-schedule-limits"><div className="compact-field"><DateInput label={isAdvancedSchedule(draft)?'First occurrence / starts on':'Starts on'} required={isAdvancedSchedule(draft)} clearable={!isAdvancedSchedule(draft)} value={draft.startDate||''} onValueChange={startDate=>edit({startDate:startDate||undefined})}/></div><label className="compact-field">Ends<Choice label="Schedule end" value={endMode} options={[{value:'never',label:'No end date'},{value:'date',label:'On a date'},{value:'count',label:'After installments'}]} onChange={value=>{setEndMode(value);edit({endDate:value==='date'?draft.endDate||plan.id+'-28':undefined,installments:value==='count'?draft.installments||6:undefined,startDate:value==='count'?draft.startDate||plan.id+'-01':draft.startDate});}}/></label>
  {endMode==='date'&&<div className="compact-field"><DateInput label="Last eligible date" required value={draft.endDate||''} onValueChange={endDate=>edit({endDate:endDate||undefined})}/></div>}{endMode==='count'&&<label className="compact-field">Number of payments<NumericInput min={1} max={600} value={draft.installments??NaN} onValueChange={installments=>edit({installments})}/></label>}</div>
  {endMode==='count'&&<p className="field-hint">Counts scheduled payments from the first due date on or after the start. Missed payments do not extend the schedule.</p>}
  {draft.kind==='expense'&&['monthly-day','monthly-weekday'].includes(draft.frequency)&&<label className="inline-check"><input type="checkbox" checked={false} onChange={event=>{if(event.target.checked)edit({debt:{...loanPreset('other',plan.id+'-01'),paymentStatus:amount.trim()?'scheduled':'balance-only'}});}}/>Track as a loan or debt</label>}

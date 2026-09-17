@@ -6,6 +6,7 @@ import {Miniflare} from 'miniflare';
 import {SignJWT,generateKeyPair,exportJWK} from 'jose';
 import {createGoogleAuth,handleGoogleAuth,googleIdentity} from '../lib/auth/google.ts';
 import {googleConfig,permittedGoogleUser,withoutSitesIdentity} from '../lib/auth/config.ts';
+import {readBoundedText} from '../lib/request-body.ts';
 const env={LIFEAPP_AUTH_MODE:'google',BETTER_AUTH_URL:'https://life.test',BETTER_AUTH_SECRET:randomBytes(48).toString('base64url'),GOOGLE_CLIENT_ID:'synthetic-client',GOOGLE_CLIENT_SECRET:'synthetic-secret',LIFEAPP_BETA_EMAILS:'owner@example.test'};
 const cookies=r=>r.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');
 async function fixture(){
@@ -77,4 +78,22 @@ test('Google identity token validation rejects wrong audience, issuer, expiry an
    assert.equal(await readUser({idToken:token}),null,kind);
   }
  }finally{globalThis.fetch=nativeFetch;await f.mf.dispose();}
+});
+
+test('auth rejects oversized streamed bodies before buffering the remainder or dispatching',async()=>{
+ for(const declared of [false,true]){
+  let pulls=0,cancelled=false,dispatched=false;
+  const body=new ReadableStream({pull(controller){pulls++;controller.enqueue(new Uint8Array(1024));},cancel(){cancelled=true;}},{highWaterMark:0});
+  const request=new Request(env.BETTER_AUTH_URL+'/api/auth/sign-in/social',{method:'POST',headers:{Origin:env.BETTER_AUTH_URL,'Content-Type':'application/json',...(declared?{'Content-Length':'131072'}:{})},body,duplex:'half'});
+  const response=await handleGoogleAuth(request,{handler(){dispatched=true;throw Error('Must not dispatch');}},env);
+  assert.equal(response.status,413);assert.equal(dispatched,false);assert.equal(cancelled,true);assert.ok(pulls<=(declared?0:5));
+ }
+});
+
+test('bounded request reads count UTF-8 bytes and reject interrupted streams',async()=>{
+ const content='{"text":"é"}';
+ assert.deepEqual(await readBoundedText(new Request('https://life.test',{method:'POST',body:content}),new TextEncoder().encode(content).length),{ok:true,text:content});
+ assert.deepEqual(await readBoundedText(new Request('https://life.test',{method:'POST',body:content}),content.length),{ok:false,status:413});
+ const body=new ReadableStream({pull(controller){controller.error(Error('Synthetic interrupted upload'));}});
+ assert.deepEqual(await readBoundedText(new Request('https://life.test',{method:'POST',body,duplex:'half'}),4096),{ok:false,status:400});
 });

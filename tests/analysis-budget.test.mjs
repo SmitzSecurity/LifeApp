@@ -201,6 +201,42 @@ test('plain regeneration preserves accounting identities and limits concurrent r
  assert.equal((await (await f.call(undefined,'a','?ai=1&date=2026-09-13')).json()).regenerationsRemaining,0);
  }finally{f.raw.close();}
 });
+test('regeneration retries retain their source, predecessor and normalized feedback',async()=>{
+ const f=fixture();try{
+  await f.setup();const original=(await (await f.call(ai())).json()).report;
+  const request=ai('daily','2026-09-13',{predecessorId:original.id,critique:'  Focus on consistency.  '});
+  const saved=(await (await f.call(request)).json()).report;
+  const retry=await f.call(request);assert.equal(retry.status,200);assert.equal((await retry.json()).report.id,saved.id);
+  for(const change of [{sourceVersion:2},{predecessorId:'another-analysis'},{critique:'Different feedback.'}]){
+   const response=await f.call({...request,review:{...request.review,...change}});assert.equal(response.status,409,JSON.stringify(change));
+  }
+  assert.equal(f.state.calls.length,2);assert.equal(f.raw.prepare('SELECT COUNT(*) n FROM life_ai_usage').get().n,2);
+  // The one original period identity remains stable after a saved entry changes.
+  assert.equal((await f.call(ai('daily','2026-09-13',{sourceVersion:999}))).status,200);assert.equal(f.state.calls.length,2);
+ }finally{f.raw.close();}
+});
+test('unknown regeneration retries preserve the original hold without accepting changed input',async()=>{
+ const f=fixture();try{
+  await f.setup();const original=(await (await f.call(ai())).json()).report;
+  f.settings.provider.generate=async snapshot=>{f.state.calls.push(JSON.parse(snapshot));throw Error('Synthetic unknown completion');};
+  const request=ai('daily','2026-09-13',{predecessorId:original.id});assert.equal((await f.call(request)).status,502);
+  const retry=await f.call(request);assert.equal(retry.status,200);assert.equal((await retry.json()).report.status,'uncertain');
+  assert.equal((await f.call({...request,review:{...request.review,critique:'Changed request'}})).status,409);
+  const held=f.raw.prepare('SELECT status,cost_micros,reserved_micros FROM life_ai_usage WHERE request_id=?').get(request.review.requestId);
+  assert.equal(held.status,'uncertain');assert.equal(held.cost_micros,null);assert.equal(held.reserved_micros,200000);assert.equal(f.state.calls.length,2);
+ }finally{f.raw.close();}
+});
+test('a different regeneration winning the same ID during admission is rejected',async()=>{
+ const f=fixture();try{
+  await f.setup();const original=(await (await f.call(ai())).json()).report;
+  const request=ai('daily','2026-09-13',{predecessorId:original.id,critique:'This request'});
+  f.state.beforeInsert=()=>f.raw.prepare(`INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,predecessor_id,critique,status,input_snapshot,model,price_version,reserved_micros,created_at,cadence,window_start)
+   SELECT user_id,?,entry_date,2,source_version,request_id,'Another request','generating',input_snapshot,model,price_version,reserved_micros,created_at,cadence,window_start FROM life_ai_reviews WHERE request_id=?`).run(request.review.requestId,original.id);
+  const response=await f.call(request);assert.equal(response.status,409);assert.equal(f.state.calls.length,1);
+  const held=f.raw.prepare('SELECT status,critique,cost_micros FROM life_ai_reviews WHERE request_id=?').get(request.review.requestId);
+  assert.equal(held.status,'generating');assert.equal(held.critique,'Another request');assert.equal(held.cost_micros,null);
+ }finally{f.raw.close();}
+});
 test('daily, weekly, monthly and annual analyses share accounting but have independent original identities',async()=>{
  const f=fixture();try{await f.setup();await f.addDay('2026-08-31');await f.addDay('2025-12-31');
  for(const [cadence,date] of [['daily','2026-09-13'],['weekly','2026-09-13'],['monthly','2026-08-31'],['annual','2025-12-31']]){const response=await f.call(ai(cadence,date));assert.equal(response.status,200,JSON.stringify(await response.clone().json()));assert.equal((await response.json()).report.id,cadence+':'+date);}
