@@ -2,7 +2,7 @@ import test,{after,before} from 'node:test';
 import assert from 'node:assert/strict';
 import {Miniflare,createFetchMock} from 'miniflare';
 import {readFileSync,readdirSync} from 'node:fs';
-import {randomBytes} from 'node:crypto';
+import {randomBytes,randomUUID} from 'node:crypto';
 import {serializeSignedCookie} from 'better-call';
 import {runInNewContext} from 'node:vm';
 import {themeVariables,typographyVariables,palettes} from '../lib/life/appearance.ts';
@@ -18,7 +18,7 @@ test('compiled email-only Cron uses the native local binding and records one acc
  const stamp=new Date(Date.now()-60000).toISOString();
  await db.prepare("INSERT INTO life_auth_user VALUES('mail-owner','Synthetic','owner@example.test',1,NULL,1,1)").run();
  await db.prepare("INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES('mail-account','mail-google-sub','google','mail-owner',1,1)").run();
- await db.prepare("INSERT INTO life_profiles VALUES('google:mail-owner','{}',1,?1)").bind(stamp).run();
+ await db.prepare("INSERT INTO life_profiles(user_id,payload,version,updated_at) VALUES('google:mail-owner','{}',1,?1)").bind(stamp).run();
  await db.prepare("INSERT INTO life_email_consent VALUES('google:mail-owner',1,1,'full-report-v1','owner@example.test',?1,?1,?2)").bind(stamp,'a'.repeat(64)).run();
  await db.prepare("INSERT INTO life_ai_reviews(user_id,request_id,entry_date,revision,source_version,critique,status,input_snapshot,model,price_version,reserved_micros,created_at) VALUES('google:mail-owner','daily:2026-09-08','2026-09-08',1,1,'','generating','{}','synthetic','synthetic',0,?1)").bind(stamp).run();
  await db.prepare("UPDATE life_ai_reviews SET status='complete',report_text='Synthetic local email fixture. No real recipient.',finished_at=?1 WHERE user_id='google:mail-owner'").bind(stamp).run();
@@ -125,13 +125,60 @@ test('signed compiled history and export reads preserve records and isolate anot
  assert.deepEqual(await snapshot(),before);
 });
 
+test('compiled offline identity headers bind cached reads and queued writes to the verified account',async t=>{
+ const isolated=new Miniflare({...config,bindings:env});t.after(()=>isolated.dispose());
+ const db=await isolated.getD1Database('DB');
+ for(const file of readdirSync('drizzle').filter(file=>file.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+file,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
+ const stamp=Date.now(),id='synthetic-offline-owner',userId='google:'+id,token='synthetic-offline-token';
+ await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic Offline Owner','owner@example.test',stamp).run();
+ await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('synthetic-offline-session',stamp+86400000,token,stamp,id).run();
+ await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('synthetic-offline-account','synthetic-offline-google-sub','google',id,stamp).run();
+ const cookie=(await serializeSignedCookie('__Secure-lifeapp.session_token',token,env.BETTER_AUTH_SECRET,{path:'/',secure:true,httpOnly:true})).split(';')[0];
+ const call=(path='/api/life',body,expected=userId)=>isolated.dispatchFetch('https://life.test'+path,{method:body?'POST':'GET',headers:{Cookie:cookie,Origin:'https://life.test','Content-Type':'application/json',...(expected?{'X-Life-Account':expected}:{})},body:body?JSON.stringify(body):undefined});
+ const profile={goal:'Synthetic offline header fixture',timezone:'UTC',modules:['reflection','fitness'],habits:[],version:0};
+ const created=await call('/api/life',{action:'profile',profile},null);
+ assert.equal(created.status,200,await created.clone().text());assert.equal(created.headers.get('X-Life-Account'),userId);
+ const date=new Date(stamp-86400000).toISOString().slice(0,10),entry={date,journal:'Synthetic account-bound response',context:{},statuses:[],complete:false,version:0,mutationId:randomUUID()};
+ const saved=await call('/api/life',{action:'entry',entry});
+ assert.equal(saved.status,200,await saved.clone().text());assert.equal(saved.headers.get('X-Life-Account'),userId);assert.equal((await saved.json()).entry.journal,entry.journal);
+ const cardioId=randomUUID(),record={kind:'cardio',id:cardioId,version:0,data:{date,activity:'walk',minutes:20,distance:null,unit:'mi',intensity:'moderate',note:'Synthetic queued movement',voided:false}};
+ const resource=await call('/api/life',{action:'resource',record});
+ assert.equal(resource.status,200,await resource.clone().text());assert.equal(resource.headers.get('X-Life-Account'),userId);assert.equal((await resource.json()).record.id,cardioId);
+ for(const path of ['/api/life','/api/life?date='+date,'/api/life?kind=cardio']){
+  const read=await call(path);assert.equal(read.status,200);assert.equal(read.headers.get('X-Life-Account'),userId);assert.equal(read.headers.get('Cache-Control'),'private, no-store');
+ }
+ const snapshot=async()=>{
+  const result={};
+  for(const table of ['life_profiles','life_entries','life_resources','life_ai_reviews','life_routine_builds'])result[table]=(await db.prepare('SELECT * FROM '+table+' WHERE user_id=?1').bind(userId).all()).results;
+  return result;
+ };
+ const before=await snapshot(),changed={action:'entry',entry:{...entry,journal:'MUST NOT BE WRITTEN',version:1,mutationId:randomUUID()}};
+ for(const body of [undefined,changed]){
+  const mismatch=await call('/api/life',body,'google:another-offline-account');
+  assert.equal(mismatch.status,409);assert.equal(mismatch.headers.get('X-Life-Account'),userId);assert.equal(mismatch.headers.get('Cache-Control'),'private, no-store');
+  assert.doesNotMatch(await mismatch.text(),/Synthetic account-bound response/);
+ }
+ // The probe is read-only even if a reconnecting client accidentally sends a
+ // complete, otherwise valid mutation in its POST body.
+ for(const body of [undefined,changed]){
+  const probe=await call('/api/life?offline-account=1',body);
+  assert.equal(probe.status,200);assert.equal(probe.headers.get('X-Life-Account'),userId);assert.deepEqual(await probe.json(),{ready:true});
+ }
+ const mismatchedProbe=await call('/api/life?offline-account=1',changed,'google:another-offline-account');assert.equal(mismatchedProbe.status,409);
+ for(const path of ['/api/life','/api/life?offline-account=1'])for(const invalidCookie of [undefined,'__Secure-lifeapp.session_token=forged']){
+  const denied=await isolated.dispatchFetch('https://life.test'+path,{method:'POST',headers:{Origin:'https://life.test','Content-Type':'application/json','X-Life-Account':userId,'oai-authenticated-user-id':id,'oai-authenticated-user-email':'owner@example.test',...(invalidCookie?{Cookie:invalidCookie}:{})},body:JSON.stringify(changed)});
+  assert.equal(denied.status,401);assert.equal(denied.headers.get('X-Life-Account'),null);assert.doesNotMatch(await denied.text(),new RegExp(userId));
+ }
+ assert.deepEqual(await snapshot(),before,'mismatched identities, probes and forged authentication never mutate account records');
+});
+
 test('compiled scheduled handler persists D1 jobs and observes late completion atomically',async()=>{
  const enabled=new Miniflare({...config,bindings:{...env,LIFEAPP_REVIEW_PLANNER_ENABLED:'true'}});
  try{
   const db=await enabled.getD1Database('DB');
   for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())for(const sql of readFileSync('drizzle/'+f,'utf8').split('--> statement-breakpoint'))await db.prepare(sql.trim()).run();
   const profile={goal:'Synthetic scheduled goal',timezone:'America/New_York',modules:['reflection'],habits:[],version:1};
-  await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind('synthetic-scheduled-owner',JSON.stringify(profile),'2026-09-08T12:00:00Z').run();
+  await db.prepare('INSERT INTO life_profiles(user_id,payload,version,updated_at) VALUES(?1,?2,1,?3)').bind('synthetic-scheduled-owner',JSON.stringify(profile),'2026-09-08T12:00:00Z').run();
   const worker=await enabled.getWorker();
   for(let i=0;i<2;i++)assert.equal((await worker.scheduled({scheduledTime:Date.parse('2026-09-09T12:00:00Z'),cron:'*/5 * * * *'})).outcome,'ok');
   assert.equal((await db.prepare('SELECT COUNT(*) n FROM life_review_jobs').first()).n,1);
@@ -156,7 +203,7 @@ test('compiled automatic handler uses explicit consent and stores one mocked Gem
   const now=new Date(),date=new Date(now.valueOf()-86400000).toISOString().slice(0,10),id='synthetic-consented-owner';
   const preferences=defaultReviewPreferences();preferences.daily.time='00:00';
   const profile={goal:'Synthetic goal',timezone:'UTC',modules:['reflection'],habits:[],reviewPreferences:preferences};
-  await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(id,JSON.stringify(profile),now.toISOString()).run();
+  await db.prepare('INSERT INTO life_profiles(user_id,payload,version,updated_at) VALUES(?1,?2,1,?3)').bind(id,JSON.stringify(profile),now.toISOString()).run();
   await db.prepare('INSERT INTO life_entries VALUES(?1,?2,?3,1,?4)').bind(id,date,JSON.stringify({date,complete:true,journal:'Synthetic check-in',habits:[],context:{}}),now.toISOString()).run();
   const worker=await enabled.getWorker();
   assert.equal((await worker.scheduled({scheduledTime:Math.floor(now.valueOf()/600000)*600000,cron:'*/5 * * * *'})).outcome,'ok');
@@ -181,7 +228,7 @@ test('prepared upgrade and verification queries run on local D1 without granting
   }
   const load=name=>readFileSync('docs/setup/d1-upgrade-0005'+name+'.sql','utf8');
   assert.deepEqual(await db.prepare(load('-preflight')).first(),{migrations:5,required_prior_migrations:5,app_tables:11,consent_table:0,consideration_column:0,job_date_index:0,reminder_trigger:1,status_view:1});
-  await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind('synthetic-upgrade-owner',JSON.stringify({goal:'Synthetic upgrade',timezone:'UTC',modules:['reflection'],habits:[]}),new Date().toISOString()).run();
+  await db.prepare('INSERT INTO life_profiles(user_id,payload,version,updated_at) VALUES(?1,?2,1,?3)').bind('synthetic-upgrade-owner',JSON.stringify({goal:'Synthetic upgrade',timezone:'UTC',modules:['reflection'],habits:[]}),new Date().toISOString()).run();
   const before=await db.prepare(load('-counts')).first();
   await db.exec(load(''));
   assert.deepEqual(await db.prepare(load('-verify')).first(),{migrations:6,migration_0005:1,app_tables:12,consent_table:1,consideration_column:1,job_date_index:1,reminder_trigger:1,status_view:1,consent_rows:0});

@@ -1,6 +1,6 @@
 import {z} from 'zod/v3';
 import {resolveExerciseName} from './exercise-names.ts';
-import type {Saved,Workout} from './modules.ts';
+import {workingSetEntries,type Saved,type Workout} from './modules.ts';
 import type {Database} from './service.ts';
 
 export type ExercisePerformance={
@@ -23,9 +23,7 @@ export function performanceInWorkout(record:Saved<Workout>,name:string,workingSe
  // block, never combine sets from independently snapshotted exercise entries.
  const candidate=candidates[0];
  if(!candidate)return {matched:false,performance:null};
- const skipped=new Set((workout.skippedSets||[]).filter(s=>s.exerciseId===candidate.exercise.id).map(s=>s.workingSetNumber));
- const ordinals=Array.from({length:candidate.exercise.sets},(_,index)=>index+1).filter(ordinal=>!skipped.has(ordinal));
- const index=ordinals.indexOf(workingSetNumber),set=index<0?undefined:candidate.sets[index];
+ const set=workingSetEntries(workout,candidate.exercise.id).find(entry=>entry.workingSetNumber===workingSetNumber)?.set;
  if(!set||set.reps<=0)return {matched:true,performance:null};
  return {matched:true,performance:{workoutId:record.id,workoutName:workout.name,exerciseName:candidate.exercise.name,date:workout.date,finishedAt:workout.finishedAt,workingSetNumber,reps:set.reps,load:set.load,unit:candidate.exercise.unit}};
 }

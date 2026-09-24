@@ -46,16 +46,18 @@ export const transactionSchema=z.object({date:dateSchema,kind:z.enum(['expense',
  if(t.expectedDate&&t.expectedDate.slice(0,7)!==t.date.slice(0,7))c.addIssue({code:'custom',message:'Keep the expected and actual payment dates in the same month.'});
  if(t.planned&&t.expectedDate&&t.expectedDate!==t.date)c.addIssue({code:'custom',message:'A planned item’s date must match its expected payment date.'});
 });
-export const exerciseSchema=z.object({id:uuid,name:title,muscles:muscleTargetsSchema.optional(),sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
+export const exerciseSchema=z.object({id:uuid,name:title,setupNote:z.string().max(2000).optional(),muscles:muscleTargetsSchema.optional(),sets:z.number().int().min(1).max(20),reps:z.number().int().min(1).max(100),repMax:z.number().int().min(1).max(100).optional(),load:z.number().min(0).max(2000),unit:z.enum(['kg','lb']),restSeconds:z.number().int().min(0).max(900)}).strict().refine(e=>e.repMax===undefined||e.repMax>=e.reps,'The upper rep target must be at least the lower target.');
 export const routineSchema=z.object({name:title,weeklySessions:z.number().int().min(0).max(7).optional(),preferences:z.string().max(2000),exercises:z.array(exerciseSchema).min(1).max(30),archived:z.boolean()}).strict().refine(r=>new Set(r.exercises.map(e=>e.id)).size===r.exercises.length,'Exercise IDs must be unique.');
-export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(40),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
+export const setSchema=z.object({exerciseId:uuid,warmup:z.boolean().optional(),setNumber:z.number().int().min(1).max(40),workingSetNumber:z.number().int().min(1).max(20).optional(),reps:z.number().int().min(0).max(100),load:z.number().min(0).max(2000),completedAt:z.string().datetime()}).strict();
 export const skippedSetSchema=z.object({exerciseId:uuid,workingSetNumber:z.number().int().min(1).max(20)}).strict();
-export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(1200),skippedSets:z.array(skippedSetSchema).max(600).optional(),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable(),deleted:z.boolean().optional()}).strict().superRefine((w,c)=>{
+export const workoutSchema=z.object({date:dateSchema,routineId:uuid,name:title,exercises:z.array(exerciseSchema).min(1).max(30),sets:z.array(setSchema).max(1200),skippedSets:z.array(skippedSetSchema).max(600).optional(),lastSetSerials:z.array(z.object({exerciseId:uuid,setNumber:z.number().int().min(1).max(40)}).strict()).max(30).optional(),notes:z.string().max(5000).optional(),restUntil:z.string().datetime().nullable(),finishedAt:z.string().datetime().nullable(),deleted:z.boolean().optional()}).strict().superRefine((w,c)=>{
  if(new Set(w.exercises.map(e=>e.id)).size!==w.exercises.length)c.addIssue({code:'custom',message:'Exercise IDs must be unique.'});
  if(new Set(w.sets.map(s=>s.exerciseId+':'+s.setNumber)).size!==w.sets.length)c.addIssue({code:'custom',message:'A set can only be logged once.'});
  const skipped=w.skippedSets||[];
  if(new Set(skipped.map(s=>s.exerciseId+':'+s.workingSetNumber)).size!==skipped.length)c.addIssue({code:'custom',path:['skippedSets'],message:'A working set can only be skipped once.'});
- for(const e of w.exercises){const logged=w.sets.filter(s=>s.exerciseId===e.id);if(logged.filter(s=>!s.warmup).length+skipped.filter(s=>s.exerciseId===e.id).length>e.sets||logged.filter(s=>s.warmup).length>20)c.addIssue({code:'custom',message:'Keep the planned working sets and at most 20 warm-ups per exercise.'});}
+ for(const e of w.exercises){const logged=w.sets.filter(s=>s.exerciseId===e.id),working=logged.filter(s=>!s.warmup),ordinals=working.flatMap(s=>s.workingSetNumber?[s.workingSetNumber]:[]),positions=working.length+skipped.filter(s=>s.exerciseId===e.id).length;if(positions>20||positions>e.sets&&working.some(s=>s.workingSetNumber===undefined)||logged.filter(s=>s.warmup).length>20)c.addIssue({code:'custom',message:'Keep at most 20 working sets and 20 warm-ups per exercise; additional sets need explicit positions.'});if(new Set(ordinals).size!==ordinals.length||skipped.some(s=>s.exerciseId===e.id&&ordinals.includes(s.workingSetNumber)))c.addIssue({code:'custom',message:'Each working-set position can be logged or skipped once.'});}
+ if(w.sets.some(s=>s.warmup&&s.workingSetNumber!==undefined))c.addIssue({code:'custom',message:'Warm-ups do not occupy working-set positions.'});
+ if(w.lastSetSerials&&(new Set(w.lastSetSerials.map(s=>s.exerciseId)).size!==w.lastSetSerials.length||w.lastSetSerials.some(serial=>!w.exercises.some(e=>e.id===serial.exerciseId))||w.sets.some(set=>(w.lastSetSerials!.find(s=>s.exerciseId===set.exerciseId)?.setNumber??0)<set.setNumber)))c.addIssue({code:'custom',message:'Keep the latest logged-set identity for every exercise.'});
  for(const s of w.sets){const e=w.exercises.find(e=>e.id===s.exerciseId);if(!e)c.addIssue({code:'custom',message:'This set is not in your workout.'});}
  for(const [index,s] of skipped.entries()){const e=w.exercises.find(e=>e.id===s.exerciseId);if(!e||s.workingSetNumber>e.sets)c.addIssue({code:'custom',path:['skippedSets',index],message:'Choose a working set from this workout’s plan.'});}
 });
@@ -102,7 +104,7 @@ export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],mont
  const visible=transactions.filter(t=>!t.data.voided&&!t.data.deleted&&t.data.date.startsWith(month+'-'));
  const live=visible.filter(t=>!t.data.planned),planned=visible.filter(t=>t.data.planned);
  const total=(kind:Transaction['kind'])=>live.filter(t=>t.data.kind===kind).reduce((n,t)=>n+t.data.amountCents,0);
- const due=plan.recurring.filter(r=>r.active&&!r.deleted&&(!r.debt||r.debt.balanceCents+(r.debt.accruedInterestCents||0)>0)).flatMap(r=>scheduledDatesInMonth(month,r).map(date=>{
+ const due=plan.recurring.filter(r=>r.active&&!r.deleted&&!r.purged&&(!r.debt||r.debt.balanceCents+(r.debt.accruedInterestCents||0)>0)).flatMap(r=>scheduledDatesInMonth(month,r).map(date=>{
   const id=occurrenceId(occurrencePeriod(month,r,date),r.id),actual=live.find(t=>t.id===id);
   return {...r,...(actual?{kind:actual.data.kind as typeof r.kind,categoryId:actual.data.categoryId,title:actual.data.note||r.title}:{}),date,id,recurringId:r.id,...(isAdvancedSchedule(r)?{occurrenceDate:date}:{}),...(r.paymentDueDay?{paymentDueDate:dueDate(month,r.paymentDueDay)}:{}),recorded:!!actual,actualCents:actual?.data.amountCents||0};
  })).filter(r=>!suppressedOccurrences.includes(r.id));
@@ -110,16 +112,22 @@ export function budgetSummary(plan:Budget,transactions:Saved<Transaction>[],mont
 }
 export function nextSet(w:Workout){
  for(const exercise of w.exercises){
-  const logged=w.sets.filter(s=>s.exerciseId===exercise.id),working=logged.filter(s=>!s.warmup).length;
+  const logged=w.sets.filter(s=>s.exerciseId===exercise.id),working=new Set(workingSetEntries(w,exercise.id).map(s=>s.workingSetNumber));
   const skipped=new Set((w.skippedSets||[]).filter(s=>s.exerciseId===exercise.id).map(s=>s.workingSetNumber));
   // Logs retain stable serials even when warm-ups are added or corrected.
   // Skips occupy planned positions only and never become performed sets.
-  const remaining=Array.from({length:exercise.sets},(_,i)=>i+1).filter(n=>!skipped.has(n));
-  if(working>=remaining.length)continue;
-  let setNumber=1;while(logged.some(s=>s.setNumber===setNumber))setNumber++;
-  return {exercise,setNumber,workingSetNumber:remaining[working]};
+  const remaining=Array.from({length:exercise.sets},(_,i)=>i+1).filter(n=>!skipped.has(n)&&!working.has(n));
+  if(!remaining.length)continue;
+  const setNumber=Math.max(0,w.lastSetSerials?.find(s=>s.exerciseId===exercise.id)?.setNumber??0,...logged.map(s=>s.setNumber))+1;
+  return {exercise,setNumber,workingSetNumber:remaining[0]};
  }
  return null;
+}
+/** Legacy logs acquire their original ordinal before a skip or set is changed. */
+export function workingSetEntries(w:Pick<Workout,'sets'|'skippedSets'>,exerciseId:string){
+ const sets=w.sets.filter(s=>s.exerciseId===exerciseId&&!s.warmup).sort((a,b)=>a.setNumber-b.setNumber);
+ const occupied=new Set([...(w.skippedSets||[]).filter(s=>s.exerciseId===exerciseId).map(s=>s.workingSetNumber),...sets.flatMap(s=>s.workingSetNumber?[s.workingSetNumber]:[])]);
+ return sets.map(set=>{if(set.workingSetNumber)return {set,workingSetNumber:set.workingSetNumber};let ordinal=1;while(occupied.has(ordinal))ordinal++;occupied.add(ordinal);return {set,workingSetNumber:ordinal};});
 }
 export function restRemaining(deadline:string|null,now=Date.now()){return deadline?Math.max(0,Math.ceil((Date.parse(deadline)-now)/1000)):0;}
 export function workoutTotals(w:Workout){return {sets:w.sets.length,reps:w.sets.reduce((n,s)=>n+s.reps,0),volume:w.exercises.map(e=>({id:e.id,name:e.name,unit:e.unit,volume:w.sets.filter(s=>s.exerciseId===e.id).reduce((n,s)=>n+s.reps*s.load,0)}))};}

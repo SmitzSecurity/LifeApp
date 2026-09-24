@@ -5,7 +5,7 @@ import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
 import {profileSchema} from '../lib/life/domain.ts';
-import {budgetSchema,occurrenceId,budgetSummary} from '../lib/life/modules.ts';
+import {budgetSchema,recurringSchema,occurrenceId,budgetSummary} from '../lib/life/modules.ts';
 const month='2026-09',now=new Date('2026-09-11T12:00:00Z');
 function fixture(){
  const raw=new DatabaseSync(':memory:');for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+f,'utf8'));
@@ -58,6 +58,47 @@ test('recurring item edits preserve recorded-payment identity and remain scoped 
  assert.equal((await f.change({kind:'recurring',previous:item,item:{...item,deleted:true}},'b')).status,400);
  assert.equal((await f.call({action:'budget-item',change:{kind:'initialize',month,initial:f.initial}},null)).status,401);
  assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE user_id='b'").get().n,0);
+ }finally{f.raw.close();}
+});
+
+test('a real purged recurring placeholder does not block live monthly edits or exact retries',async()=>{
+ const f=fixture();try{
+  await f.setup();const category=f.initial.categories[0];
+  const retired=recurringSchema.parse({id:randomUUID(),title:'Retired private bill',kind:'expense',amountCents:8000,categoryId:category.id,day:1});
+  const live=recurringSchema.parse({...retired,id:randomUUID(),title:'Current monthly bill',amountCents:12000});
+  const initial={...f.initial,recurring:[retired,live]};
+  assert.equal((await f.change({kind:'initialize',initial})).status,200);
+  const payment={kind:'transaction',id:occurrenceId(month,retired.id),version:0,data:{date:month+'-01',kind:'expense',amountCents:8100,categoryId:category.id,note:'Historical actual payment',recurringId:retired.id,voided:false}};
+  assert.equal((await f.call({action:'resource',record:payment})).status,200);
+  assert.equal((await f.change({kind:'recurring',previous:retired,item:{...retired,active:false,deleted:true}})).status,200);
+  const trash=f.raw.prepare("SELECT * FROM life_trash WHERE user_id='a' AND kind='recurring'").get();
+  assert.equal((await f.call({action:'trash',change:{kind:'recurring',id:trash.record_id,deletedAt:trash.deleted_at,operation:'purge'}})).status,200);
+  const read=()=>JSON.parse(f.raw.prepare("SELECT payload FROM life_resources WHERE user_id='a' AND kind='budget'").get().payload);
+  const placeholder=read().recurring.find(item=>item.id===retired.id),protectedData=recurringSchema.parse(placeholder);
+  assert.notEqual(JSON.stringify(placeholder),JSON.stringify(protectedData),'the actual SQLite purge and schema use different key order');
+  const historical=f.raw.prepare("SELECT * FROM life_resources WHERE kind='transaction'").all(),retirement=f.raw.prepare('SELECT * FROM life_trash').all();
+  const change={kind:'recurring',previous:live,item:{...live,amountCents:12500,title:'Updated current bill'}};
+  const edited=await f.change(change);assert.equal(edited.status,200,await edited.clone().text());const saved=(await edited.json()).record;
+  assert.equal(saved.data.recurring.find(item=>item.id===live.id).amountCents,12500);
+  assert.deepEqual(saved.data.recurring.find(item=>item.id===retired.id),protectedData);
+  const retry=await f.change(change);assert.equal(retry.status,200);assert.equal((await retry.json()).record.version,saved.version);
+  const allowance=await f.change({kind:'category',previous:category,item:{...category,limitCents:40000}});assert.equal(allowance.status,200,await allowance.clone().text());
+  const latest=(await allowance.json()).record,record={kind:'budget',id:month,version:latest.version,data:{...latest.data,goals:{...latest.data.goals,spending:'A still-editable month'}}};
+  const direct=await f.call({action:'resource',record});assert.equal(direct.status,200,await direct.clone().text());const directSaved=(await direct.json()).record;
+  assert.equal((await (await f.call({action:'resource',record})).json()).record.version,directSaved.version);
+  for(const patch of [{title:'Resurrected private text'},{amountCents:2},{purged:undefined},{deleted:false},{active:true}]){
+   const altered={...directSaved.data,recurring:directSaved.data.recurring.map(item=>item.id===retired.id?{...item,...patch}:item)};
+   assert.equal((await f.call({action:'resource',record:{kind:'budget',id:month,version:directSaved.version,data:altered}})).status,410,JSON.stringify(patch));
+  }
+  assert.equal((await f.change({kind:'recurring',previous:protectedData,item:{...protectedData,title:'Changed hidden item'}})).status,410);
+  assert.equal((await f.call({action:'trash',change:{kind:'recurring',id:trash.record_id,deletedAt:trash.deleted_at,operation:'restore'}})).status,410);
+  assert.deepEqual(f.raw.prepare("SELECT * FROM life_resources WHERE kind='transaction'").all(),historical);
+  assert.deepEqual(f.raw.prepare('SELECT * FROM life_trash').all(),retirement);
+  assert.deepEqual(budgetSummary(read(),[],month).due.map(item=>item.recurringId),[live.id]);
+  await f.call({action:'profile',profile:profileSchema.parse({goal:'Separate synthetic account',timezone:'UTC',modules:['money'],habits:[],version:0})},'b');
+  assert.equal((await f.call({action:'budget-item',change:{kind:'initialize',month,initial}},'b')).status,200);
+  assert.equal((await f.change({kind:'recurring',previous:retired,item:{...retired,title:'Other account active item'}},'b')).status,200);
+  assert.deepEqual(read().recurring.find(item=>item.id===retired.id),protectedData);
  }finally{f.raw.close();}
 });
 

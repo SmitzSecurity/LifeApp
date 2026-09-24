@@ -41,7 +41,7 @@ function component(file,props,adapters={},globals={},transform=source=>source){
   setInterval(fn){const id=++timerId;timers.set(id,fn);return id;},clearInterval(id){timers.delete(id);},
   setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},requestAnimationFrame(){return ++timerId;},cancelAnimationFrame(){},
   ...globals};
- const imports={react,'react/jsx-runtime':jsx,'@/lib/life/modules':modules,'@/lib/life/domain':domain,'@/lib/life/workout-session':session,'@/lib/life/exercise-presets':presets,'@/lib/life/date-display':dates,'@/lib/life/muscle-groups':muscles,'@/lib/life/muscle-volume':volume,'@/lib/life/exercise-names':names,'@/lib/life/exercise-symbols':symbols,'@/lib/life/write-retry':{definiteClientRejection},
+ const imports={react,'react/jsx-runtime':jsx,'./workout-timer':{useWorkoutTimer:()=>({setWorkoutTimer(){}}),WorkoutNotificationControl:'WorkoutNotificationControl'},'@/lib/life/modules':modules,'@/lib/life/domain':domain,'@/lib/life/workout-session':session,'@/lib/life/exercise-presets':presets,'@/lib/life/date-display':dates,'@/lib/life/muscle-groups':muscles,'@/lib/life/muscle-volume':volume,'@/lib/life/exercise-names':names,'@/lib/life/exercise-symbols':symbols,'@/lib/life/write-retry':{definiteClientRejection},
   './shared':{request:async()=>({records:[]}),useUnsaved(){},useWorkoutCancel:fn=>fn},...adapters};
  const output={},code=transpileModule(transform(readFileSync('app/life/'+file+'.tsx','utf8')),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText;
  runInNewContext(code,{exports:output,crypto:{randomUUID},structuredClone,Date,console,...environment,require:name=>imports[name]||new Proxy({},{get:(_,key)=>key==='default'?name:String(key)})});
@@ -97,6 +97,66 @@ test('exercise motion honors reduced motion and resets the frame when changing a
  f.render({...f.props,playback:'pause'});assert.equal(f.timers.size,0);
  f.render({...f.props,name:'Squat'});f.render({...f.props,name:'Bench press'});assert.equal(frame(),original);
  f.environment.document.hidden=true;f.render({...f.props,playback:'play'});assert.equal(f.timers.size,0,'background tabs do not animate');f.unmount();
+});
+
+test('last planned set skips rest and opens review; a late acknowledgement retains one exact set identity',async()=>{
+ const routine={id:randomUUID(),version:1,data:{name:'Single set',preferences:'',exercises:[{...presets.presetExercise('Bench press'),sets:1,restSeconds:120}],archived:false}};
+ let saved={...session.createWorkoutSession(routine,'2026-09-17'),version:1},lose=true;const writes=[];
+ const f=component('workouts',{profile:{timezone:'UTC'},active:true,onDirty(){}},{'./shared':{useUnsaved(){},request:async path=>path==='?kind=routine'?{records:[routine],hasMore:false}:path==='?kind=workout'?{records:[saved]}:path.startsWith('?exercise-performance')?{performance:null}:null,saveRecord:async(kind,record)=>{writes.push(structuredClone(record));if(lose){lose=false;saved={...record,version:record.version+1};throw new Error('Synthetic lost acknowledgement');}assert.equal(JSON.stringify(record),JSON.stringify(writes[0]));return saved;}}});
+ const view=()=>f.all(node=>node.type==='./workout-session')[0].props;
+ f.render();await flush();f.render();await flush();f.render();view().onReps('8');view().onLoad('135');f.render();view().onSaveSet();await flush();f.render();assert.equal(view().pending,true);assert.equal(writes[0].data.restUntil,null);
+ await f.button('Retry workout save').props.onClick();f.render();assert.equal(view().reviewing,true);assert.equal(view().target,null);assert.equal(saved.data.sets.length,1);assert.equal(saved.data.sets[0].workingSetNumber,1);assert.equal(saved.data.restUntil,null);f.unmount();
+});
+
+test('history review acknowledges a retried addition without leaving a duplicate draft',async()=>{
+ const routine={id:randomUUID(),version:1,data:{name:'Review',preferences:'',exercises:[presets.presetExercise('Bench press')],archived:false}},workout={...session.createWorkoutSession(routine,'2026-09-17'),version:1};let frozen;
+ const f=component('workout-review',{workout,busy:false,onSave:async record=>{frozen=record;return false;}},{'./shared':{useWorkoutCancel:fn=>fn}});
+ f.render();f.button('Add set').props.onClick();f.render();f.button('Save set').props.onClick();await flush();f.render();assert.ok(frozen);assert.equal(f.all(node=>node.props?.className==='session-review-entry').length,1);
+ f.render({...f.props,workout:{...frozen,version:2}});assert.equal(f.all(node=>node.props?.className==='session-review-entry').length,0,'read/ retry acknowledgement clears the already-saved addition');f.unmount();
+});
+
+test('repeated review Save clicks cannot replace the frozen unknown addition',async()=>{
+ const routine={id:randomUUID(),version:1,data:{name:'Review',preferences:'',exercises:[presets.presetExercise('Bench press')],archived:false}},workout={...session.createWorkoutSession(routine,'2026-09-17'),version:1},saving=deferred(),writes=[];
+ const f=component('workout-review',{workout,busy:false,onSave:async record=>{writes.push(record);return saving.promise;}},{'./shared':{useWorkoutCancel:fn=>fn}});
+ f.render();f.button('Add set').props.onClick();f.render();const click=f.button('Save set').props.onClick;click();click();assert.equal(writes.length,1);saving.resolve(false);await flush();f.render();f.render({...f.props,workout:{...writes[0],version:2}});assert.equal(f.all(node=>node.props?.className==='session-review-entry').length,0);f.unmount();
+});
+
+test('history keeps an unknown workout retry reachable inside its locked native dialog',async()=>{
+ const routine={id:randomUUID(),version:1,data:{name:'History retry',preferences:'',exercises:[presets.presetExercise('Bench press')],archived:false}};
+ let saved={...session.createWorkoutSession(routine,'2026-09-17'),version:1};saved.data.finishedAt='2026-09-17T12:00:00.000Z';const writes=[];
+ const f=component('workouts',{profile:{timezone:'UTC'},active:true,onDirty(){}},{'./shared':{useUnsaved(){},request:async path=>path==='?kind=routine'?{records:[routine],hasMore:false}:path==='?kind=workout'?{records:[saved]}:null,saveRecord:async(kind,record)=>{writes.push(JSON.stringify(record));if(writes.length===1){saved={...record,version:record.version+1};throw new Error('Synthetic lost history acknowledgement');}return saved;}}});
+ f.render();await flush();f.render();await flush();f.render();f.button('History').props.onClick();f.render();const review=f.all(node=>node.type==='./workout-review')[0];assert.ok(review);await review.props.onSave({...saved,data:{...saved.data,notes:'Synthetic late history note'}});f.render();
+ const panel=f.all(node=>node.type==='./workout-panel'&&node.props.title==='Workout history')[0];assert.equal(panel.props.open,true);assert.equal(panel.props.closeDisabled,true);
+ const nodes=node=>!node||typeof node!=='object'?[]:[node,...[node.props?.children].flat(Infinity).flatMap(nodes)];
+ const retry=nodes(panel.props.children[0]).find(node=>node.props?.onClick&&node.props.children==='Retry workout save');assert.ok(retry,'retry is within the modal, not only behind it');await retry.props.onClick();f.render();assert.equal(writes[0],writes[1]);assert.equal(saved.data.notes,'Synthetic late history note');assert.equal(f.all(node=>node.type==='./workout-panel'&&node.props.title==='Workout history')[0].props.closeDisabled,false);f.unmount();
+});
+
+test('setup notes never substitute a different movement that reused the snapshot exercise ID',()=>{
+ const exercise={...presets.presetExercise('Bench press'),setupNote:'Seat 4'},routine={id:randomUUID(),version:2,data:{name:'Changed variant',preferences:'',exercises:[{...exercise,name:'Incline dumbbell bench press',setupNote:'Incline peg 3'}],archived:false}},workout=session.createWorkoutSession({...routine,data:{...routine.data,exercises:[exercise]}},'2026-09-17').data;
+ const f=component('exercise-setup-notes',{routine,workout,disabled:false,onDirty(){},onSaved(){}},{'./shared':{useWorkoutCancel:fn=>fn}});f.render();assert.equal(f.all(node=>node.type==='textarea').length,0);assert.equal(f.all(node=>node.props?.className==='exercise-setup-snapshot')[0].props.children,'Seat 4');f.unmount();
+});
+
+test('setup note conflict shows saved and local text then merges only reviewed notes into the latest program',async()=>{
+ const exercise=presets.presetExercise('Bench press'),routine={id:randomUUID(),version:1,data:{name:'Original program',preferences:'',exercises:[{...exercise,setupNote:'Height 3'}],archived:false}},workout=session.createWorkoutSession(routine,'2026-09-17').data;
+ const latest={...routine,version:2,data:{...routine.data,name:'Changed elsewhere',exercises:[{...routine.data.exercises[0],load:150,setupNote:'Height 5'}]}},writes=[];let saved;
+ const f=component('exercise-setup-notes',{routine,workout,disabled:false,onDirty(){},onSaved:value=>{saved=value;}},{'./shared':{useWorkoutCancel:fn=>fn,request:async()=>({records:[latest]}),saveRecord:async(kind,record)=>{writes.push(structuredClone(record));if(writes.length===1)throw Object.assign(new Error('Conflict'),{status:409});return {...record,version:3};}}});
+ f.render();f.all(node=>node.type==='textarea')[0].props.onChange({target:{value:'Height 4'}});f.render();await f.button('Save setup notes').props.onClick();f.render();await flush();f.render();
+ assert.equal(f.all(node=>node.props?.className==='exercise-note-conflict').length,1);assert.equal(f.all(node=>node.type==='textarea')[0].props.value,'Height 4');f.button('Keep my setup notes').props.onClick();f.render();await f.button('Save setup notes').props.onClick();await flush();f.render();
+ assert.equal(writes[1].version,2);assert.equal(saved.data.name,'Changed elsewhere');assert.equal(saved.data.exercises[0].load,150);assert.equal(saved.data.exercises[0].setupNote,'Height 4');assert.equal(workout.exercises[0].setupNote,'Height 3');f.unmount();
+});
+
+test('setup notes keep an unknown write through login expiry and reconcile an exact saved result',async()=>{
+ const routine={id:randomUUID(),version:1,data:{name:'Setup',preferences:'',exercises:[presets.presetExercise('Bench press')],archived:false}},workout=session.createWorkoutSession(routine,'2026-09-17').data,writes=[];let saved,acknowledged;
+ const f=component('exercise-setup-notes',{routine,workout,disabled:false,onDirty(){},onSaved:value=>{acknowledged=value;}},{'./shared':{useWorkoutCancel:fn=>fn,request:async()=>({records:[saved]}),saveRecord:async(kind,record)=>{writes.push(JSON.stringify(record));if(writes.length===1){saved={...record,version:2};throw new Error('Unknown');}throw Object.assign(new Error('Synthetic rejection'),{status:writes.length===2?401:409});}}});
+ f.render();f.all(node=>node.type==='textarea')[0].props.onChange({target:{value:'Incline peg 4'}});f.render();f.button('Save setup notes').props.onClick();await flush();f.render();f.button('Retry setup notes save').props.onClick();await flush();f.render();f.button('Retry setup notes save').props.onClick();await flush();f.render();
+ assert.equal(new Set(writes).size,1);assert.equal(acknowledged.version,2);assert.equal(f.all(node=>node.type==='textarea')[0].props.value,'Incline peg 4');assert.equal(f.all(node=>node.props?.className==='exercise-note-conflict').length,0);f.unmount();
+});
+
+test('reps focus follows visible entry and does not steal focus from another page',()=>{
+ const routine={id:randomUUID(),version:1,data:{name:'Focus',preferences:'',exercises:[presets.presetExercise('Bench press')],archived:false}},workout={...session.createWorkoutSession(routine,'2026-09-17'),version:1};let focused=0;
+ const f=component('workout-session',{workout,target:modules.nextSet(workout.data),visible:false,reps:'8',load:'135',warmup:false,remaining:0,editing:false,busy:false,pending:false,setDirty:false});
+ f.render();const input=f.all(node=>node.type==='input'&&node.props.inputMode==='numeric')[0];input.props.ref.current={focus(){focused++;},select(){}};
+ f.render({...f.props,visible:true});assert.equal(focused,1);f.render({...f.props,visible:false,busy:true});f.render({...f.props,busy:false});assert.equal(focused,1);f.unmount();
 });
 
 test('date fallback captures its dialog at the opening event and keeps Escape local',()=>{

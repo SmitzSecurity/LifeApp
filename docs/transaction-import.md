@@ -16,6 +16,8 @@ The internal `transaction-import` receipt keeps IDs and hashes, not receipt imag
 
 The prelaunch review adds Delete to completed or failed transaction drafts in Saved drafts. It uses the existing `budget:` build visibility action and seven-day Trash; restoring the draft preserves its source, extracted rows and accounting. Deleting a draft does not delete transactions already adopted from it. Generating or uncertain jobs do not expose this action. An unconfirmed deletion retains its exact build identity, a reachable Retry delete action and navigation/write locks; it never replays extraction or releases usage holds. A later authentication rejection cannot settle a previously unconfirmed extraction, import or deletion, so those exact retry snapshots remain available after a subsequent 401/403 response.
 
+September 24, 2026: manual entry opens with the amount focused and requests the device's decimal keyboard. Amount is first and the expense category follows directly below it, with type and date afterward. The focused currency outline follows the complete dollar field, including its prefix, and stays inside the scrolling field area's padding. Mobile keyboard presentation remains controlled by the device/browser. Save identities, draft retention and transaction validation are unchanged.
+
 Settings also uses a scrolling form above a persistent Cancel/Save footer. Automation & email stays with the fields. The former inline Settings saved label and save-success banner are removed; errors and existing settings save/cancel behavior remain.
 
 ## Verification

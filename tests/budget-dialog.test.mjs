@@ -90,7 +90,7 @@ function component(file,props,{request=async()=>({records:[]}),saveRecord=async(
   useId:()=>react.useMemo(()=> 'synthetic-section',[]),
   useSyncExternalStore(subscribe,snapshot){const [value,setValue]=react.useState(snapshot);react.useEffect(()=>subscribe(()=>setValue(snapshot())),[subscribe,snapshot]);return value;},
  };
- const adapters={react,'react/jsx-runtime':jsx,'@/lib/life/modules':modules,'@/lib/life/budget-schedule':schedule,'@/lib/life/annual-fund':fund,'@/lib/life/loan-presets':loans,'@/lib/life/income-planning':income,'@/lib/life/domain':{todayIn:()=> '2026-09-17'},'./shared':{request,saveRecord,useUnsaved(){}},'./budget-fields':{useBudgetDirty(){},useItemSave:()=>({busy:false,pending:null,error:'',setError(){}})}};
+ const adapters={react,'react/jsx-runtime':jsx,'@/lib/life/modules':modules,'@/lib/life/budget-schedule':schedule,'@/lib/life/annual-fund':fund,'@/lib/life/loan-presets':loans,'@/lib/life/income-planning':income,'@/lib/life/domain':{todayIn:()=> '2026-09-17'},'./shared':{request,saveRecord,useUnsaved(){}},'./budget-recurring':{default:'RecurringDialog',recurringDescription:()=> 'Monthly schedule'},'./budget-fields':{useBudgetDirty(){},useItemSave:()=>({busy:false,pending:null,error:'',setError(){}})}};
  const code=transpileModule(readFileSync('app/life/'+file+'.tsx','utf8'),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText,output={};
  runInNewContext(code,{exports:output,crypto,structuredClone,...globals,require:name=>adapters[name]||new Proxy({},{get:(_,key)=>String(key)})});
  function render(){let attempts=0;do{changed=false;cursor=0;tree=output.default(props);assert.ok(++attempts<10,'render state should settle');}while(changed);for(const slot of slots)if(slot?.pending){slot.pending=false;slot.cleanup?.();slot.cleanup=slot.fn();}return tree;}
@@ -101,6 +101,29 @@ function component(file,props,{request=async()=>({records:[]}),saveRecord=async(
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const categoryId='22222222-2222-4222-8222-222222222222',billId='11111111-1111-4111-8111-111111111111',incomeId='33333333-3333-4333-8333-333333333333';
 const budgetPlan=()=>({id:'2026-09',version:1,data:modules.budgetSchema.parse({currency:'USD',categories:[{id:categoryId,name:'Bills',limitCents:20000}],recurring:[{id:billId,title:'Electric',kind:'expense',amountCents:8000,categoryId,day:5},{id:incomeId,title:'Payday',kind:'income',categoryId:'',amountCents:100000,day:16}],goals:{spending:'',saving:'',investing:''}})});
+
+test('a missing budget month inherits live and paused schedules without copying deleted or purged placeholders',async()=>{
+ const previous=budgetPlan();previous.id='2026-08';
+ const live=previous.data.recurring[0],paused={...live,id:crypto.randomUUID(),title:'Paused monthly bill',active:false};
+ previous.data.recurring.push(paused,{...live,id:crypto.randomUUID(),title:'Deleted bill',active:false,deleted:true},{...live,id:crypto.randomUUID(),title:'Deleted item',active:false,deleted:true,purged:true});
+ const original=structuredClone(previous),f=component('budget',{profile:{timezone:'UTC'},onDirty(){},onProfileSaved(){}},{request:async path=>({records:path==='?kind=budget'?[previous]:[]})});
+ await f.flush();
+ const plan=f.find(node=>node.props?.category?.id===categoryId).props.plan;
+ assert.equal(plan.id,'2026-09');assert.equal(plan.version,0);
+ assert.deepEqual(plan.data.recurring.map(item=>item.id),[billId,incomeId,paused.id]);
+ assert.deepEqual(previous,original,'the earlier saved month and its historical references remain untouched');
+ f.unmount();
+});
+
+test('saved deleted and purged monthly items never become expected or other-item edit controls',async()=>{
+ const plan=budgetPlan(),live=plan.data.recurring[0],deletedId=crypto.randomUUID(),purgedId=crypto.randomUUID();
+ plan.data.recurring.push({...live,id:deletedId,title:'Deleted monthly bill',deleted:true}, {...live,id:purgedId,title:'Purged inherited placeholder',purged:true});
+ const f=component('budget',{profile:{timezone:'UTC'},onDirty(){},onProfileSaved(){}},{request:async path=>({records:path.startsWith('?kind=budget')?[plan]:[]})});
+ await f.flush();
+ for(const id of [deletedId,purgedId])assert.equal(f.find(node=>node.type?.name==='ExpectedItem'&&node.props.due.recurringId===id),undefined);
+ for(const title of ['Deleted monthly bill','Purged inherited placeholder'])assert.equal(f.find(node=>node.type==='strong'&&node.props.children===title),undefined);
+ assert.ok(f.find(node=>node.type?.name==='ExpectedItem'&&node.props.due.recurringId===billId));f.unmount();
+});
 
 test('Budget keeps scoped due and allocation editors after independent saved records change, then releases them on cancel',async()=>{
  const plan=budgetPlan(),source={id:modules.occurrenceId(plan.id,incomeId),version:1,data:modules.transactionSchema.parse({date:'2026-09-16',kind:'income',amountCents:100000,categoryId:'',note:'Payday',recurringId:incomeId,voided:false,incomeDetails:{grossCents:100000,plan:{withholdings:[],saving:{mode:'percent',value:10}}}})};

@@ -16,7 +16,9 @@ export async function listTrash(db:Database,userId:string,offset=0){
  LEFT JOIN life_entries e ON t.kind='entry' AND e.user_id=t.user_id AND e.entry_date=t.record_id
  LEFT JOIN life_resources r ON r.user_id=t.user_id AND r.kind=CASE WHEN t.kind='recurring' THEN 'budget' ELSE t.kind END AND r.resource_id=CASE WHEN t.kind='recurring' THEN substr(t.record_id,1,7) ELSE t.record_id END
  LEFT JOIN life_ai_reviews a ON t.kind='analysis' AND a.user_id=t.user_id AND a.request_id=t.record_id
- WHERE t.user_id=?1 AND t.purged_at IS NULL ORDER BY t.deleted_at,t.kind,t.record_id LIMIT 51 OFFSET ?2`).bind(userId,offset).all<TrashRow&{payload:string|null;cadence:string|null;entry_date:string|null}>();
+ WHERE t.user_id=?1 AND t.purged_at IS NULL AND (t.kind<>'recurring' OR NOT EXISTS(
+ SELECT 1 FROM json_each(r.payload,'$.recurring') item WHERE json_extract(item.value,'$.id')=substr(t.record_id,9) AND json_extract(item.value,'$.purged')=1
+ )) ORDER BY t.deleted_at,t.kind,t.record_id LIMIT 51 OFFSET ?2`).bind(userId,offset).all<TrashRow&{payload:string|null;cadence:string|null;entry_date:string|null}>();
  const items:TrashItem[]=rows.results.slice(0,50).map(row=>{
   const {kind,record_id:id}=row,data=row.payload?JSON.parse(row.payload):{},item=kind==='recurring'?data.recurring?.find((x:{id:string})=>x.id===id.slice(8)):data;
   let title=item?.title||item?.name||item?.activity||({entry:'Journal','workout-note':'Workout note',transaction:'Transaction',analysis:'Analysis',build:id.startsWith('training:')?'Training analysis':'AI draft'} as Record<string,string>)[kind]||kind;
@@ -43,6 +45,9 @@ export async function changeTrash(db:Database,userId:string,body:unknown,now:Dat
   const done=await db.prepare('UPDATE life_trash SET purged_at=?4 WHERE user_id=?1 AND kind=?2 AND record_id=?3 AND deleted_at=?5 AND purged_at IS NULL RETURNING record_id').bind(userId,p.kind,p.id,now.toISOString(),p.deletedAt).first();
   return done?json({saved:true}):json({error:'This item changed. Refresh Trash first.'},409);
  }
+ // Older month inheritance could copy a scrubbed placeholder and create a new
+ // Trash row for it. No retained content exists for that row to restore.
+ if(p.kind==='recurring'&&await db.prepare("SELECT 1 FROM life_resources r,json_each(r.payload,'$.recurring') item WHERE r.user_id=?1 AND r.kind='budget' AND r.resource_id=substr(?2,1,7) AND json_extract(item.value,'$.id')=substr(?2,9) AND json_extract(item.value,'$.purged')=1").bind(userId,p.id).first())return json({error:'This item was permanently deleted.'},410);
  if(row.deleted_at<=cutoff(now))return json({error:'The seven-day restore period has ended.'},410);
  const guard="EXISTS(SELECT 1 FROM life_trash t WHERE t.user_id=?1 AND t.kind=?4 AND t.record_id=?5 AND t.deleted_at=?6 AND t.purged_at IS NULL AND t.deleted_at>?7)";
  let sql:string,kind:string=p.kind,id=p.id;

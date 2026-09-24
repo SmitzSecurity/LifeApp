@@ -101,7 +101,10 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  }
  if(kind==='budget'&&(data as Budget).recurring.some(r=>r.debt&&(r.debt.balanceDate>todayIn(profile.timezone,now)||r.debt.balanceDate<'1900-01-01')))return json({error:'Use a statement balance date between 1900 and today.'},400);
  if(kind==='budget'&&previous){
-  const p=data as Budget,old=previous.data as Budget;
+  // The purge trigger writes its minimal placeholder in SQLite's JSON key
+  // order. Compare both sides through the same schema, so an unchanged hidden
+  // placeholder cannot block editing a different, live monthly item.
+  const p=data as Budget,old=resourceSchemas.budget.parse(previous.data);
   if(old.recurring.some(r=>r.purged&&JSON.stringify(r)!==JSON.stringify(p.recurring.find(n=>n.id===r.id))))return json({error:'Permanently deleted monthly items cannot be changed.'},410);
   if(p.recurring.some(r=>r.purged&&!old.recurring.find(n=>n.id===r.id)?.purged))return json({error:'Use Trash to permanently delete a monthly item.'},400);
   if(old.categories.some(c=>!p.categories.some(n=>n.id===c.id))||old.recurring.some(r=>!p.recurring.some(n=>n.id===r.id)))return json({error:'Keep saved categories and scheduled items to preserve transaction references.'},400);
@@ -119,11 +122,13 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    const old=previous.data as Workout;
    if(old.date!==w.date||old.routineId!==w.routineId||old.name!==w.name||JSON.stringify(old.exercises)!==JSON.stringify(w.exercises))return json({error:'Saved workouts keep their original session plan.'},400);
    if(old.finishedAt&&!w.finishedAt)return json({error:'A finished workout cannot be reopened.'},400);
+   if(old.lastSetSerials?.some(serial=>(w.lastSetSerials?.find(s=>s.exerciseId===serial.exerciseId)?.setNumber??0)<serial.setNumber))return json({error:'Keep saved set identities when correcting a workout.'},400);
+   if(w.sets.some(set=>!old.sets.some(previous=>previous.exerciseId===set.exerciseId&&previous.setNumber===set.setNumber)&&set.setNumber<=Math.max(0,old.lastSetSerials?.find(serial=>serial.exerciseId===set.exerciseId)?.setNumber??0,...old.sets.filter(previous=>previous.exerciseId===set.exerciseId).map(previous=>previous.setNumber))))return previous.version!==version?conflict():json({error:'New sets must use a new logged-set identity.'},400);
   }else{
    const routine=(await readResource(db,userId,'routine',w.routineId))?.data as Routine|undefined;
    // A reviewed session may customize the template without overwriting it.
    // The validated plan becomes immutable as soon as this fresh start saves.
-   if(!routine||routine.archived||w.sets.length||w.skippedSets?.length||w.finishedAt||w.restUntil||w.deleted)return json({error:'Start a fresh workout from one of your saved programs.'},400);
+   if(!routine||routine.archived||w.sets.length||w.skippedSets?.length||w.lastSetSerials?.length||w.finishedAt||w.restUntil||w.deleted)return json({error:'Start a fresh workout from one of your saved programs.'},400);
   }
   if(!w.finishedAt&&!w.deleted){const active=await db.prepare("SELECT resource_id FROM life_resources WHERE user_id=?1 AND kind='workout' AND active_slot='active'").bind(userId).first<{resource_id:string}>();if(active&&active.resource_id!==id)return json({error:'Finish your current workout before starting another.'},409);}
  }

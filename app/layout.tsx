@@ -5,9 +5,12 @@ import {appearanceBootstrap} from "@/lib/life/appearance";
 export const metadata: Metadata = {
   title: "LifeApp — Your daily check-in",
   description: "Track the habits you chose, capture your day, and see your progress.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {capable:true,title:"LifeApp",statusBarStyle:"default"},
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
+    apple: "/app-icon-192.png",
   },
 };
 

@@ -46,7 +46,7 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
   return Promise.all([request('?kind=budget&month='+month),request('?kind=budget'),request('?kind=transaction&month='+month)]).then(([current,history,tx])=>{
   if(!isActive()||sequence!==loadSequence.current)return;
   const existing=current.records[0],earlier=(history.records as Saved<Budget>[]).filter(p=>p.id<month).sort((a,b)=>b.id.localeCompare(a.id))[0];
-  planRef.current=null;acceptPlan(existing||{id:month,version:0,data:earlier?budgetSchema.parse(earlier.data):blankPlan()});
+  planRef.current=null;acceptPlan(existing||{id:month,version:0,data:earlier?budgetSchema.parse({...earlier.data,recurring:earlier.data.recurring.filter(item=>!item.deleted&&!item.purged)}):blankPlan()});
   setSuppressedAllocations(tx.suppressedAllocations||[]);setSuppressedOccurrences(tx.suppressedOccurrences||[]);setTransactions(tx.records.map((t:Saved<Transaction>)=>({...t,data:transactionSchema.parse(t.data)})));setRecurring(null);setDirtyItems({});setNotice('');setReady(true);
  }).catch(e=>{if(isActive()&&sequence===loadSequence.current)setError((e as Error).message);}).finally(()=>{if(isActive()&&sequence===loadSequence.current)setLoading(false);});},[month,acceptPlan]);
  useEffect(()=>{let active=true;void load(()=>active);return()=>{active=false;};},[load]);
@@ -75,7 +75,7 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
   setNotice(`${result.records.length} transaction${result.records.length===1?'':'s'} saved.`);
  }
  function addRecurring(loan=false){setRecurring({previous:null,item:{id:crypto.randomUUID(),title:'',kind:'expense',categoryId:plan?.data.categories.find(c=>!c.archived)?.id||'',amountCents:0,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,active:true,deleted:false,...(loan?{debt:loanPreset('other',today)}:{})}});}
- function editRecurring(item:Recurring){setRecurring({previous:structuredClone(item),item:structuredClone(item)});}
+ function editRecurring(item:Recurring){if(item.deleted||item.purged)return;setRecurring({previous:structuredClone(item),item:structuredClone(item)});}
  const hasTransactionDraft=(scope:string)=>!!dirtyItems['transaction-editor:'+scope];
  const hasDirtyPrefix=(prefix:string)=>Object.entries(dirtyItems).some(([key,value])=>value&&key.startsWith(prefix));
  const categoryHasDraft=(id:string)=>!!dirtyItems['category:'+id]||Object.entries(dirtyItems).some(([key,value])=>value&&(key.startsWith('transaction-editor:'+id+':')||key.startsWith('transaction-editor:category-due:'+id+':')));
@@ -93,7 +93,7 @@ export default function BudgetPanel({profile,onDirty,onProfileSaved}:{profile:Pr
  if(retained.month!==month||retained.plan!==plan||retained.transactions!==transactions||retained.suppressedAllocations!==suppressedAllocations||retained.suppressedOccurrences!==suppressedOccurrences||retained.dirtyItems!==dirtyItems)setRetained({month,plan,transactions,suppressedAllocations,suppressedOccurrences,dirtyItems,due:displayedDue,allocations});
  const expected:ExpectedPayment[]=[...displayedDue.map(due=>({...due,amountCents:due.incomePlan?calculateIncome(due.amountCents,due.incomePlan).netCents:due.amountCents})),...allTransactions.filter(t=>!t.data.recurringId&&(t.data.planned||t.data.expectedDate)&&(!t.data.deleted&&!t.data.voided||dueHasDraft(t.id))).map(t=>({id:t.id,title:t.data.note||'Planned '+t.data.kind,kind:t.data.kind,amountCents:t.data.amountCents,categoryId:t.data.categoryId,date:t.data.expectedDate||t.data.date,variable:false,recorded:!t.data.planned&&!t.data.deleted&&!t.data.voided,actualCents:t.data.amountCents}))].sort(compareExpected);
  const renderExpected=(item:ExpectedPayment,scope?:string)=><ExpectedItem key={item.id} {...txProps!} scope={scope} due={item} source={plan!.data.recurring.find(x=>x.id===item.recurringId)} transaction={allTransactions.find(t=>t.id===item.id)} onEditRecurring={editRecurring}/>;
- const unscheduled=plan?.data.recurring.filter(r=>!r.deleted&&!r.debt&&!displayedDue.some(d=>d.recurringId===r.id))||[];
+ const unscheduled=plan?.data.recurring.filter(r=>!r.deleted&&!r.purged&&!r.debt&&!displayedDue.some(d=>d.recurringId===r.id))||[];
  return <section className="budget-workspace">
  <div className="metric-grid budget-metrics"><div className="budget-month-metric"><MonthInput variant="tile" label="Month" aria-label="Budget month" required value={month} disabled={loading||dirty} title={dirty?'Save or cancel your open edits before changing months':undefined} onValueChange={month=>{if(month)openMonth(month);}}/></div>{[['Income',summary?.income],['Spent',summary?.expenses],['Saved / invested',summary?summary.saving+summary.investing:undefined],['Cash flow',summary?.cashFlow]].map(([label,value])=><div key={label}><small>{label}</small><strong>{ready?money(value as number):'—'}</strong></div>)}</div>
  {error&&<p role="alert" className="error">{error}</p>}{notice&&<p role="status" className="budget-notice">{notice}</p>}

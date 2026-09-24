@@ -33,6 +33,8 @@ if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').interce
 if(analysisFixture)mock.get('https://generativelanguage.googleapis.com').intercept({path:'/v1beta/models/'+AI_MODEL+':countTokens',method:'POST'}).reply(200,async options=>{await new Response(options.body).arrayBuffer();return JSON.stringify({totalTokens:100000});}).persist();
 const calmFixture=process.argv.includes('--calm');
 const editingFixture=process.argv.includes('--editing');
+const offlineFixture=process.argv.includes('--offline');
+let fixtureDisconnected=false;
 const dictationFixture=process.argv.includes('--dictation');
 const lightFixture=process.argv.includes('--light'),largeTextFixture=process.argv.includes('--large-text');
 const onboardingFixture=process.argv.includes('--onboarding');
@@ -47,7 +49,7 @@ const stamp=Date.now(),id='browser-smoke',userId='google:'+id;
 await db.prepare('INSERT INTO life_auth_user VALUES(?1,?2,?3,1,NULL,?4,?4)').bind(id,'Synthetic browser fixture','smoke@example.test',stamp).run();
 await db.prepare('INSERT INTO life_auth_session VALUES(?1,?2,?3,?4,?4,NULL,NULL,?5)').bind('smoke-session',stamp+3600000,'synthetic-browser-token',stamp,id).run();
 await db.prepare('INSERT INTO life_auth_account(id,account_id,provider_id,user_id,created_at,updated_at) VALUES(?1,?2,?3,?4,?5,?5)').bind('smoke-account','smoke-google-sub','google',id,stamp).run();
-if(!onboardingFixture)await db.prepare('INSERT INTO life_profiles VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(lightFixture||largeTextFixture?{appearance:{mode:lightFixture?'light':'oled',custom:{oled:{},light:{}},...(largeTextFixture?{typography:{font:'system',scale:130}}:{})}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
+if(!onboardingFixture)await db.prepare('INSERT INTO life_profiles(user_id,payload,version,updated_at) VALUES(?1,?2,1,?3)').bind(userId,JSON.stringify({goal:'Read and reflect each day — synthetic fixture',...(lightFixture||largeTextFixture?{appearance:{mode:lightFixture?'light':'oled',custom:{oled:{},light:{}},...(largeTextFixture?{typography:{font:'system',scale:130}}:{})}}:{}),timezone:'America/New_York',modules:calmFixture?['reflection','money','fitness']:['reflection'],habits:calmFixture?[{id:'11111111-1111-4111-8111-111111111111',title:'Read a few pages',module:'reflection',archived:false}]:[]}),new Date(stamp).toISOString()).run();
 const historyFixture=process.argv.includes('--history');
 for(let days=1;days<=(!onboardingFixture?(historyFixture?400:2):0);days++){
  const date=new Date(stamp-days*86400000).toISOString().slice(0,10);
@@ -114,6 +116,27 @@ let loseDraftDelete=process.argv.includes('--unconfirmed-transaction-draft-delet
 const server=createServer(async(req,res)=>{
  try{
   const pathname=new URL(req.url,'http://localhost').pathname;
+  // This opt-in fixture switch drops transport connections, rather than
+  // returning an HTTP error, so browser offline fallback/outbox paths run.
+  // Its separate control page remains reachable to reconnect the same D1.
+  if(offlineFixture&&pathname==='/__fixture/connectivity'){
+   if(!['GET','POST'].includes(req.method)){res.writeHead(405,{Allow:'GET, POST'});res.end();return;}
+   if(req.method==='POST'){
+    if(req.headers.origin&&req.headers.origin!=='http://'+req.headers.host||req.headers['sec-fetch-site']==='cross-site'){res.writeHead(403);res.end('Use the local fixture control page.');return;}
+    const chunks=[];let bytes=0;for await(const chunk of req){bytes+=chunk.length;if(bytes>128){res.writeHead(413);res.end();return;}chunks.push(chunk);}
+    const params=new URLSearchParams(Buffer.concat(chunks).toString('utf8')),action=params.get('action');
+    if(params.size!==1||!['disconnect','reconnect'].includes(action)){res.writeHead(400);res.end('Choose Disconnect fixture or Reconnect fixture.');return;}
+    fixtureDisconnected=action==='disconnect';res.writeHead(303,{Location:'/__fixture/connectivity','Cache-Control':'no-store'});res.end();return;
+   }
+   const rows=await db.prepare("SELECT resource_id id,version,active_slot, json_extract(payload,'$.name') name, json_extract(payload,'$.finishedAt') finishedAt, json_array_length(json_extract(payload,'$.sets')) sets, COALESCE(json_array_length(json_extract(payload,'$.skippedSets')),0) skipped FROM life_resources WHERE user_id=?1 AND kind='workout' ORDER BY updated_at DESC,resource_id LIMIT 20").bind(userId).all();
+   const count=await db.prepare("SELECT count(*) count FROM life_resources WHERE user_id=?1 AND kind='workout'").bind(userId).first();
+   const summary={connected:!fixtureDisconnected,workoutCount:count.count,workouts:rows.results};
+   if(new URL(req.url,'http://localhost').searchParams.get('format')==='json'){res.writeHead(200,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(summary));return;}
+   const escaped=JSON.stringify(summary,null,2).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+   res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'"});
+   res.end(`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Synthetic fixture connectivity</title><style>body{font:16px system-ui;max-width:58rem;padding:24px;margin:auto;color:#e5e7eb;background:#111827}button,a{display:inline-block;min-height:44px;padding:10px 16px;margin:6px;font:inherit}a{color:#93c5fd}pre{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid #64748b;padding:16px}</style><h1>Synthetic fixture connectivity</h1><p role="status">${fixtureDisconnected?'Disconnected':'Connected'}</p><p>Disconnect drops app, API and asset connections. Keep this separate page open to reconnect the same synthetic database.</p><form method="post"><button name="action" value="disconnect">Disconnect fixture</button><button name="action" value="reconnect">Reconnect fixture</button></form><a href="/__fixture/connectivity">Refresh saved state</a><a href="/" target="_blank" rel="noopener">Open app in another tab</a><h2>Saved synthetic workout state</h2><pre>${escaped}</pre></html>`);return;
+  }
+  if(offlineFixture&&fixtureDisconnected){req.socket.destroy();return;}
   if(failDebtRead&&req.method==='GET'&&new URL(req.url,'http://localhost').searchParams.has('debt-payments')){failDebtRead=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic temporary debt read failure.'}));return;}
   if(dictationFixture&&req.method==='GET'&&pathname==='/__fixture/dictation.js'){
    res.writeHead(200,{'Content-Type':'text/javascript'});res.end(readFileSync('scripts/fixtures/dictation.js'));return;
@@ -165,6 +188,7 @@ const server=createServer(async(req,res)=>{
   if(body!==undefined){headers.set('Origin','https://life.test');headers.set('Content-Type','application/json');}
   if(aiWrite&&process.argv.includes('--slow-ai'))await new Promise(resolve=>setTimeout(resolve,8000));
   const response=await mf.dispatchFetch('https://life.test'+req.url,{method:req.method,body,headers,redirect:'manual'});
+  if(offlineFixture&&fixtureDisconnected){req.socket.destroy();return;}
   if(loseDraftDelete&&draftDelete&&response.ok){loseDraftDelete=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost draft deletion acknowledgement.'}));return;}
   if(loseProfileResponse&&profileWrite&&response.ok){loseProfileResponse=false;res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost settings acknowledgement.'}));return;}
   if(aiWrite&&process.argv.includes('--lose-ai-response')&&response.ok){res.writeHead(503,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'Synthetic lost AI acknowledgement.'}));return;}

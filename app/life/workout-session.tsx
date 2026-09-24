@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { Check, CircleHelp, Info, Plus, SkipForward, Vibrate, VibrateOff, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/life/date-display';
@@ -63,6 +63,9 @@ export type WorkoutSessionProps = {
   onFinish: () => void;
   onExit: () => void;
   onCancelCorrection: () => void;
+  reviewing?: boolean;
+  review?: ReactNode;
+  visible?: boolean;
 };
 
 /** The parent owns saved records, drafts, timers and exact write retries. */
@@ -70,7 +73,7 @@ export default function WorkoutSession({
   workout, target, previousPerformance, previousPerformanceLoading = false, previousPerformanceUnavailable = false, reps, load, warmup, remaining, editing, busy,
   pending = false, setDirty, sound, onSound, vibration, onVibration, supportsVibration,
   onReps, onLoad, onWarmup, onSaveSet, onSkipSet, onSkipRest,
-  onExtendRest, onPlan, onFinish, onExit, onCancelCorrection,
+  onExtendRest, onPlan, onFinish, onExit, onCancelCorrection,reviewing=false,review,visible=true,
 }: WorkoutSessionProps) {
   const id = useId();
   const [demonstrationPlayback, setDemonstrationPlayback] = useState<'auto' | 'play' | 'pause'>('auto');
@@ -78,18 +81,20 @@ export default function WorkoutSession({
   const current = nextSet(plan);
   const completed = plan.sets.filter(set => !set.warmup).length;
   const skipped = plan.skippedSets?.length ?? 0;
-  const resting = remaining > 0 && !editing;
+  const resting = remaining > 0 && !editing && !!current && !reviewing;
   const locked = busy || pending;
   const exerciseIndex = target ? plan.exercises.findIndex(exercise => exercise.id === target.exercise.id) : -1;
   const following = target ? plan.exercises[exerciseIndex + 1] : undefined;
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
   const content = useRef<HTMLDivElement>(null);
+  const repsInput = useRef<HTMLInputElement>(null);
+  useEffect(()=>{if(!visible||resting||reviewing||busy||pending)return;repsInput.current?.focus({preventScroll:true});repsInput.current?.select();},[visible,resting,reviewing,target?.exercise.id,target?.setNumber,target?.workingSetNumber,busy,pending]);
   useEffect(() => {
     content.current?.scrollTo({ top: 0 });
   }, [resting, editing, target?.exercise.id, target?.setNumber, target?.workingSetNumber]);
 
   return <section className="workout-session" aria-label="Active workout">
-    <div className={`session-stage${resting ? ' session-stage-rest' : ''}`}>
+    <div className={`session-stage${resting ? ' session-stage-rest' : ''}${reviewing||!target?' session-stage-review':''}`}>
       <div className="session-focus">
         <div className="session-controls">
           <Button variant="ghost" size="icon" onClick={onExit} disabled={locked} aria-label="Workout options" title="Workout options"><X aria-hidden="true"/></Button>
@@ -100,7 +105,7 @@ export default function WorkoutSession({
           </div>
         </div>
         <div className="session-content" ref={content}>
-        {resting ? <div className="session-rest">
+        {reviewing||!target ? <div className="session-summary"><p className="session-eyebrow">Session summary</p><h3>{plan.name}</h3><p className="session-summary-description">Review your sets and leave a note before finishing.</p>{review||<Button onClick={onFinish} disabled={locked||setDirty}>Finish workout</Button>}</div> : resting ? <div className="session-rest">
           {current ? <div className="session-up-next">
             <span>Up next · Working set {current.workingSetNumber} of {current.exercise.sets}</span>
             <ExerciseHeading name={current.exercise.name}/>
@@ -134,14 +139,13 @@ export default function WorkoutSession({
             <legend className="sr-only">{editing ? 'Correct logged reps and load' : 'Log your completed set'}</legend>
             {!editing && <p className="session-ready" role="status">{plan.restUntil ? 'Rest complete. Ready for your next set.' : 'Ready when you are'}</p>}
             <div className="session-inputs">
-              <label htmlFor={`${id}-reps`}><span>Reps completed</span><input id={`${id}-reps`} type="number" inputMode="numeric" min={0} max={100} step={1} value={reps} onChange={event => onReps(event.target.value)}/></label>
+              <label htmlFor={`${id}-reps`}><span>Reps completed</span><input ref={repsInput} autoFocus id={`${id}-reps`} type="number" inputMode="numeric" min={0} max={100} step={1} value={reps} onChange={event => onReps(event.target.value)}/></label>
               <label htmlFor={`${id}-load`}><span>Load ({target.exercise.unit})</span><input id={`${id}-load`} inputMode="decimal" aria-describedby={`${id}-bodyweight`} value={load} onChange={event => onLoad(event.target.value)}/><small id={`${id}-bodyweight`}>Use 0 for bodyweight.</small></label>
             </div>
             <label className="session-warmup"><input type="checkbox" checked={warmup} onChange={event => onWarmup(event.target.checked)}/><span>Warm-up <small>Keep the planned working set</small></span></label>
-            <Button className="session-save-set" onClick={onSaveSet}><Check aria-hidden="true"/>{editing ? 'Save correction' : target.exercise.restSeconds ? 'Save set & start rest' : 'Save set'}</Button>
-            {!editing && <Button variant="ghost" className="session-skip-set" onClick={onSkipSet}><SkipForward aria-hidden="true"/>Skip set</Button>}
-            {editing && <Button variant="ghost" className="session-cancel-correction" onClick={onCancelCorrection}>Cancel correction</Button>}
-          </fieldset>
+            <div className="session-entry-actions"><Button className="session-save-set" onClick={onSaveSet}><Check aria-hidden="true"/>{editing ? 'Save correction' : 'Save set'}</Button>
+            {!editing && <Button variant="ghost" className="session-skip-set" onClick={onSkipSet}><SkipForward aria-hidden="true"/>Skip set</Button>}</div>
+          </fieldset>{editing && <Button variant="ghost" className="session-cancel-correction" disabled={locked} onClick={onCancelCorrection}>Cancel correction</Button>}
         </div> : <div className="session-all-done">
           <span className="session-complete-icon"><Check aria-hidden="true"/></span>
           <p className="session-eyebrow">Session plan complete</p>

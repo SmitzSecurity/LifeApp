@@ -7,7 +7,8 @@ import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
 import {presetExercise} from '../lib/life/exercise-presets.ts';
 import {exerciseSchema,workoutSchema,nextSet,structuredWorkoutSchema,workoutTotals} from '../lib/life/modules.ts';
-import {createWorkoutSession,extendWorkoutRest,skipCurrentSet,sameRoutinePlan,definiteWorkoutRejection} from '../lib/life/workout-session.ts';
+import {createWorkoutSession,extendWorkoutRest,skipCurrentSet,restoreSkippedSet,reviseWorkoutSet,removeWorkoutSet,sameRoutinePlan,definiteWorkoutRejection} from '../lib/life/workout-session.ts';
+import {performanceInWorkout} from '../lib/life/exercise-performance.ts';
 import {copyRoutineDraft} from '../lib/life/routine-recovery.ts';
 import {validateBackup} from '../lib/life/migration-preview.ts';
 import {AI_MODEL,RESERVATION_MICROS,geminiProvider} from '../lib/life/ai-provider.ts';
@@ -32,6 +33,53 @@ function fixture(t){
 
 import {recordedVolume} from '../lib/life/muscle-volume.ts';
 
+test('restoring an earlier skipped set preserves later performance and never reuses deleted set identities',()=>{
+ const exercise={...presetExercise('Bench press'),sets:3},id=exercise.id;
+ let workout={date:'2026-09-14',routineId:randomUUID(),name:'Review',exercises:[exercise],sets:[{exerciseId:id,setNumber:1,reps:8,load:140,completedAt:now.toISOString()}],skippedSets:[{exerciseId:id,workingSetNumber:1}],restUntil:null,finishedAt:now.toISOString()};
+ workout=restoreSkippedSet(workout,id,1);
+ assert.equal(nextSet(workout).workingSetNumber,1);assert.equal(workout.sets[0].workingSetNumber,2);
+ assert.equal(performanceInWorkout({id:randomUUID(),version:1,data:workout},'Bench press',1).performance,null);
+ workout=reviseWorkoutSet(workout,{exerciseId:id,workingSetNumber:1,reps:6,load:130,warmup:false},now.toISOString());
+ const record={id:randomUUID(),version:1,data:workout};assert.equal(performanceInWorkout(record,'Bench press',1).performance.load,130);assert.equal(performanceInWorkout(record,'Bench press',2).performance.load,140);
+ assert.equal(workout.sets.find(s=>s.workingSetNumber===1).setNumber,2);
+ workout=removeWorkoutSet(workout,id,2);assert.equal(nextSet(workout).setNumber,3);assert.equal(nextSet(workout).workingSetNumber,1);
+ workout=reviseWorkoutSet(workout,{exerciseId:id,workingSetNumber:1,reps:7,load:135,warmup:false},now.toISOString());
+ assert.equal(workout.sets.at(-1).setNumber,3);assert.equal(workout.lastSetSerials[0].setNumber,3);
+ const corrected=reviseWorkoutSet(workout,{exerciseId:id,setNumber:3,reps:9,load:135,warmup:false},now.toISOString());assert.equal(corrected.sets.at(-1).setNumber,3);assert.equal(corrected.lastSetSerials[0].setNumber,3);
+ assert.equal(removeWorkoutSet(corrected,id,1).sets[0].workingSetNumber,1);
+});
+
+test('history review saves late skipped work, extra sets and session notes with exact retries and portable export',async t=>{
+ const f=fixture(t);await f.setup();await f.setup('b');
+ const e={...presetExercise('Bench press'),sets:1,setupNote:'Seat height 4. Keep feet planted.'};
+ const routine=(await (await f.call({action:'resource',record:{kind:'routine',id:randomUUID(),version:0,data:{name:'Review program',preferences:'',exercises:[e],archived:false}}})).json()).record;
+ const save=({id,version,data})=>f.call({action:'resource',record:{kind:'workout',id,version,data}});
+ let saved=(await (await save(createWorkoutSession(routine,'2026-09-14'))).json()).record;
+ saved=(await (await save({...saved,data:{...skipCurrentSet(saved.data),finishedAt:now.toISOString()}})).json()).record;
+ const data=reviseWorkoutSet(saved.data,{exerciseId:e.id,workingSetNumber:1,reps:8,load:135,warmup:false},now.toISOString());
+ const frozen={...saved,data:{...data,notes:'Back felt tight; reduce load next time.'}};
+ const first=(await (await save(frozen)).json()).record;assert.deepEqual((await (await save(frozen)).json()).record,first);assert.equal(first.data.finishedAt,now.toISOString());assert.equal(first.data.skippedSets.length,0);
+ const extra=reviseWorkoutSet(first.data,{exerciseId:e.id,reps:6,load:125,warmup:false},now.toISOString());
+ const added=(await (await save({...first,data:extra})).json()).record;assert.equal(added.data.sets.length,2);assert.equal(added.data.exercises[0].sets,1);assert.equal(nextSet(added.data),null);
+ const backup=validateBackup(await (await f.call(null,'a','?export')).text());const exported=JSON.parse(backup.resources.find(r=>r.resource_id===added.id).payload);assert.equal(exported.notes,frozen.data.notes);assert.equal(exported.exercises[0].setupNote,e.setupNote);assert.deepEqual(exported.lastSetSerials,added.data.lastSetSerials);
+ assert.equal((await (await f.call(null,'b','?kind=workout')).json()).records.length,0);
+ assert.equal((await save({...added,data:{...added.data,lastSetSerials:[]}})).status,400);
+ const removed=(await (await save({...added,data:removeWorkoutSet(added.data,e.id,1)})).json()).record;
+ assert.equal((await save({...removed,data:{...removed.data,sets:[...removed.data.sets,added.data.sets.find(s=>s.setNumber===1)]}})).status,400,'retired serial cannot be recycled with a current version');
+ assert.equal((await save(added)).status,409,'a stale retry gets a version conflict instead of reviving the removed log');
+ const newRoutine={id:routine.id,version:1,data:{...routine.data,exercises:[{...e,setupNote:'Seat height 5.'}]}};assert.equal((await f.call({action:'resource',record:{kind:'routine',...newRoutine}})).status,200);
+ assert.equal((await (await f.call(null,'a','?kind=workout')).json()).records[0].data.exercises[0].setupNote,e.setupNote,'saved workout snapshot is immutable');
+});
+
+test('additional sets retain bounded counts and exhausted serials allow correction only',()=>{
+ const exercise={...presetExercise('Bench press'),sets:1},routine={id:randomUUID(),version:1,data:{name:'Bounds',preferences:'',archived:false,exercises:[exercise]}};
+ let workout=createWorkoutSession(routine,'2026-09-14').data;
+ for(let i=0;i<20;i++)workout=reviseWorkoutSet(workout,{exerciseId:exercise.id,reps:8,load:100,warmup:false},now.toISOString());
+ assert.equal(workout.sets.length,20);assert.throws(()=>reviseWorkoutSet(workout,{exerciseId:exercise.id,reps:8,load:100,warmup:false},now.toISOString()));
+ workout={...workout,lastSetSerials:[{exerciseId:exercise.id,setNumber:40}]};assert.throws(()=>reviseWorkoutSet(workout,{exerciseId:exercise.id,reps:8,load:45,warmup:true},now.toISOString()),/40 set identities/);
+ assert.equal(reviseWorkoutSet(workout,{exerciseId:exercise.id,setNumber:1,reps:7,load:95,warmup:false},now.toISOString()).sets.at(-1).setNumber,1);
+});
+
 const written={notes:'Check the unfamiliar movement.',name:'Written push',exercises:[{name:'Bench press',unit:'lb',reps:6,repMax:10,restSeconds:150,muscles:{direct:['forearms'],indirect:[]},logged:[{reps:8,load:100,warmup:true},{reps:8,load:135,warmup:false},{reps:7,load:135,warmup:false}]},{name:'Synthetic custom cable press',unit:'lb',reps:8,repMax:12,restSeconds:120,muscles:{direct:['chest'],indirect:['triceps']},logged:[{reps:12,load:30,warmup:false}]}]};
 const write=(id=randomUUID())=>({action:'workout-build',build:{requestId:id,text:'Completed bench: warm-up 100 x 8, 135 x 8/7 lb; custom cable press 30 lb x 12.',consent:true}});
 const remove=(kind,id,deleted=true,version)=>({action:'record-deletion',change:{kind,id,deleted,...(version?{version}:{})}});
@@ -50,7 +98,7 @@ test('three warm-ups preserve all three working sets, survive reload, and correc
  assert.equal(nextSet(restored),null);assert.ok(workoutSchema.safeParse(restored).success);
  assert.equal(recordedVolume([{id:randomUUID(),version:1,data:restored}],'2026-09-14','2026-09-14').sets,3);
  restored.sets[4].warmup=true;assert.equal(nextSet(restored).workingSetNumber,3);
- restored.sets.splice(1,1);assert.equal(nextSet(restored).setNumber,2);
+ restored.sets.splice(1,1);assert.equal(nextSet(restored).setNumber,7);
 });
 
 test('skipped planned targets advance without fabricated work, preserve warm-up serials and survive corrections',()=>{
@@ -70,7 +118,7 @@ test('skipped planned targets advance without fabricated work, preserve warm-up 
  assert.equal(nextSet(workout).exercise.id,second.id);assert.equal(nextSet(workout).setNumber,1);
  assert.equal(recordedVolume([{id:randomUUID(),version:1,data:workout}],'2026-09-14','2026-09-14').sets,1);
  assert.equal(workoutTotals(workout).sets,2);assert.equal(workoutTotals(workout).reps,14);
- workout.sets[1].warmup=true;
+ workout.sets[1].warmup=true;delete workout.sets[1].workingSetNumber;
  assert.equal(nextSet(workout).exercise.id,first.id);assert.equal(nextSet(workout).workingSetNumber,2);assert.equal(nextSet(workout).setNumber,3);
  workout.sets[1].warmup=false;
  workout=skipCurrentSet(workout);
