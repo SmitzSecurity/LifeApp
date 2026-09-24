@@ -1,0 +1,8 @@
+.compact-topbar button.workout-header-timer[data-slot=button]{width:auto;min-width:74px;min-height:44px;padding:6px 8px;gap:5px;color:var(--primary);font-variant-numeric:tabular-nums;white-space:nowrap}
+.compact-topbar .workout-header-timer svg{width:18px;height:18px}
+.compact-topbar:has(.workout-header-timer){gap:6px}
+.compact-topbar:has(.workout-header-timer) h1{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.workout-notifications{display:grid;gap:8px;margin-block:14px}
+.workout-notifications p{margin:0;font-size:var(--ui-label,.8125rem)}
+.workout-notifications button{justify-self:start;min-height:44px;height:auto;white-space:normal}
+@media(max-width:360px){.compact-topbar .toolbar-actions{gap:0}.compact-topbar button.workout-header-timer[data-slot=button]{min-width:66px;padding-inline:4px}}

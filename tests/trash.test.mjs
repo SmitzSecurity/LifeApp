@@ -72,6 +72,23 @@ test('recurring permanent deletion scrubs the item while retaining transaction i
  saved.recurring[0].deleted=false;assert.equal((await f.call({action:'resource',record:{kind:'budget',id:'2026-09',version:3,data:saved}})).status,410);validateBackup(await (await f.call(null,'a','?export')).text());
 });
 
+test('legacy inherited purged placeholders cannot offer or perform a fresh Trash restore',async t=>{
+ const f=fixture(t);await f.setup();const category=randomUUID(),retired=randomUUID(),live=randomUUID();
+ const placeholder={id:retired,title:'Deleted item',kind:'expense',categoryId:category,amountCents:1,day:1,frequency:'monthly-day',week:'first',weekday:1,variable:false,active:false,deleted:true,purged:true};
+ const plan={currency:'USD',categories:[{id:category,name:'Bills',limitCents:10000}],recurring:[placeholder,{...placeholder,id:live,title:'Retained deleted bill',amountCents:5000,purged:undefined}],goals:{spending:'',saving:'',investing:''}};
+ // Reproduce an already-saved month from the old inheritance behavior. The
+ // existing trigger creates two fresh Trash rows, including the empty copy.
+ f.raw.prepare("INSERT INTO life_resources VALUES(?,'budget','2026-09','2026-09',?,1,?,NULL)").run('a',JSON.stringify(plan),stamp);
+ const rows=f.raw.prepare("SELECT * FROM life_trash WHERE user_id='a' AND kind='recurring'").all();assert.equal(rows.length,2);
+ const visible=await f.list();assert.deepEqual(visible.map(item=>item.id),['2026-09:'+live]);
+ const retiredRow=rows.find(item=>item.record_id==='2026-09:'+retired),before=f.raw.prepare("SELECT * FROM life_resources WHERE kind='budget'").get();
+ const rejected=await f.call({action:'trash',change:{kind:'recurring',id:retiredRow.record_id,deletedAt:retiredRow.deleted_at,operation:'restore'}});
+ assert.equal(rejected.status,410);assert.deepEqual(f.raw.prepare("SELECT * FROM life_resources WHERE kind='budget'").get(),before);
+ assert.equal((await f.call(f.change(visible[0],'restore'))).status,200,'a normal deleted schedule remains restorable');
+ const restored=JSON.parse(f.raw.prepare("SELECT payload FROM life_resources WHERE kind='budget'").get().payload);
+ assert.equal(restored.recurring.find(item=>item.id===live).deleted,false);assert.deepEqual(restored.recurring.find(item=>item.id===retired),placeholder);
+});
+
 test('permanently deleting an uncertain AI draft retains the hold and removes it during account deletion',async t=>{
  const f=fixture(t);await f.setup();f.state.hook=()=>{throw Error('Synthetic uncertain provider');};
  const id=randomUUID();await f.call({action:'routine-build',build:{requestId:id,text:'A synthetic full body program',consent:true}});

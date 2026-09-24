@@ -1,6 +1,7 @@
 'use client';
 import {useState} from 'react';
 import {Button} from '@/components/ui/button';
+import {clearOfflineData} from '@/lib/life/offline-client';
 import {AlertDialog,AlertDialogContent,AlertDialogHeader,AlertDialogTitle,AlertDialogDescription,AlertDialogFooter,AlertDialogCancel} from '@/components/ui/alert-dialog';
 
 export default function AccountSettings({disabled,onBusy,onDeleted,open:controlledOpen,onOpenChange}:{disabled:boolean;onBusy:(busy:boolean)=>void;onDeleted:()=>void;open?:boolean;onOpenChange?:(open:boolean)=>void}){
@@ -16,7 +17,7 @@ export default function AccountSettings({disabled,onBusy,onDeleted,open:controll
    const response=await fetch('/api/auth/delete-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({confirmation}),cache:'no-store'});
    const result=await response.json();
    if(!response.ok||result.deleted!==true)throw new Error(result.error||'Deletion could not be confirmed. Try again.');
-   onDeleted();
+   await clearOfflineData();onDeleted();
   }catch(e){setError((e as Error).message);}
   finally{setBusy(false);onBusy(false);}
  }

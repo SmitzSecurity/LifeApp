@@ -74,7 +74,7 @@ test('AI status uses only committed callbacks and drops old-scope responses and 
 
 test('draft saves keep stable open identity and do not publish through an abandoned callback',async()=>{
  const acknowledgements=[],save=deferred(),original={date:'2026-09-16',journal:'Original',context:{},habits:[],version:1,complete:false};
- const view=mount('app/life/use-draft-sync.ts',{exportName:'useDraftSync',adapters:{'@/lib/life/draft-sync':{DraftSync}},globals:{fetch:()=>save.promise}});
+ const view=mount('app/life/use-draft-sync.ts',{exportName:'useDraftSync',adapters:{'@/lib/life/draft-sync':{DraftSync},'@/lib/life/offline-client':{lifeFetch:()=>save.promise}}});
  const first=view.render([entry=>acknowledgements.push(['first',entry.journal]),false]);first.open(original);
  let hook=view.render([entry=>acknowledgements.push(['committed',entry.journal]),false]);assert.equal(first.open,hook.open);
  hook.edit({...original,journal:'Saved text'});hook=view.render([entry=>acknowledgements.push(['committed',entry.journal]),false]);

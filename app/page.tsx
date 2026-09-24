@@ -10,7 +10,7 @@ export default async function Home() {
   if(googleMode(env)){
     let user=null;try{user=await getLifeIdentity();}catch{}
     if(!user)redirect('/sign-in');
-    return <LifeApp signOutHref="/sign-out"/>;
+    return <><meta name="life-offline-account" content={user.id}/><LifeApp accountId={user.id} signOutHref="/sign-out"/></>;
   }
   await requireChatGPTUser("/");
   const h = await headers();

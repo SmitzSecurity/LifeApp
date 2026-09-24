@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Entry } from '@/lib/life/domain';
 import { DraftSync, type SyncStatus } from '@/lib/life/draft-sync';
+import {lifeFetch} from '@/lib/life/offline-client';
 export function useDraftSync(onSaved:(entry:Entry)=>void,autoSave=true){
  const [draft,setDraft]=useState<Entry|null>(null),[status,setStatus]=useState<SyncStatus>('saved'),[syncError,setSyncError]=useState('');
  const writer=useRef<DraftSync|null>(null),onSavedRef=useRef(onSaved),timer=useRef<ReturnType<typeof setTimeout>|null>(null);
@@ -11,7 +12,7 @@ export function useDraftSync(onSaved:(entry:Entry)=>void,autoSave=true){
  const open=useCallback((entry:Entry)=>{
   if(writer.current?.dirty)throw new Error('Save or discard your changes before opening another day.');
   writer.current=new DraftSync(entry,async(snapshot,mutationId)=>{
-   const response=await fetch('/api/life',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'entry',entry:{date:snapshot.date,complete:snapshot.complete||false,journal:snapshot.journal,context:snapshot.context,statuses:snapshot.habits.map(h=>({id:h.id,status:h.status})),version:snapshot.version,mutationId}}),keepalive:true});
+   const response=await lifeFetch('/api/life',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'entry',entry:{date:snapshot.date,complete:snapshot.complete||false,journal:snapshot.journal,context:snapshot.context,statuses:snapshot.habits.map(h=>({id:h.id,status:h.status})),version:snapshot.version,mutationId}}),keepalive:true});
    const result=await response.json();if(!response.ok)throw Object.assign(new Error(result.error||'Could not sync your draft.'),{status:response.status});onSavedRef.current(result.entry);return result.entry;
   },(entry,next,error)=>{setDraft(entry);setStatus(next);setSyncError(error);});
   setDraft(entry);setStatus('saved');setSyncError('');
