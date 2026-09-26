@@ -9,13 +9,99 @@ import {budgetSchema,recurringSchema,occurrenceId,budgetSummary} from '../lib/li
 const month='2026-09',now=new Date('2026-09-11T12:00:00Z');
 function fixture(){
  const raw=new DatabaseSync(':memory:');for(const f of readdirSync('drizzle').filter(f=>f.endsWith('.sql')).sort())raw.exec(readFileSync('drizzle/'+f,'utf8'));
- const db={prepare(sql){return {bind(...params){return {async first(){return raw.prepare(sql).get(...params)||null;},async all(){return {results:raw.prepare(sql).all(...params)};}};}};}};
+ const state={beforeWrite:null};
+ const db={prepare(sql){return {bind(...params){return {async first(){return raw.prepare(sql).get(...params)||null;},async all(){if(sql.startsWith('WITH incoming')&&state.beforeWrite){const hook=state.beforeWrite;state.beforeWrite=null;hook();}return {results:raw.prepare(sql).all(...params)};}};}};}};
  const call=(body,user='a',query='')=>handleLife(new Request('https://life.test/api/life'+query,{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json',Origin:'https://life.test'}:{},body:body?JSON.stringify(body):undefined}),user,db,now);
  const change=(change,user)=>call({action:'budget-item',change:{month,...change}},user);
  async function setup(){await call({action:'profile',profile:profileSchema.parse({goal:'Synthetic budget',timezone:'UTC',modules:['money'],habits:[],version:0})});}
  const initial=budgetSchema.parse({currency:'USD',categories:['Bills','Food'].map(name=>({id:randomUUID(),name,limitCents:30000})),recurring:[],goals:{spending:'',saving:'',investing:''}});
- return {raw,call,change,setup,initial};
+ return {raw,call,change,setup,initial,state};
 }
+
+test('one recurring occurrence can move, skip and restore without changing its schedule or identity',async()=>{
+ const f=fixture();try{await f.setup();const item=recurringSchema.parse({id:randomUUID(),title:'Massage',kind:'expense',amountCents:8000,categoryId:f.initial.categories[0].id,day:1,frequency:'monthly-weekday',week:'last',weekday:5});
+ await f.change({kind:'recurring',initial:f.initial,previous:null,item});
+ const override={period:month,date:month+'-09',skipped:false},change={kind:'occurrence',recurringId:item.id,period:month,previous:null,item:override};
+ let response=await f.change(change);assert.equal(response.status,200);let plan=(await response.json()).record;
+ const id=occurrenceId(month,item.id);let summary=budgetSummary(plan.data,[],month);
+ assert.equal(summary.due[0].date,month+'-09');assert.equal(summary.due[0].originalDate,month+'-25');assert.equal(summary.due[0].id,id);assert.equal(summary.categories[0].scheduled,8000);
+ assert.equal(budgetSummary(plan.data,[],'2026-10').due[0].date,'2026-10-30');
+ assert.equal((await (await f.change(change)).json()).record.version,plan.version);
+ const payment={kind:'transaction',id,version:0,data:{date:month+'-09',kind:'expense',amountCents:8000,categoryId:item.categoryId,note:item.title,recurringId:item.id,voided:false}};
+ response=await f.call({action:'resource',record:payment});assert.equal(response.status,200);const paid=(await response.json()).record;
+ assert.equal((await f.change({...change,previous:override,item:{...override,date:month+'-10'}})).status,409);
+ response=await f.call({action:'resource',record:{id,version:paid.version,kind:'transaction',data:{...paid.data,deleted:true}}});assert.equal(response.status,200);const deleted=(await response.json()).record;
+ const skipped={...override,skipped:true};response=await f.change({...change,previous:override,item:skipped});assert.equal(response.status,200);plan=(await response.json()).record;
+ summary=budgetSummary(plan.data,[deleted],month);assert.equal(summary.due.length,0);assert.equal(summary.skipped[0].id,id);assert.equal(summary.categories[0].scheduled,0);assert.equal(summary.expenses,0);
+ assert.equal((await f.call({action:'resource',record:{id,version:deleted.version,kind:'transaction',data:{...deleted.data,deleted:false}}})).status,409);
+ const trash=f.raw.prepare("SELECT deleted_at FROM life_trash WHERE user_id='a' AND kind='transaction' AND record_id=?").get(id);
+ const restore={action:'trash',change:{kind:'transaction',id,deletedAt:trash.deleted_at,operation:'restore'}};
+ assert.equal((await f.call(restore)).status,409);
+ assert.equal((await f.change({...change,previous:skipped,item:override})).status,200);
+ assert.equal((await f.call(restore)).status,200);
+ }finally{f.raw.close();}
+});
+
+test('advanced date overrides retain separate occurrence IDs, merge other edits and reject stale or cross-month changes',async()=>{
+ const f=fixture();try{await f.setup();const item=recurringSchema.parse({id:randomUUID(),title:'Two visits',kind:'expense',amountCents:1000,categoryId:f.initial.categories[0].id,day:1,frequency:'custom',startDate:month+'-01',custom:{unit:'months',interval:1,days:[4,8]}});
+ await f.change({kind:'recurring',initial:f.initial,previous:null,item});
+ const change=(day,date)=>({kind:'occurrence',recurringId:item.id,period:month+'-'+day,previous:null,item:{period:month+'-'+day,date,skipped:false}});
+ const results=await Promise.all([f.change(change('04',month+'-09')),f.change(change('08',month+'-09')),f.change({kind:'category',previous:f.initial.categories[1],item:{...f.initial.categories[1],limitCents:777}})]);
+ assert.deepEqual(results.map(r=>r.status),[200,200,200]);
+ const plan=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0],due=budgetSummary(plan.data,[],month).due;
+ assert.equal(due.length,2);assert.equal(new Set(due.map(d=>d.id)).size,2);assert.ok(due.every(d=>d.date===month+'-09'));assert.deepEqual(due.map(d=>d.occurrenceDate),[month+'-04',month+'-08']);
+ assert.equal(plan.data.categories[1].limitCents,777);
+ assert.equal((await f.change(change('04',month+'-10'))).status,409);
+ assert.equal((await f.change(change('04','2026-10-01'))).status,400);
+ assert.equal((await f.change(change('05',month+'-10'))).status,409);
+ for(const occurrence of due){const response=await f.call({action:'resource',record:{kind:'transaction',id:occurrence.id,version:0,data:{date:occurrence.date,kind:'expense',amountCents:1000,categoryId:item.categoryId,note:item.title,recurringId:item.id,occurrenceDate:occurrence.occurrenceDate,voided:false}}});assert.equal(response.status,200);}
+ assert.equal((await f.change(change('04',month+'-09'),'b')).status,400);
+ }finally{f.raw.close();}
+});
+
+test('creating in a future month atomically honors an earlier start while preserving saved history and category allowances',async()=>{
+ const f=fixture();try{await f.setup();await f.change({kind:'initialize',initial:f.initial});const before=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];
+ const future={...f.initial,categories:[...f.initial.categories,{id:randomUUID(),name:'Wellness',limitCents:99000}]};
+ const item=recurringSchema.parse({id:randomUUID(),title:'Massage',kind:'expense',amountCents:9000,categoryId:future.categories[2].id,day:1,frequency:'monthly-weekday',week:'last',weekday:5,startDate:'2026-08-01'});
+ const change={kind:'recurring',month:'2026-10',initial:future,previous:null,item};
+ let response=await f.change(change);assert.equal(response.status,200);const result=await response.json();assert.equal(result.plans.length,3);
+ const plans=(await (await f.call(undefined,'a','?kind=budget')).json()).records.sort((a,b)=>a.id.localeCompare(b.id));assert.deepEqual(plans.map(p=>p.id),['2026-08',month,'2026-10']);
+ for(const plan of plans){assert.equal(plan.data.recurring[0].id,item.id);assert.equal(budgetSummary(plan.data,[],plan.id).due.length,1);}
+ assert.deepEqual(plans[1].data.categories.slice(0,2),before.data.categories);assert.equal(plans[1].data.categories[2].limitCents,0);assert.ok(plans[0].data.categories.every(c=>c.limitCents===0));assert.equal(plans[2].data.categories[2].limitCents,99000);
+ const versions=plans.map(p=>p.version);response=await f.change(change);assert.equal(response.status,200);assert.equal((await response.json()).plans.length,2);
+ assert.deepEqual((await (await f.call(undefined,'a','?kind=budget')).json()).records.sort((a,b)=>a.id.localeCompare(b.id)).map(p=>p.version),versions);
+ assert.equal((await f.change({kind:'recurring',month,previous:item,item:{...item,deleted:true,active:false}})).status,200);
+ assert.equal((await f.change(change)).status,200);const historical=(await (await f.call(undefined,'a','?kind=budget&month='+month)).json()).records[0];assert.equal(historical.data.recurring[0].deleted,true,'retry never resurrects an earlier item');
+ assert.equal((await f.change(change,'b')).status,400);assert.equal(f.raw.prepare("SELECT count(*) n FROM life_resources WHERE user_id='b'").get().n,0);
+ }finally{f.raw.close();}
+});
+
+test('backdated creation rejects a full earlier plan without leaving any partial month writes',async()=>{
+ const f=fixture();try{await f.setup();f.initial.recurring=Array.from({length:60},(_,i)=>recurringSchema.parse({id:randomUUID(),title:'Existing '+i,kind:'expense',amountCents:100,categoryId:f.initial.categories[0].id,day:1}));await f.change({kind:'initialize',initial:f.initial});
+ const before=f.raw.prepare('SELECT * FROM life_resources').all(),item=recurringSchema.parse({id:randomUUID(),title:'New item',kind:'income',amountCents:100,categoryId:'',day:1,startDate:'2026-08-01'});
+ const response=await f.change({kind:'recurring',month:'2026-10',initial:{...f.initial,recurring:[]},previous:null,item});assert.equal(response.status,400);assert.deepEqual(f.raw.prepare('SELECT * FROM life_resources').all(),before);
+ }finally{f.raw.close();}
+});
+
+test('backdated creation retries its entire atomic write after concurrent edits or an intermediate month is initialized',async()=>{
+ const f=fixture();try{await f.setup();await f.change({kind:'initialize',initial:f.initial});
+ const interim={...f.initial,categories:f.initial.categories.map(c=>({...c,limitCents:321})),goals:{spending:'Preserve this month',saving:'',investing:''}},item=recurringSchema.parse({id:randomUUID(),title:'Future-created appointment',kind:'expense',amountCents:5000,categoryId:f.initial.categories[0].id,day:5,startDate:'2026-08-01'});
+ f.state.beforeWrite=()=>{
+  f.raw.prepare("UPDATE life_resources SET payload=json_set(payload,'$.categories[0].limitCents',777),version=version+1 WHERE user_id='a' AND kind='budget' AND resource_id=?").run(month);
+  f.raw.prepare("INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at) VALUES('a','budget','2026-10','2026-10',?,1,?)").run(JSON.stringify(interim),now.toISOString());
+ };
+ const response=await f.change({kind:'recurring',month:'2026-12',initial:f.initial,previous:null,item});assert.equal(response.status,200);
+ const plans=(await (await f.call(undefined,'a','?kind=budget')).json()).records.sort((a,b)=>a.id.localeCompare(b.id));
+ assert.deepEqual(plans.map(p=>p.id),['2026-08',month,'2026-10','2026-12']);assert.ok(plans.every(p=>p.data.recurring.filter(r=>r.id===item.id).length===1));assert.equal(plans[1].data.categories[0].limitCents,777);assert.equal(plans[1].version,3);assert.deepEqual(plans[2].data.categories,interim.categories);assert.deepEqual(plans[2].data.goals,interim.goals);assert.equal(plans[2].version,2);
+ }finally{f.raw.close();}
+});
+
+test('a permanently retired occurrence cannot be revived by rescheduling it',async()=>{
+ const f=fixture();try{await f.setup();const item=recurringSchema.parse({id:randomUUID(),title:'Retired payment',kind:'expense',amountCents:5000,categoryId:f.initial.categories[0].id,day:5});await f.change({kind:'recurring',initial:f.initial,previous:null,item});
+ f.raw.prepare("INSERT INTO life_trash(user_id,kind,record_id,deleted_at,purged_at) VALUES('a','transaction',?,?,?)").run(occurrenceId(month,item.id),'2026-09-01T12:00:00.000Z',now.toISOString());
+ const response=await f.change({kind:'occurrence',recurringId:item.id,period:month,previous:null,item:{period:month,date:month+'-07',skipped:false}});assert.equal(response.status,410);
+ }finally{f.raw.close();}
+});
 test('first transaction can initialize its month automatically without a separate plan save',async()=>{
  const f=fixture();try{await f.setup();const init=await f.change({kind:'initialize',initial:f.initial});assert.equal(init.status,200);
  const record={kind:'transaction',id:randomUUID(),version:0,data:{date:month+'-11',kind:'expense',amountCents:1925,categoryId:f.initial.categories[0].id,note:'Synthetic first transaction',recurringId:null,voided:false}};

@@ -111,8 +111,9 @@ export function updateOnlineWriteCache(state:OfflineData,body:string,result:Obje
  if(request.action==='budget-item'){
   const change=object(request.change),record=object(result.record),parsed=resourceSchemas.budget.safeParse(record.data);
   if(record.id===change.month&&parsed.success){
-   const write={body:JSON.stringify({action:'resource',record:{kind:'budget'}}),result:{record}};
-   state.reads=state.reads.map(item=>({...item,value:applyWrite(item.value,item.url,item.body,write)}));
+   const records=[record,...(Array.isArray(result.plans)?result.plans.map(object).filter(plan=>plan.id!==record.id&&resourceSchemas.budget.safeParse(plan.data).success):[])];
+   for(const saved of records){const write={body:JSON.stringify({action:'resource',record:{kind:'budget'}}),result:{record:saved}};
+    state.reads=state.reads.map(item=>({...item,value:applyWrite(item.value,item.url,item.body,write)}));}
   }
  }
  if(request.action==='record-deletion'||request.action==='trash')state.reads=[];

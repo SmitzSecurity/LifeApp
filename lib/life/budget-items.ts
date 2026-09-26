@@ -1,6 +1,8 @@
 import {z} from 'zod/v3';
-import {budgetSchema,categorySchema,recurringSchema,monthSchema,type Budget,type Saved} from './modules.ts';
-import {readResource,saveResource} from './resource-service.ts';
+import {budgetSchema,categorySchema,recurringSchema,occurrenceOverrideSchema,monthSchema,occurrenceId,type Budget,type Saved} from './modules.ts';
+import {readResource,readSuppressedOccurrences,saveResource} from './resource-service.ts';
+import {scheduledDatesInMonth,occurrencePeriod} from './budget-schedule.ts';
+import {saveBackdatedRecurring} from './budget-backdated.ts';
 import type {Database} from './service.ts';
 import type {Profile} from './domain.ts';
 
@@ -10,6 +12,7 @@ export const budgetItemSchema=z.discriminatedUnion('kind',[
  z.object({...base,kind:z.literal('initialize'),initial:budgetSchema}).strict(),
  z.object({...base,kind:z.literal('category'),previous:categorySchema.nullable(),item:categorySchema}).strict(),
  z.object({...base,kind:z.literal('recurring'),previous:recurringSchema.nullable(),item:recurringSchema}).strict(),
+ z.object({...base,kind:z.literal('occurrence'),recurringId:z.string().uuid(),period:occurrenceOverrideSchema.innerType().shape.period,previous:occurrenceOverrideSchema.nullable(),item:occurrenceOverrideSchema.nullable()}).strict(),
  z.object({...base,kind:z.literal('import'),categories:z.array(z.object({previous:categorySchema.nullable(),item:categorySchema}).strict()).max(20),recurring:z.array(z.object({previous:recurringSchema.nullable(),item:recurringSchema}).strict()).max(30)}).strict(),
  z.object({...base,kind:z.literal('category-order'),previous:categoryOrder,order:categoryOrder}).strict(),
  z.object({...base,kind:z.literal('category-edit'),categories:z.array(z.object({previous:categorySchema.nullable(),item:categorySchema}).strict()).max(30),ordering:z.object({previous:categoryOrder,order:categoryOrder}).strict().optional()}).strict(),
@@ -25,6 +28,7 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
  const parsed=budgetItemSchema.safeParse(body);
  if(!parsed.success)return json({error:'Check the name, amount and schedule for this item.'},400);
  const change=parsed.data;
+ if(change.kind==='recurring'&&!change.previous&&change.item.startDate&&change.item.startDate.slice(0,7)<change.month)return saveBackdatedRecurring(change,db,userId,profile,now);
  if((change.kind==='category'||change.kind==='recurring')&&change.previous&&change.previous.id!==change.item.id)return json({error:'Keep the original item identity.'},400);
  let latest:Saved<Budget>|null=null;
  for(let attempt=0;attempt<3;attempt++){
@@ -34,6 +38,19 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
   const current=latest?.data||change.initial;
   if(!current)return json({error:'Reopen this month before saving an item.'},409);
   let data=current;
+  if(change.kind==='occurrence'){
+   const source=current.recurring.find(r=>r.id===change.recurringId);
+   if(!source||source.deleted||source.purged||!source.active)return json({error:'Reopen an active recurring item before adjusting an occurrence.'},409);
+   if(change.period.slice(0,7)!==change.month||change.previous&&change.previous.period!==change.period||change.item&&change.item.period!==change.period)return json({error:'Keep the original occurrence identity and month.'},400);
+   if(!scheduledDatesInMonth(change.month,source).some(date=>occurrencePeriod(change.month,source,date)===change.period))return json({error:'This occurrence changed with its schedule. Reopen it before adjusting the date.'},409);
+   const id=occurrenceId(change.period,source.id);
+   if((await readSuppressedOccurrences(db,userId,change.month,now)).includes(id))return json({error:'This occurrence was permanently deleted. Add a one-off transaction instead.'},410);
+   const previous=source.occurrenceOverrides?.find(o=>o.period===change.period)||null;
+   if(same(previous,change.item)&&latest)return json({record:latest});
+   if(!same(previous,change.previous))return json({error:'This occurrence changed in another session. Cancel and reopen it to review its saved date.',record:latest},409);
+   const occurrenceOverrides=[...(source.occurrenceOverrides||[]).filter(o=>o.period!==change.period),...(change.item?[change.item]:[])].sort((a,b)=>a.period.localeCompare(b.period));
+   data={...current,recurring:current.recurring.map(r=>r.id===source.id?{...r,occurrenceOverrides}:r)};
+  }
   const ordering=change.kind==='category-order'?change:change.kind==='category-edit'?change.ordering:undefined;
   if(ordering){
    const ids=current.categories.map(c=>c.id);
@@ -43,7 +60,7 @@ export async function saveBudgetItem(body:unknown,db:Database,userId:string,prof
    if(!same(ids,ordering.order)&&!same(ids,ordering.previous))return json({error:'The category order changed in another session. Cancel and reopen Edit categories to use its saved order.',record:latest},409);
    if(change.kind==='category-order'&&latest&&same(ids,ordering.order))return json({record:latest});
   }
-  if(change.kind!=='initialize'&&change.kind!=='category-order'){
+  if(change.kind!=='initialize'&&change.kind!=='category-order'&&change.kind!=='occurrence'){
    const edits=change.kind==='category-edit'?change.categories.map(c=>({...c,kind:'category' as const})):change.kind==='import'?[...change.categories.map(c=>({...c,kind:'category' as const})),...change.recurring.map(r=>({...r,kind:'recurring' as const}))]:[change];
    if(edits.some(e=>e.previous&&e.previous.id!==e.item.id)||new Set(edits.map(e=>e.kind+e.item.id)).size!==edits.length)return json({error:'Each draft item must have its own unchanged ID.'},400);
    for(const edit of edits){

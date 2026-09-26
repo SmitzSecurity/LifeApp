@@ -1,11 +1,16 @@
 import {z} from 'zod/v3';
 import {resolveExerciseName} from './exercise-names.ts';
-import {workingSetEntries,type Saved,type Workout} from './modules.ts';
+import {workingSetEntries,type Routine,type Saved,type Workout} from './modules.ts';
 import type {Database} from './service.ts';
 
 export type ExercisePerformance={
  workoutId:string;workoutName:string;exerciseName:string;date:string;finishedAt:string;
  workingSetNumber:number;reps:number;load:number;unit:'kg'|'lb';
+};
+export type ExerciseHistory={
+ workoutId:string;workoutName:string;exerciseName:string;date:string;finishedAt:string;
+ plannedSets:number;reps:number;repMax:number;unit:'kg'|'lb';
+ sets:{workingSetNumber:number;reps:number;load:number}[];skipped:number[];
 };
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store',Vary:'Cookie','X-Content-Type-Options':'nosniff'}});
 
@@ -29,9 +34,19 @@ export function performanceInWorkout(record:Saved<Workout>,name:string,workingSe
 }
 
 type Row={resource_id:string;payload:string;version:number;finished_sort:number};
+// Zero-rep working attempts remain evidence for the next weight review. Empty
+// plans and warm-ups alone do not replace a previous working performance.
+export function historyInWorkout(record:Saved<Workout>,name:string):ExerciseHistory|null{
+ const workout=record.data;if(workout.deleted||!workout.finishedAt)return null;
+ const key=resolveExerciseName(name),candidate=workout.exercises.filter(e=>resolveExerciseName(e.name)===key).map(exercise=>({exercise,entries:workingSetEntries(workout,exercise.id)})).filter(item=>item.entries.length).sort((a,b)=>Math.max(...b.entries.map(s=>Date.parse(s.set.completedAt)))-Math.max(...a.entries.map(s=>Date.parse(s.set.completedAt))))[0];
+ if(!candidate)return null;
+ const {exercise,entries}=candidate;
+ return {workoutId:record.id,workoutName:workout.name,exerciseName:exercise.name,date:workout.date,finishedAt:workout.finishedAt,plannedSets:exercise.sets,reps:exercise.reps,repMax:exercise.repMax??exercise.reps,unit:exercise.unit,sets:entries.map(({set,workingSetNumber})=>({workingSetNumber,reps:set.reps,load:set.load})).sort((a,b)=>a.workingSetNumber-b.workingSetNumber),skipped:(workout.skippedSets||[]).filter(s=>s.exerciseId===exercise.id).map(s=>s.workingSetNumber)};
+}
 const querySchema=z.object({workoutId:z.string().uuid(),exerciseId:z.string().uuid(),workingSetNumber:z.coerce.number().int().min(1).max(20)});
 export async function readExercisePerformance(request:Request,db:Database,userId:string){
  const params=new URL(request.url).searchParams;
+ if(params.has('routineId'))return readRoutinePerformance(params.get('routineId'),db,userId);
  const parsed=querySchema.safeParse({workoutId:params.get('workoutId'),exerciseId:params.get('exerciseId'),workingSetNumber:params.get('workingSetNumber')});
  if(!parsed.success)return json({error:'Choose a workout exercise and working set.'},400);
  const {workoutId,exerciseId,workingSetNumber}=parsed.data;
@@ -54,12 +69,33 @@ export async function readExercisePerformance(request:Request,db:Database,userId
    ORDER BY finished_sort DESC,resource_id DESC LIMIT ${limit}`).bind(...(cursor?[userId,workoutId,cursor.finished,cursor.id]:[userId,workoutId])).all<Row>();
   if(read===5000&&result.results.length)return json({error:'Your workout history is too large to compare this set. No partial comparison was returned.'},413);
   for(const row of result.results){
-   const found=performanceInWorkout({id:row.resource_id,version:row.version,data:JSON.parse(row.payload)},exercise.name,workingSetNumber);
-   if(found.matched)return json({performance:found.performance});
+   const record={id:row.resource_id,version:row.version,data:JSON.parse(row.payload)},history=historyInWorkout(record,exercise.name);
+   if(history){const set=history.sets.find(s=>s.workingSetNumber===workingSetNumber);return json({performance:set&&set.reps>0?{workoutId:history.workoutId,workoutName:history.workoutName,exerciseName:history.exerciseName,date:history.date,finishedAt:history.finishedAt,workingSetNumber,reps:set.reps,load:set.load,unit:history.unit}:null,history});}
   }
   read+=result.results.length;
-  if(result.results.length<limit)return json({performance:null});
+  if(result.results.length<limit)return json({performance:null,history:null});
   const last:Row=result.results.at(-1)!;cursor={finished:last.finished_sort,id:last.resource_id};
  }
  return json({performance:null});
+}
+
+async function readRoutinePerformance(id:unknown,db:Database,userId:string){
+ const parsed=z.string().uuid().safeParse(id);if(!parsed.success)return json({error:'Choose a saved program.'},400);
+ const current=await db.prepare("SELECT payload FROM life_resources WHERE user_id=?1 AND kind='routine' AND resource_id=?2").bind(userId,parsed.data).first<{payload:string}>();
+ if(!current)return json({error:'This program is no longer available.'},404);
+ const routine=JSON.parse(current.payload) as Routine;if(routine.archived)return json({error:'Choose an active program.'},409);
+ const histories:Record<string,ExerciseHistory|null>=Object.fromEntries(routine.exercises.map(e=>[e.id,null]));
+ const unresolved=new Map(routine.exercises.map(e=>[e.id,e.name]));let cursor:{finished:number;id:string}|null=null,read=0;
+ while(read<=5000){
+  const limit=read===5000?1:100;
+  const result:{results:Row[]}=await db.prepare(`SELECT resource_id,payload,version,julianday(json_extract(payload,'$.finishedAt')) AS finished_sort FROM life_resources
+   WHERE user_id=?1 AND kind='workout' AND COALESCE(json_extract(payload,'$.deleted'),0)=0 AND julianday(json_extract(payload,'$.finishedAt')) IS NOT NULL
+   ${cursor?"AND (julianday(json_extract(payload,'$.finishedAt'))<?2 OR (julianday(json_extract(payload,'$.finishedAt'))=?2 AND resource_id<?3))":''}
+   ORDER BY finished_sort DESC,resource_id DESC LIMIT ${limit}`).bind(...(cursor?[userId,cursor.finished,cursor.id]:[userId])).all<Row>();
+  if(read===5000&&result.results.length)return json({error:'Your workout history is too large to compare this program. No partial comparison was returned.'},413);
+  for(const row of result.results){const record={id:row.resource_id,version:row.version,data:JSON.parse(row.payload)};for(const [exerciseId,name] of unresolved){const history=historyInWorkout(record,name);if(history){histories[exerciseId]=history;unresolved.delete(exerciseId);}}if(!unresolved.size)return json({histories});}
+  read+=result.results.length;if(result.results.length<limit)return json({histories});
+  const last=result.results.at(-1)!;cursor={finished:last.finished_sort,id:last.resource_id};
+ }
+ return json({histories});
 }

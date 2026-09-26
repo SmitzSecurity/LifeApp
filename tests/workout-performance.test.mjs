@@ -4,7 +4,8 @@ import {DatabaseSync} from 'node:sqlite';
 import {readFileSync,readdirSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {handleLife} from '../lib/life/service.ts';
-import {performanceInWorkout} from '../lib/life/exercise-performance.ts';
+import {performanceInWorkout,historyInWorkout} from '../lib/life/exercise-performance.ts';
+import {workingLoad,weightReviewReason,matchingProgramExercise} from '../lib/life/workout-session.ts';
 import {presetExercise} from '../lib/life/exercise-presets.ts';
 
 const now='2026-09-16T12:00:00.000Z';
@@ -95,8 +96,7 @@ test('sessions with only unperformed targets or warm-ups do not replace the last
  const f=fixture(t),old=session();f.insert(old);
  const empty=session('Bench press',{finishedAt:'2026-09-15T12:00:00.000Z',sets:[]});f.insert(empty);
  const warmup=session('Bench press',{finishedAt:'2026-09-15T13:00:00.000Z'});warmup.data.sets[0].warmup=true;f.insert(warmup);
- const zero=session('Bench press',{finishedAt:'2026-09-15T14:00:00.000Z'});zero.data.sets[0].reps=0;f.insert(zero);
- assert.equal((await (await f.request()).json()).performance.workoutId,old.id);
+  assert.equal((await (await f.request()).json()).performance.workoutId,old.id);
 });
 
 test('a matching exercise beyond the regular 100-workout UI page is still found',async t=>{
@@ -124,4 +124,35 @@ test('comparison requests derive names from the saved active snapshot and valida
  const malformed=f.params();malformed.set('workoutId','not-an-id');assert.equal((await f.request(1,'a',malformed)).status,400);
  f.current.data.finishedAt=now;f.raw.prepare("UPDATE life_resources SET payload=? WHERE user_id='a' AND resource_id=?").run(JSON.stringify(f.current.data),f.current.id);
  assert.equal((await f.request()).status,409);
+});
+
+
+test('all working reps include zero attempts and preserve explicit gaps in the latest completed block',async t=>{
+ const f=fixture(t),older=session(),latest=session('Bench press',{finishedAt:'2026-09-15T14:00:00.000Z'});f.insert(older);
+ const first=latest.data.exercises[0],last={...first,id:randomUUID()};latest.data.exercises.push(last);
+ latest.data.sets.push({exerciseId:last.id,setNumber:1,workingSetNumber:2,reps:0,load:140,completedAt:'2026-09-15T13:59:00.000Z'});
+ latest.data.skippedSets=[{exerciseId:last.id,workingSetNumber:1}];f.insert(latest);
+ const body=await(await f.request(2)).json();assert.equal(body.performance,null);assert.equal(body.history.workoutId,latest.id);assert.deepEqual(body.history.sets,[{workingSetNumber:2,reps:0,load:140}]);assert.deepEqual(body.history.skipped,[1]);
+ assert.equal(historyInWorkout({...latest,data:{...latest.data,deleted:true}},'Bench press'),null);
+});
+
+test('program weight preflight is owned, uses the latest completed evidence and retains every working ordinal',async t=>{
+ const f=fixture(t),routineId=randomUUID(),bench=presetExercise('Bench press'),squat=presetExercise('Squat');
+ f.raw.prepare("INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at) VALUES(?,'routine',?,'',?,1,?)").run('a',routineId,JSON.stringify({name:'Synthetic program',preferences:'',exercises:[bench,squat],archived:false}),now);
+ const old=session(),latest=session('Bench press',{finishedAt:'2026-09-15T14:00:00.000Z'});latest.data.sets[0].reps=0;f.insert(old);f.insert(latest);f.insert(session('Squat'),'b');
+ const query=new URLSearchParams({'exercise-performance':'1',routineId}),response=await f.request(1,'a',query),body=await response.json();assert.equal(response.status,200);assert.equal(body.histories[bench.id].workoutId,latest.id);assert.equal(body.histories[bench.id].sets[0].reps,0);assert.equal(body.histories[squat.id],null);
+ assert.equal((await f.request(1,'b',query)).status,404);query.set('routineId','bad');assert.equal((await f.request(1,'a',query)).status,400);
+});
+
+
+test('weight review requires complete max-rep evidence, but one recorded failed minimum is enough',()=>{
+ const old=session(),exercise=old.data.exercises[0];Object.assign(exercise,{reps:8,repMax:12,load:135,sets:3});
+ old.data.sets=[1,2,3].map(n=>({...old.data.sets[0],setNumber:n,workingSetNumber:n,reps:12}));
+ const history=historyInWorkout(old,exercise.name);assert.equal(weightReviewReason(exercise,history),'increase');
+ assert.equal(weightReviewReason(exercise,{...history,sets:history.sets.slice(0,2),skipped:[3]}),null);
+ assert.equal(weightReviewReason(exercise,{...history,sets:[{workingSetNumber:2,reps:0,load:135}],skipped:[1]}),'decrease');
+ assert.equal(weightReviewReason({...exercise,load:140},history),null);assert.equal(weightReviewReason({...exercise,unit:'kg'},history),null);assert.equal(weightReviewReason({...exercise,repMax:15},history),null);
+ assert.equal(weightReviewReason(exercise,{...history,sets:history.sets.map((s,i)=>({...s,load:i?135:130}))}),null);
+ const unchanged=structuredClone(old.data.exercises);old.data.sets.push({...old.data.sets[0],setNumber:4,load:145},{...old.data.sets[0],setNumber:5,warmup:true,load:45});assert.equal(workingLoad(old.data,exercise),145);assert.deepEqual(old.data.exercises,unchanged);
+ const routine={name:'Test',preferences:'',archived:false,exercises:[{...exercise,id:randomUUID()}]};assert.equal(matchingProgramExercise(routine,exercise).id,routine.exercises[0].id);routine.exercises.push({...routine.exercises[0],id:randomUUID()});assert.equal(matchingProgramExercise(routine,exercise),undefined);
 });

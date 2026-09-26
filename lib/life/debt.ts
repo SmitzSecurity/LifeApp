@@ -31,6 +31,31 @@ export function debtEstimate(item:Item,transactions:Saved<Transaction>[],asOf:st
  let payoffDate:string|null=balanceCents===0&&debt.paymentStatus!=='balance-only'?asOf:null,projectedInterest=0,projectedPayments=0,reason='';
  if(debt.paymentStatus==='balance-only')reason='Balance tracking only. Add a confirmed monthly payment and due date to estimate payoff.';
  else if(!item.active||item.deleted)reason='Payments are paused.';
+ else if(item.occurrenceOverrides?.some(o=>o.period>=asOf.slice(0,7))){
+  // One-off payment dates do not move a lender's monthly accrual date. Keep
+  // those as separate events; skipped payments still accrue applicable interest.
+  let interestSincePayment=0,previousPaymentMonth:string|null=null;
+  for(let m=asOf.slice(0,7),n=0;balanceCents>0&&n<601;m=shiftMonth(m,1),n++){
+   const regularDate=scheduleDate(m,item),override=item.occurrenceOverrides.find(o=>o.period===m),paymentDate=override?.date||regularDate,eligible=scheduledInMonth(m,item);
+   if(!eligible&&(!item.startDate||regularDate>=item.startDate)){reason='The payment schedule ends with a balance remaining.';break;}
+   const future:{date:string;payment:boolean}[]=[];
+   if(debt.interestMethod==='monthly'&&regularDate>asOf)future.push({date:regularDate,payment:false});
+   if(eligible&&!override?.skipped&&paymentDate>asOf)future.push({date:paymentDate,payment:true});
+   future.sort((a,b)=>a.date.localeCompare(b.date)||Number(a.payment)-Number(b.payment));
+   for(const event of future){
+    const added=event.payment?(debt.interestMethod==='daily'?principal*rate/100*days(last,event.date)/365:0):Math.round(principal*rate/1200);
+    interest+=added;projectedInterest+=added;interestSincePayment+=added;last=event.date;
+    if(!event.payment)continue;
+    pay(item.amountCents);projectedPayments++;
+    if(principal+interest<0.5){payoffDate=event.date;break;}
+    const ordinaryInterval=previousPaymentMonth===shiftMonth(m,-1)&&!item.occurrenceOverrides.some(o=>o.period===m||o.period===previousPaymentMonth);
+    if(item.amountCents<=debt.otherPaymentCents||ordinaryInterval&&item.amountCents-debt.otherPaymentCents<=interestSincePayment&&projectedPayments>=2){reason='The payment does not cover the estimated interest.';break;}
+    interestSincePayment=0;previousPaymentMonth=m;
+   }
+   if(payoffDate||reason)break;
+   if(n===600)reason='Payoff is beyond the 50-year estimate window.';
+  }
+ }
  else for(let m=asOf.slice(0,7),n=0;balanceCents>0&&n<601;m=shiftMonth(m,1),n++){
   const date=scheduleDate(m,item);if(date<=asOf)continue;
   if(!scheduledInMonth(m,item)){if(item.startDate&&date<item.startDate){if(debt.interestMethod==='monthly'){const added=Math.round(principal*rate/1200);interest+=added;projectedInterest+=added;}continue;}reason='The payment schedule ends with a balance remaining.';break;}

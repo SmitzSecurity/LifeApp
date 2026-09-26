@@ -213,3 +213,14 @@ test('inactive payment replacement revalidates annual-fund membership while hist
  assert.equal((await f.save({...payment,version:2})).status,200);
  assert.equal((await f.records())[0].data.categoryName,'Original category');
 });
+
+test('occurrence adjustments and re-confirmations reject paid/skip races inside the atomic write',async t=>{
+ const r=item({frequency:'weekly',startDate:'2026-09-04'}),f=fixture(t,[r]);await f.setup();const payment=f.payment(r,'2026-09-04');
+ assert.equal((await f.save(payment)).status,200);assert.equal((await f.save({...payment,version:1,data:{...payment.data,deleted:true}})).status,200);
+ const override={period:'2026-09-04',date:'2026-09-05',skipped:true},plan=await f.plan();
+ f.state.beforeWrite=()=>f.raw.prepare("UPDATE life_resources SET payload=json_set(payload,'$.deleted',json('false')),version=version+1 WHERE kind='transaction'").run();
+ assert.equal((await f.save({kind:'budget',...plan,data:{...plan.data,recurring:[{...r,occurrenceOverrides:[override]}]}})).status,409);
+ const paid=(await f.records())[0];assert.equal((await f.save({kind:'transaction',...paid,data:{...paid.data,deleted:true}})).status,200);
+ f.state.beforeWrite=()=>f.raw.prepare("UPDATE life_resources SET payload=json_set(payload,'$.recurring[0].occurrenceOverrides',json(?)),version=version+1 WHERE kind='budget'").run(JSON.stringify([override]));
+ const deleted=(await f.records())[0];assert.equal((await f.save({kind:'transaction',...deleted,data:{...deleted.data,deleted:false}})).status,409);assert.equal((await f.records())[0].data.deleted,true);
+});

@@ -204,6 +204,8 @@
 .life-compact-theme .budget-workspace .expected-item.is-upcoming :is(.expected-item-title small,.expected-amount,.expected-amount small){color:var(--warning)}
 .life-compact-theme .budget-workspace .expected-item.is-due :is(.expected-item-title small,.expected-amount,.expected-amount small){color:var(--destructive)}
 .life-compact-theme .budget-workspace .expected-item.is-confirmed :is(.expected-item-title strong,.expected-amount strong){text-decoration:line-through;color:var(--muted-foreground)}
+.life-compact-theme .budget-workspace .expected-item.is-skipped .expected-item-title{color:var(--muted-foreground)}
+.life-compact-theme .budget-workspace .expected-item.is-skipped .expected-item-title strong{text-decoration:line-through}
 .life-compact-theme .budget-workspace .ledger-row>.voided-label{grid-column:1/-1;margin-top:-4px}
 .life-compact-theme .budget-workspace .forecast-totals{align-items:center;flex-wrap:wrap;gap:6px 16px}
 .life-compact-theme .budget-workspace .forecast-totals>button{margin-left:auto}

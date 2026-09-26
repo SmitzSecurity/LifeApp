@@ -65,10 +65,11 @@ if(process.argv.includes('--training')){
  const {presetExercise}=await import('../lib/life/exercise-presets.ts');
  const {exerciseSchema}=await import('../lib/life/modules.ts');
  const {todayIn}=await import('../lib/life/domain.ts');
- const today=todayIn('America/New_York'),iso=new Date(stamp).toISOString(),performanceFixture=process.argv.includes('--exercise-performance');
+ const progressionFixture=process.argv.includes('--weight-progression');
+ const today=todayIn('America/New_York'),iso=new Date(stamp).toISOString(),performanceFixture=process.argv.includes('--exercise-performance')||progressionFixture;
  for(const [name,names,weeklySessions] of [['Push day',['Bench press','Overhead press','Lateral raise','Triceps pushdown'],2],['Pull day',['Barbell row','Lat pulldown','Biceps curl'],2],['Leg day',['Squat','Romanian deadlift','Calf raise'],1]]){
   const programNames=performanceFixture&&name==='Pull day'?[...names,'Bench press']:names;
-  const rid=crypto.randomUUID(),exercises=programNames.map(name=>exerciseSchema.parse(presetExercise(name))),data={name,preferences:'Synthetic muscle coverage fixture',exercises,weeklySessions,archived:false};
+  const rid=crypto.randomUUID(),exercises=programNames.map(name=>exerciseSchema.parse({...presetExercise(name),...(progressionFixture&&name==='Bench press'?{load:135}:{})})),data={name,preferences:'Synthetic muscle coverage fixture',exercises,weeklySessions,archived:false};
   await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'routine',rid,'',JSON.stringify(data),iso).run();
   if(name==='Push day'){
    const completedAt=performanceFixture?new Date(stamp-120*60000).toISOString():iso;
@@ -79,7 +80,9 @@ if(process.argv.includes('--training')){
    // warm-up occupies serial 1; working sets 1–3 should compare 9/145, 8/150,
    // and 6/155 lb when a new Push day is started.
    const bench=exercises.find(exercise=>exercise.name==='Bench press'),completedAt=new Date(stamp-60*60000).toISOString();
-   const sets=[{reps:12,load:45,warmup:true},{reps:9,load:145},{reps:8,load:150},{reps:6,load:155}].map((set,index)=>({exerciseId:bench.id,setNumber:index+1,...set,completedAt}));
+   // Progression mode provides all-max evidence at the saved program weight.
+   const working=progressionFixture?Array.from({length:bench.sets},()=>({reps:bench.repMax??bench.reps,load:135})):[{reps:9,load:145},{reps:8,load:150},{reps:6,load:155}];
+   const sets=[{reps:12,load:45,warmup:true},...working].map((set,index)=>({exerciseId:bench.id,setNumber:index+1,...set,completedAt}));
    await db.prepare('INSERT INTO life_resources VALUES(?1,?2,?3,?4,?5,1,?6,NULL)').bind(userId,'workout',crypto.randomUUID(),today.slice(0,7),JSON.stringify({date:today,routineId:rid,name,exercises,sets,restUntil:null,finishedAt:completedAt}),completedAt).run();
   }
  }

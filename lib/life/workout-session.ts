@@ -1,4 +1,31 @@
-import {workoutSchema,routineSchema,nextSet,workingSetEntries,type Routine,type Saved,type Workout} from './modules.ts';
+import {workoutSchema,routineSchema,nextSet,workingSetEntries,type Exercise,type Routine,type Saved,type Workout} from './modules.ts';
+import {resolveExerciseName} from './exercise-names.ts';
+import type {ExerciseHistory} from './exercise-performance.ts';
+
+export function workingLoad(workout:Workout|undefined,exercise:Exercise|undefined):number{
+ if(!exercise)return 0;
+ // Serial order, not the last correction timestamp, identifies the most recent
+ // working load. Reloads retain it; warm-ups never change the next working set.
+ return workout?.sets.filter(s=>s.exerciseId===exercise.id&&!s.warmup).sort((a,b)=>b.setNumber-a.setNumber)[0]?.load??exercise.load;
+}
+
+export function matchingProgramExercise(routine:Routine,exercise:Exercise):Exercise|undefined{
+ const key=resolveExerciseName(exercise.name),exact=routine.exercises.find(e=>e.id===exercise.id&&resolveExerciseName(e.name)===key&&e.unit===exercise.unit);
+ if(exact)return exact;
+ const matching=routine.exercises.filter(e=>resolveExerciseName(e.name)===key&&e.unit===exercise.unit);
+ return matching.length===1?matching[0]:undefined;
+}
+
+export function weightReviewReason(exercise:Exercise,history:ExerciseHistory|null|undefined):'increase'|'decrease'|null{
+ if(!history||resolveExerciseName(history.exerciseName)!==resolveExerciseName(exercise.name)||history.unit!==exercise.unit)return null;
+ const planned=history.sets.filter(s=>s.workingSetNumber<=history.plannedSets);
+ // A changed target/load already reflects an explicit choice; do not repeatedly
+ // prompt from old evidence or compare unrelated units and rep prescriptions.
+ if(!planned.length||planned.some(s=>s.load!==exercise.load)||exercise.reps!==history.reps||(exercise.repMax??exercise.reps)!==history.repMax||exercise.sets!==history.plannedSets)return null;
+ if(planned.some(s=>s.reps<exercise.reps))return 'decrease';
+ if(history.skipped.length||planned.length!==exercise.sets)return null;
+ return Array.from({length:exercise.sets},(_,index)=>planned.find(s=>s.workingSetNumber===index+1)).every(set=>set&&set.reps>=(exercise.repMax??exercise.reps))?'increase':null;
+}
 
 // A later authentication/validation rejection cannot prove whether an earlier
 // lost acknowledgement committed. Release its frozen retry only after a 409

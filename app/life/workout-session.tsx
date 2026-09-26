@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Check, CircleHelp, Info, Plus, SkipForward, Vibrate, VibrateOff, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/life/date-display';
 import { repTarget } from '@/lib/life/exercise-presets';
 import { exerciseGuide } from '@/lib/life/exercise-guides';
-import { nextSet, type Exercise, type Saved, type Workout } from '@/lib/life/modules';
-import ExerciseSymbol from './exercise-symbol';
+import { nextSet, workingSetEntries, type Exercise, type Saved, type Workout } from '@/lib/life/modules';
+import {workingLoad} from '@/lib/life/workout-session';
+import type {ExerciseHistory} from '@/lib/life/exercise-performance';
 import './workout-session.css';
 
 function ExerciseHeading({ name }: { name: string }) {
@@ -39,6 +40,10 @@ export type WorkoutSessionProps = {
   } | null;
   previousPerformanceLoading?: boolean;
   previousPerformanceUnavailable?: boolean;
+  previousHistory?: ExerciseHistory|null;
+  saveWeight?: boolean;
+  programWeightChanged?: boolean;
+  onSaveWeight?: (value:boolean)=>void;
   reps: string;
   load: string;
   warmup: boolean;
@@ -70,13 +75,12 @@ export type WorkoutSessionProps = {
 
 /** The parent owns saved records, drafts, timers and exact write retries. */
 export default function WorkoutSession({
-  workout, target, previousPerformance, previousPerformanceLoading = false, previousPerformanceUnavailable = false, reps, load, warmup, remaining, editing, busy,
+  workout, target, previousPerformance, previousHistory, previousPerformanceLoading = false, previousPerformanceUnavailable = false, saveWeight=true,programWeightChanged=false,onSaveWeight, reps, load, warmup, remaining, editing, busy,
   pending = false, setDirty, sound, onSound, vibration, onVibration, supportsVibration,
   onReps, onLoad, onWarmup, onSaveSet, onSkipSet, onSkipRest,
   onExtendRest, onPlan, onFinish, onExit, onCancelCorrection,reviewing=false,review,visible=true,
 }: WorkoutSessionProps) {
   const id = useId();
-  const [demonstrationPlayback, setDemonstrationPlayback] = useState<'auto' | 'play' | 'pause'>('auto');
   const plan = workout.data;
   const current = nextSet(plan);
   const completed = plan.sets.filter(set => !set.warmup).length;
@@ -85,6 +89,8 @@ export default function WorkoutSession({
   const locked = busy || pending;
   const exerciseIndex = target ? plan.exercises.findIndex(exercise => exercise.id === target.exercise.id) : -1;
   const following = target ? plan.exercises[exerciseIndex + 1] : undefined;
+  const todaySets=target?workingSetEntries(plan,target.exercise.id):[];
+  const historyRows=target?Math.max(target.exercise.sets,previousHistory?.plannedSets??0,...todaySets.map(s=>s.workingSetNumber),...(previousHistory?.sets.map(s=>s.workingSetNumber)||[])):0;
   const clock = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
   const content = useRef<HTMLDivElement>(null);
   const repsInput = useRef<HTMLInputElement>(null);
@@ -109,7 +115,7 @@ export default function WorkoutSession({
           {current ? <div className="session-up-next">
             <span>Up next · Working set {current.workingSetNumber} of {current.exercise.sets}</span>
             <ExerciseHeading name={current.exercise.name}/>
-            <p>Target {repTarget(current.exercise)} reps · {current.exercise.load} {current.exercise.unit}</p>
+            <p>Target {repTarget(current.exercise)} reps · {workingLoad(plan,current.exercise)} {current.exercise.unit}</p>
           </div> : <p className="session-rest-complete">{completed} working sets logged{skipped > 0 ? ` · ${skipped} skipped` : ''}. Finish when you’re ready.</p>}
           <div className="session-rest-clock">
           <p className="session-eyebrow">Take a rest</p>
@@ -126,14 +132,13 @@ export default function WorkoutSession({
             {!editing && following && <p className="session-next-exercise">Next: {following.name}</p>}
           </div>
           <div className="session-working-target">
-            <ExerciseSymbol name={target.exercise.name} playback={demonstrationPlayback} onPlayback={setDemonstrationPlayback}/>
             <p className="session-set-number">{editing ? `Logged set ${target.setNumber}` : `Working set ${target.workingSetNumber ?? current?.workingSetNumber ?? 1} of ${target.exercise.sets}`}</p>
             <div className="session-targets"><span>Target {repTarget(target.exercise)} reps</span><span>{target.exercise.restSeconds}s rest</span></div>
-            {!editing && !warmup && <p className="session-previous-performance" aria-live="polite">
+            {!editing && !warmup && <><p className="session-previous-performance" aria-live="polite">
               {previousPerformanceLoading ? 'Loading last performance…' : previousPerformanceUnavailable ? 'Previous set unavailable.' : previousPerformance
                 ? <>Last time <strong>{previousPerformance.reps} reps × {previousPerformance.load} {previousPerformance.unit}</strong><span> · {formatDate(previousPerformance.date)} · {previousPerformance.workoutName}</span></>
-                : 'No previous performance for this set.'}
-            </p>}
+                : previousHistory?<>Last workout · {formatDate(previousHistory.date)} · {previousHistory.workoutName}</>:'No previous performance for this set.'}
+            </p><table className="session-performance-table"><caption className="sr-only">Working sets for {target.exercise.name}</caption><thead><tr><th scope="col">Set</th><th scope="col">Last time</th><th scope="col">Today</th></tr></thead><tbody>{Array.from({length:historyRows},(_,index)=>{const ordinal=index+1,previous=previousHistory?.sets.find(s=>s.workingSetNumber===ordinal),logged=todaySets.find(s=>s.workingSetNumber===ordinal)?.set,skippedToday=plan.skippedSets?.some(s=>s.exerciseId===target.exercise.id&&s.workingSetNumber===ordinal);return <tr key={ordinal} aria-current={ordinal===(target.workingSetNumber??current?.workingSetNumber)?'step':undefined}><th scope="row">{ordinal}</th><td>{previous?<>{previous.reps} × {previous.load} {previousHistory?.unit}</>:previousHistory?.skipped.includes(ordinal)?'Skipped':'—'}</td><td>{logged?<>{logged.reps} × {logged.load} {target.exercise.unit}</>:skippedToday?'Skipped':'—'}</td></tr>;})}</tbody></table></>}
           </div>
           <fieldset className="session-set-entry" disabled={locked}>
             <legend className="sr-only">{editing ? 'Correct logged reps and load' : 'Log your completed set'}</legend>
@@ -143,6 +148,7 @@ export default function WorkoutSession({
               <label htmlFor={`${id}-load`}><span>Load ({target.exercise.unit})</span><input id={`${id}-load`} inputMode="decimal" aria-describedby={`${id}-bodyweight`} value={load} onChange={event => onLoad(event.target.value)}/><small id={`${id}-bodyweight`}>Use 0 for bodyweight.</small></label>
             </div>
             <label className="session-warmup"><input type="checkbox" checked={warmup} onChange={event => onWarmup(event.target.checked)}/><span>Warm-up <small>Keep the planned working set</small></span></label>
+            {!editing&&!warmup&&programWeightChanged&&<label className="session-save-weight"><input type="checkbox" checked={saveWeight} onChange={event=>onSaveWeight?.(event.target.checked)}/><span>Save this weight to program<small>Later working sets use your last logged weight. Warm-ups stay separate.</small></span></label>}
             <div className="session-entry-actions"><Button className="session-save-set" onClick={onSaveSet}><Check aria-hidden="true"/>{editing ? 'Save correction' : 'Save set'}</Button>
             {!editing && <Button variant="ghost" className="session-skip-set" onClick={onSkipSet}><SkipForward aria-hidden="true"/>Skip set</Button>}</div>
           </fieldset>{editing && <Button variant="ghost" className="session-cancel-correction" disabled={locked} onClick={onCancelCorrection}>Cancel correction</Button>}

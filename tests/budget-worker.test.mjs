@@ -83,6 +83,48 @@ test('compiled multi-payday budget preserves undo, reassignment, card transfers 
  assert.equal(f.calls.length,0,'This workflow makes no provider requests');
 });
 
+test('compiled backdated recurring creation preserves concurrent plans and stable moved/skipped occurrence identities',{timeout:60000},async t=>{
+ const f=await fixture(t),today=new Date(),month=offset=>new Date(Date.UTC(today.getUTCFullYear(),today.getUTCMonth()+offset,1)).toISOString().slice(0,7),start=month(-2),intermediate=month(-1),selected=month(1);
+ const category=randomUUID(),newCategory=randomUUID(),recurringId=randomUUID();
+ const initial={currency:'USD',categories:[{id:category,name:'Existing bills',limitCents:30000,archived:false}],recurring:[],goals:{spending:'Keep this saved goal',saving:'',investing:''}};
+ const ok=async body=>{const response=await f.call(body),value=await response.json();assert.equal(response.status,200,JSON.stringify(value));return value;};
+ const existing=(await ok({action:'budget-item',change:{kind:'initialize',month:intermediate,initial}})).record;
+ const future={...initial,categories:[...initial.categories,{id:newCategory,name:'Appointments',limitCents:20000,archived:false}]};
+ const item={id:recurringId,title:'Synthetic weekly massage',kind:'expense',amountCents:8500,categoryId:newCategory,day:1,frequency:'weekly',startDate:start+'-01'};
+ const creation={action:'budget-item',change:{kind:'recurring',month:selected,previous:null,item,initial:future}};
+ const [created]=await Promise.all([
+  ok(creation),
+  ok({action:'budget-item',change:{kind:'category',month:intermediate,previous:existing.data.categories[0],item:{...existing.data.categories[0],limitCents:54321}}}),
+ ]);
+ assert.equal(created.record.id,selected);assert.equal(created.plans.length,3);
+ const plans=(await (await f.call(undefined,'?kind=budget')).json()).records;
+ const historical=plans.find(p=>p.id===start),preserved=plans.find(p=>p.id===intermediate),viewed=plans.find(p=>p.id===selected);
+ assert.equal(plans.length,3);assert.ok(plans.every(p=>p.data.recurring.filter(r=>r.id===recurringId).length===1));
+ assert.ok(historical.data.categories.every(c=>c.limitCents===0));assert.deepEqual(historical.data.goals,{spending:'',saving:'',investing:''});
+ assert.equal(preserved.data.categories.find(c=>c.id===category).limitCents,54321);assert.equal(preserved.data.categories.find(c=>c.id===newCategory).limitCents,0);assert.deepEqual(preserved.data.goals,initial.goals);
+ assert.equal(viewed.data.categories.find(c=>c.id===newCategory).limitCents,20000);
+ const versions=plans.map(p=>[p.id,p.version]).sort();
+ const replay=await ok(creation);assert.equal(replay.record.version,created.record.version);assert.equal(replay.plans.length,2);
+ assert.deepEqual((await (await f.call(undefined,'?kind=budget')).json()).records.map(p=>[p.id,p.version]).sort(),versions);
+
+ const period=start+'-01',id=`due:${period}:${recurringId}`,override={period,date:start+'-03',skipped:false};
+ const adjust=(previous,item)=>({action:'budget-item',change:{kind:'occurrence',month:start,recurringId,period,previous,item}});
+ let adjusted=(await ok(adjust(null,override))).record,summary=budgetSummary(adjusted.data,[],start);
+ const moved=summary.due.find(d=>d.id===id);assert.equal(moved.date,start+'-03');assert.equal(moved.occurrenceDate,period);assert.equal(moved.originalDate,period);
+ const skipped={...override,skipped:true};adjusted=(await ok(adjust(override,skipped))).record;summary=budgetSummary(adjusted.data,[],start);
+ assert.equal(summary.due.some(d=>d.id===id),false);assert.equal(summary.skipped[0].id,id);
+ const payment={action:'resource',record:{kind:'transaction',id,version:0,data:{date:start+'-03',kind:'expense',amountCents:8500,categoryId:newCategory,categoryName:'',note:item.title,recurringId,occurrenceDate:period,voided:false}}};
+ assert.equal((await f.call(payment)).status,409,'A skipped occurrence cannot be confirmed');
+ adjusted=(await ok(adjust(skipped,override))).record;
+ const restored=await ok(adjust(skipped,override));assert.equal(restored.record.version,adjusted.version,'An exact occurrence retry adds no version');
+ const paid=(await ok(payment)).record;assert.equal(paid.id,id);assert.equal((await ok(payment)).record.version,paid.version);
+ assert.equal((await f.call(adjust(override,{...override,date:start+'-04'}))).status,409,'Paid occurrences keep their date adjustment until confirmation is undone');
+ assert.equal((await f.call(adjust(override,{...override,date:intermediate+'-01'}))).status,400,'Moving into another budget month is rejected');
+ const transactions=(await (await f.call(undefined,'?kind=transaction&month='+start)).json()).records;summary=budgetSummary(adjusted.data,transactions,start);
+ assert.equal(transactions.length,1);assert.equal(summary.expenses,8500);assert.equal(summary.due.find(d=>d.id===id).recorded,true);
+ assert.ok(validateBackup(await (await f.call(undefined,'?export=1')).text()));assert.equal(f.calls.length,0);
+});
+
 for(const scenario of [
  {name:'short text',text:'Groceries monthly allowance $400.',preflight:false},
  {name:'350,000-character text file',text:'Synthetic budget line with harmless notes.\n'.repeat(8500).slice(0,349977)+'\nGroceries budget $400.',preflight:true},

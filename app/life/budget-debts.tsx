@@ -6,7 +6,7 @@ import {ChevronDown,Pencil,Sparkles} from 'lucide-react';
 import {DropdownMenu,DropdownMenuContent,DropdownMenuItem,DropdownMenuTrigger} from '@/components/ui/dropdown-menu';
 import {debtEstimate} from '@/lib/life/debt';
 import {LOAN_PRESETS} from '@/lib/life/loan-presets';
-import {money,occurrenceId,recurringDate,transactionSchema,type Budget,type Saved,type Transaction} from '@/lib/life/modules';
+import {money,occurrenceId,recurringDate,recurringOccurrenceOverride,transactionSchema,type Budget,type Saved,type Transaction} from '@/lib/life/modules';
 import {scheduledInMonth} from '@/lib/life/budget-schedule';
 import {request} from './shared';
 import BudgetSection from './budget-section';
@@ -29,7 +29,7 @@ export default function BudgetDebts({plan,today,transactions,onEdit,onAdd,onAI,o
  </BudgetSection>;
 }
 function LoanCard({item,plan,today,payments,suppressedOccurrences,loaded,onEdit,onSave,onDirty}:{item:Budget['recurring'][number];plan:Saved<Budget>;today:string;payments:Saved<Transaction>[];suppressedOccurrences:string[];loaded:boolean;onEdit:(item:Budget['recurring'][number])=>void;onSave:(record:Saved<Transaction>)=>Promise<Saved<Transaction>>;onDirty:DirtyReporter}){
- const [draft,setDraft]=useState<Saved<Transaction>|null>(null),estimate=loaded?debtEstimate(item,payments,today):null,debt=item.debt!,id=occurrenceId(plan.id,item.id),saved=payments.find(t=>t.id===id),date=recurringDate(plan.id,item),balanceOnly=debt.paymentStatus==='balance-only',suppressed=suppressedOccurrences.includes(id),paid=!!saved&&!saved.data.voided&&!saved.data.deleted,eligible=!item.deleted&&item.active&&!balanceOnly&&scheduledInMonth(plan.id,item)&&date<=today&&!suppressed;
+ const [draft,setDraft]=useState<Saved<Transaction>|null>(null),estimate=loaded?debtEstimate(item,payments,today):null,debt=item.debt!,id=occurrenceId(plan.id,item.id),saved=payments.find(t=>t.id===id),override=recurringOccurrenceOverride(item,plan.id,recurringDate(plan.id,item)),date=override?.date||recurringDate(plan.id,item),balanceOnly=debt.paymentStatus==='balance-only',suppressed=suppressedOccurrences.includes(id),paid=!!saved&&!saved.data.voided&&!saved.data.deleted,eligible=!item.deleted&&item.active&&!balanceOnly&&scheduledInMonth(plan.id,item)&&date<=today&&!suppressed&&!override?.skipped;
  const statement=estimate?.estimateMode==='statement',loanLabel=LOAN_PRESETS.find(preset=>preset.type===debt.loanType)?.label;
  function log(){
   const current={kind:item.kind as Transaction['kind'],categoryId:item.kind==='expense'?item.categoryId:'',categoryName:item.kind==='expense'?plan.data.categories.find(category=>category.id===item.categoryId)?.name||'':'',note:item.title,incomeDetails:undefined,annualFund:undefined};

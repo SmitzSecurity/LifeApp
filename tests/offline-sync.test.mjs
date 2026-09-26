@@ -18,6 +18,14 @@ const body=(version=0,journal='Synthetic local response')=>JSON.stringify({actio
 const response=(value={},status=200,account='account-a')=>Response.json(value,{status,headers:{'X-Life-Account':account}});
 function add(state,text){const write=prepareLocalWrite(state,'/api/life',text,now);assert.ok(write);state.writes.push(write);return write;}
 
+test('backdated recurring acknowledgements refresh every affected cached monthly plan',()=>{
+ const state=fixture(),data={currency:'USD',categories:[],recurring:[],goals:{spending:'',saving:'',investing:''}},earlier={id:'2026-09',version:1,data},selected={id:'2026-10',version:1,data};
+ cacheRead(state,'/api/life?kind=budget',{records:[selected,earlier]});cacheRead(state,'/api/life?kind=budget&month=2026-09',{records:[earlier]});
+ const updated={...earlier,version:2,data:{...data,recurring:[{id:randomUUID(),title:'Income',kind:'income',categoryId:'',amountCents:100,day:1,startDate:'2026-09-01'}]}};
+ updateOnlineWriteCache(state,JSON.stringify({action:'budget-item',change:{kind:'recurring',month:'2026-10'}}),{record:selected,plans:[updated]});
+ assert.equal(projectRead(state,'/api/life?kind=budget&month=2026-09').records[0].data.recurring.length,1);assert.equal(projectRead(state,'/api/life?kind=budget').records.find(r=>r.id==='2026-09').version,2);
+});
+
 test('offline entry keeps its exact mutation bytes and projects local saves through reload',()=>{
  const state=fixture(),text=body(),write=add(state,text),restored=JSON.parse(JSON.stringify(state));
  assert.equal(restored.writes[0].body,text);

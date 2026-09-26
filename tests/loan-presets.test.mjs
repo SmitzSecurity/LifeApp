@@ -40,6 +40,17 @@ test('legacy loan payloads and exact normalization retain their existing monthly
  assert.equal(Object.hasOwn(item.debt,'loanType'),false);assert.equal(Object.hasOwn(item.debt,'paymentStatus'),false);
 });
 
+test('one-off loan dates and skips affect future payments while monthly interest keeps its original dates',()=>{
+ const base=loan({day:20,amountCents:200000,debt:{...baseline,balanceDate:'2026-09-01',annualRatePercent:12}});
+ const moved={...base,occurrenceOverrides:[{period:month,date:'2026-09-10',skipped:false}]};
+ const early=debtEstimate(moved,[],'2026-09-01');assert.equal(early.payoffDate,'2026-09-10');assert.equal(early.projectedInterestCents,0,'payment before the ordinary accrual day pays off the principal');
+ const delayed=debtEstimate({...moved,occurrenceOverrides:[{period:month,date:'2026-09-25',skipped:false}]},[],'2026-09-21');assert.equal(delayed.balanceCents,101000);assert.equal(delayed.projectedInterestCents,0,'the September accrual was already counted in the balance');assert.equal(delayed.payoffDate,'2026-09-25');
+ const skipped=debtEstimate({...moved,occurrenceOverrides:[{period:month,date:'2026-09-20',skipped:true}]},[],'2026-09-01');assert.equal(skipped.payoffDate,'2026-10-20');assert.equal(skipped.projectedPayments,1);assert.equal(skipped.projectedInterestCents,2000);
+ const daily=debtEstimate({...moved,debt:{...base.debt,interestMethod:'daily',annualRatePercent:36.5}},[],'2026-09-01');assert.equal(daily.payoffDate,'2026-09-10');assert.equal(daily.projectedInterestCents,900);
+ assert.equal(debtEstimate(moved,[payment(moved,5000,{date:'2026-09-10'})],'2026-09-21').balanceCents,95950,'recorded history still accrues on the normal monthly date');
+ const afterGap=debtEstimate({...base,day:1,amountCents:1500,occurrenceOverrides:[{period:'2026-11',date:'2026-11-01',skipped:true}]},[],'2026-09-01');assert.ok(afterGap.payoffDate,'a temporary skipped-payment gap must not imply an ordinary monthly payment cannot amortize');assert.equal(afterGap.reason,'');
+});
+
 test('accrued interest is paid before principal and remains separate when interest pauses',()=>{
  const item=loan({debt:{...baseline,loanType:'student',interestMethod:'daily',interestAccrual:'paused',annualRatePercent:undefined,accruedInterestCents:15000}});
  const partial=debtEstimate(item,[payment(item)],'2026-09-01');assert.equal(partial.principalCents,100000);assert.equal(partial.accruedInterestCents,5000);assert.equal(partial.balanceCents,105000);assert.equal(partial.projectedInterestCents,0);assert.match(partial.assumption,/stays paused/);

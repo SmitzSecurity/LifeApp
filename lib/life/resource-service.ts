@@ -3,7 +3,7 @@ import {incomeAllocationId,allocationIdPattern,occurrenceIdPattern} from './inco
 import {trashState,retentionMs} from './trash.ts';
 import { z } from 'zod/v3';
 import { todayIn, type Profile } from './domain.ts';
-import { resourceKind, resourceSchemas, monthSchema, occurrenceId, type ResourceKind, type Budget, type Transaction, type Routine, type Workout, type Cardio } from './modules.ts';
+import { resourceKind, resourceSchemas, monthSchema, occurrenceId, recurringOccurrenceOverride, type ResourceKind, type Budget, type Transaction, type Routine, type Workout, type Cardio } from './modules.ts';
 import type { Database } from './service.ts';
 type Row={resource_id:string;payload:string;version:number;updated_at:string};
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cache-Control':'private, no-store','Vary':'Cookie','X-Content-Type-Options':'nosniff'}});
@@ -44,6 +44,7 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  const conflict=()=>json({error:'This record changed in another session. Your changes are still here. Reload the section before trying again.'},409);
  let period=kind==='budget'?id:'',allocationSourceVersion:number|undefined,recurringGuard:{recurringId:string;snapshot:string}|undefined;
  let scheduleChanges:{id:string;occurrenceIds:string[]}[]=[];
+ let occurrenceChanges:string[]=[];
  if(kind==='workout-note'){
   const note=data as {date:string};period=note.date.slice(0,7);
   if(note.date>todayIn(profile.timezone,now))return json({error:'Choose today or an earlier workout date.'},400);
@@ -79,6 +80,10 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
    const historicalMatch=previous&&previous.data.kind===t.kind&&previous.data.categoryId===t.categoryId&&JSON.stringify(previous.data.incomeDetails?.plan)===JSON.stringify(t.incomeDetails?.plan);
    if(previous&&!historicalMatch&&!reusingInactive)return json({error:'A recorded payment keeps its original type, category and income rules. Void or delete it before confirming a replacement.'},400);
    adoptingCurrent=!previous||reusingInactive&&!historicalMatch;
+   if(!t.voided&&!t.deleted&&(adoptingCurrent||reusingInactive)&&recurring){
+    if(recurring.occurrenceOverrides?.some(o=>o.period===(t.occurrenceDate||period)&&o.skipped))return json({error:'This occurrence is skipped. Restore it before confirming a payment.'},409);
+    recurringGuard={recurringId:t.recurringId,snapshot:JSON.stringify(recurring)};
+   }
    if(adoptingCurrent){
     if(!recurring||recurring.kind!==t.kind||recurring.categoryId!==t.categoryId)return json({error:'This scheduled payment changed. Reload the monthly plan.'},409);
     if(recurring.deleted||!recurring.active)return json({error:'This recurring item is deleted or paused. Restore it before confirming a payment.'},409);
@@ -110,7 +115,9 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
   if(old.categories.some(c=>!p.categories.some(n=>n.id===c.id))||old.recurring.some(r=>!p.recurring.some(n=>n.id===r.id)))return json({error:'Keep saved categories and scheduled items to preserve transaction references.'},400);
   const changed=old.recurring.filter(r=>{const item=p.recurring.find(n=>n.id===r.id)!;return r.kind!==item.kind||r.categoryId!==item.categoryId;}).map(r=>r.id);
   if(changed.length&&await db.prepare("SELECT 1 FROM life_resources WHERE user_id=?1 AND kind='transaction' AND period=?2 AND json_extract(payload,'$.recurringId') IN (SELECT value FROM json_each(?3)) AND COALESCE(json_extract(payload,'$.planned'),0)=0 AND COALESCE(json_extract(payload,'$.voided'),0)=0 AND COALESCE(json_extract(payload,'$.deleted'),0)=0 LIMIT 1").bind(userId,id,JSON.stringify(changed)).first())return json({error:'This item has a recorded payment. Keep its type and category, or void/delete its payments before changing it.'},400);
-  const identities=(r:Budget['recurring'][number])=>scheduledDatesInMonth(id,r).map(date=>occurrenceId(occurrencePeriod(id,r,date),r.id));
+  occurrenceChanges=old.recurring.flatMap(r=>{const item=p.recurring.find(n=>n.id===r.id)!;return [...new Set([...(r.occurrenceOverrides||[]),...(item.occurrenceOverrides||[])].map(o=>o.period))].filter(period=>period.slice(0,7)===id&&JSON.stringify(r.occurrenceOverrides?.find(o=>o.period===period))!==JSON.stringify(item.occurrenceOverrides?.find(o=>o.period===period))).map(period=>occurrenceId(period,r.id));});
+  if(occurrenceChanges.length&&await db.prepare("SELECT 1 FROM life_resources WHERE user_id=?1 AND kind='transaction' AND resource_id IN (SELECT value FROM json_each(?2)) AND COALESCE(json_extract(payload,'$.voided'),0)=0 AND COALESCE(json_extract(payload,'$.deleted'),0)=0 LIMIT 1").bind(userId,JSON.stringify(occurrenceChanges)).first())return json({error:'Undo the recorded payment before rescheduling or skipping this occurrence.'},409);
+  const identities=(r:Budget['recurring'][number])=>scheduledDatesInMonth(id,r).filter(date=>!recurringOccurrenceOverride(r,id,date)?.skipped).map(date=>occurrenceId(occurrencePeriod(id,r,date),r.id));
   scheduleChanges=old.recurring.flatMap(r=>{const item=p.recurring.find(n=>n.id===r.id)!,occurrenceIds=identities(item);return JSON.stringify(identities(r))===JSON.stringify(occurrenceIds)?[]:[{id:r.id,occurrenceIds}];});
   if(scheduleChanges.length&&await db.prepare("SELECT 1 FROM life_resources tx,json_each(?3) changed WHERE tx.user_id=?1 AND tx.kind='transaction' AND tx.period=?2 AND COALESCE(json_extract(tx.payload,'$.planned'),0)=0 AND COALESCE(json_extract(tx.payload,'$.voided'),0)=0 AND COALESCE(json_extract(tx.payload,'$.deleted'),0)=0 AND json_extract(tx.payload,'$.recurringId')=json_extract(changed.value,'$.id') AND tx.resource_id NOT IN (SELECT value FROM json_each(changed.value,'$.occurrenceIds')) LIMIT 1").bind(userId,id,JSON.stringify(scheduleChanges)).first())return json({error:'This schedule change would replace a recorded payment. Keep its paid dates, or void/delete those payments before changing the schedule.'},400);
  }
@@ -138,9 +145,10 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
  const activeSlot=kind==='workout'&&!(data as Workout).finishedAt&&!(data as Workout).deleted?'active':null;
  const insertGuard=allocationSourceVersion!==undefined?"EXISTS(SELECT 1 FROM life_resources WHERE user_id=?1 AND kind='transaction' AND resource_id=?9 AND version=?10)":recurringGuard?"EXISTS(SELECT 1 FROM life_resources budget,json_each(budget.payload,'$.recurring') item WHERE budget.user_id=?1 AND budget.kind='budget' AND budget.resource_id=?4 AND json_extract(item.value,'$.id')=?9 AND json(item.value)=json(?10))":kind==='budget'?`NOT EXISTS(SELECT 1 FROM life_resources tx,life_resources previousBudget,json_each(previousBudget.payload,'$.recurring') prior,json_each(?5,'$.recurring') proposed WHERE tx.user_id=?1 AND tx.kind='transaction' AND tx.period=?3 AND COALESCE(json_extract(tx.payload,'$.planned'),0)=0 AND COALESCE(json_extract(tx.payload,'$.voided'),0)=0 AND COALESCE(json_extract(tx.payload,'$.deleted'),0)=0 AND previousBudget.user_id=?1 AND previousBudget.kind='budget' AND previousBudget.resource_id=?3 AND json_extract(prior.value,'$.id')=json_extract(proposed.value,'$.id') AND json_extract(tx.payload,'$.recurringId')=json_extract(prior.value,'$.id') AND (json_extract(prior.value,'$.kind')<>json_extract(proposed.value,'$.kind') OR json_extract(prior.value,'$.categoryId')<>json_extract(proposed.value,'$.categoryId')))`:'true';
  const scheduleGuard=kind==='budget'?" AND NOT EXISTS(SELECT 1 FROM life_resources tx,json_each(?9) changed WHERE tx.user_id=?1 AND tx.kind='transaction' AND tx.period=?3 AND COALESCE(json_extract(tx.payload,'$.planned'),0)=0 AND COALESCE(json_extract(tx.payload,'$.voided'),0)=0 AND COALESCE(json_extract(tx.payload,'$.deleted'),0)=0 AND json_extract(tx.payload,'$.recurringId')=json_extract(changed.value,'$.id') AND tx.resource_id NOT IN (SELECT value FROM json_each(changed.value,'$.occurrenceIds')))":'';
- const guardParams=allocationSourceVersion!==undefined?[(data as Transaction).incomeSourceId,allocationSourceVersion]:recurringGuard?[recurringGuard.recurringId,recurringGuard.snapshot]:kind==='budget'?[JSON.stringify(scheduleChanges)]:[];
+ const occurrenceGuard=kind==='budget'?" AND NOT EXISTS(SELECT 1 FROM life_resources WHERE user_id=?1 AND kind='transaction' AND resource_id IN (SELECT value FROM json_each(?10)) AND COALESCE(json_extract(payload,'$.voided'),0)=0 AND COALESCE(json_extract(payload,'$.deleted'),0)=0)":'';
+ const guardParams=allocationSourceVersion!==undefined?[(data as Transaction).incomeSourceId,allocationSourceVersion]:recurringGuard?[recurringGuard.recurringId,recurringGuard.snapshot]:kind==='budget'?[JSON.stringify(scheduleChanges),JSON.stringify(occurrenceChanges)]:[];
  try{
- const row=await db.prepare(`INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at,active_slot) SELECT ?1,?2,?3,?4,?5,1,?6,?7 WHERE ${insertGuard}${scheduleGuard}
+ const row=await db.prepare(`INSERT INTO life_resources(user_id,kind,resource_id,period,payload,version,updated_at,active_slot) SELECT ?1,?2,?3,?4,?5,1,?6,?7 WHERE ${insertGuard}${scheduleGuard}${occurrenceGuard}
  ON CONFLICT(user_id,kind,resource_id) DO UPDATE SET period=excluded.period,payload=excluded.payload,version=life_resources.version+1,updated_at=excluded.updated_at,active_slot=excluded.active_slot WHERE life_resources.version=?8 RETURNING version`).bind(userId,kind,id,period,JSON.stringify(data),now.toISOString(),activeSlot,version,...guardParams).first<{version:number}>();
  if(!row)return conflict();return json({record:{id,data,version:row.version,updatedAt:now.toISOString()}});
  }catch(e){if(String(e).includes('UNIQUE constraint'))return conflict();throw e;}

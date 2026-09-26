@@ -9,6 +9,7 @@ import * as schedule from '../lib/life/budget-schedule.ts';
 import * as fund from '../lib/life/annual-fund.ts';
 import * as loans from '../lib/life/loan-presets.ts';
 import * as income from '../lib/life/income-planning.ts';
+import * as display from '../lib/life/date-display.ts';
 
 // Render the real dialog with hook/IO adapters, then invoke its exposed buttons.
 // This checks action behavior without adding a browser-test runtime dependency.
@@ -78,7 +79,7 @@ test('a first Budget item authentication rejection still unlocks the unsaved dra
  }
 });
 
-function component(file,props,{request=async()=>({records:[]}),saveRecord=async(_kind,record)=>({...record,version:record.version+1}),globals={}}={}){
+function component(file,props,{request=async()=>({records:[]}),saveRecord=async(_kind,record)=>({...record,version:record.version+1}),operation,globals={}}={}){
  const slots=[];let cursor=0,changed=false,tree;
  const same=(a,b)=>!!a&&a.length===b.length&&a.every((value,index)=>Object.is(value,b[index]));
  const react={
@@ -90,7 +91,7 @@ function component(file,props,{request=async()=>({records:[]}),saveRecord=async(
   useId:()=>react.useMemo(()=> 'synthetic-section',[]),
   useSyncExternalStore(subscribe,snapshot){const [value,setValue]=react.useState(snapshot);react.useEffect(()=>subscribe(()=>setValue(snapshot())),[subscribe,snapshot]);return value;},
  };
- const adapters={react,'react/jsx-runtime':jsx,'@/lib/life/modules':modules,'@/lib/life/budget-schedule':schedule,'@/lib/life/annual-fund':fund,'@/lib/life/loan-presets':loans,'@/lib/life/income-planning':income,'@/lib/life/domain':{todayIn:()=> '2026-09-17'},'./shared':{request,saveRecord,useUnsaved(){}},'./budget-recurring':{default:'RecurringDialog',recurringDescription:()=> 'Monthly schedule'},'./budget-fields':{useBudgetDirty(){},useItemSave:()=>({busy:false,pending:null,error:'',setError(){}})}};
+ const adapters={react,'react/jsx-runtime':jsx,'@/lib/life/modules':modules,'@/lib/life/date-display':display,'@/lib/life/budget-schedule':schedule,'@/lib/life/annual-fund':fund,'@/lib/life/loan-presets':loans,'@/lib/life/income-planning':income,'@/lib/life/domain':{todayIn:()=> '2026-09-17'},'./shared':{request,saveRecord,useUnsaved(){}},'./budget-recurring':{default:'RecurringDialog',recurringDescription:()=> 'Monthly schedule'},'./budget-fields':{useBudgetDirty(){},useItemSave:()=>operation||({busy:false,canSubmit:true,pending:null,error:'',setError(){}})}};
  const code=transpileModule(readFileSync('app/life/'+file+'.tsx','utf8'),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText,output={};
  runInNewContext(code,{exports:output,crypto,structuredClone,...globals,require:name=>adapters[name]||new Proxy({},{get:(_,key)=>String(key)})});
  function render(){let attempts=0;do{changed=false;cursor=0;tree=output.default(props);assert.ok(++attempts<10,'render state should settle');}while(changed);for(const slot of slots)if(slot?.pending){slot.pending=false;slot.cleanup?.();slot.cleanup=slot.fn();}return tree;}
@@ -101,6 +102,16 @@ function component(file,props,{request=async()=>({records:[]}),saveRecord=async(
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};};
 const categoryId='22222222-2222-4222-8222-222222222222',billId='11111111-1111-4111-8111-111111111111',incomeId='33333333-3333-4333-8333-333333333333';
 const budgetPlan=()=>({id:'2026-09',version:1,data:modules.budgetSchema.parse({currency:'USD',categories:[{id:categoryId,name:'Bills',limitCents:20000}],recurring:[{id:billId,title:'Electric',kind:'expense',amountCents:8000,categoryId,day:5},{id:incomeId,title:'Payday',kind:'income',categoryId:'',amountCents:100000,day:16}],goals:{spending:'',saving:'',investing:''}})});
+
+test('occurrence dialog saves only its date, keeps Skip usable with an incomplete date and retries frozen changes',async()=>{
+ const plan=budgetPlan(),source=plan.data.recurring[0],writes=[],errors=[],operation={busy:false,canSubmit:true,pending:null,error:'',setError:value=>errors.push(value),submit:async value=>{writes.push(value);return plan;}};let closed=0;
+ const f=component('budget-occurrence',{initial:{source,date:'2026-09-05',originalDate:'2026-09-05',period:plan.id},plan,scope:'due:test',onSave(){},onClose(){closed++;},onEditSeries(){},onDirty(){}},{operation});
+ const date=()=>f.find(node=>node.props?.label==='Date for this occurrence'),button=label=>f.find(node=>node.props?.children===label&&node.props?.onClick);
+ date().props.onValueChange('2026-10-01');f.render();button('Save date').props.onClick();await f.flush();assert.equal(writes.length,0);assert.match(errors.at(-1),/budget month/);
+ date().props.onValueChange('');f.render();button('Skip this occurrence').props.onClick();await f.flush();assert.equal(writes[0].item.date,'2026-09-05');assert.equal(writes[0].item.skipped,true);assert.equal(writes[0].kind,'occurrence');assert.equal(closed,1);
+ operation.pending=writes[0];f.render();assert.equal(button('Cancel').props.disabled,true);assert.equal(f.find(node=>node.props?.className==='recurring-dialog budget-occurrence-dialog').props.showCloseButton,false);button('Retry save').props.onClick();await f.flush();assert.equal(writes[1],writes[0]);
+ operation.pending=null;date().props.onValueChange('2026-09-09');f.render();button('Save date').props.onClick();await f.flush();assert.equal(writes[2].item.date,'2026-09-09');assert.equal(writes[2].item.skipped,false);assert.equal(source.day,5);f.unmount();
+});
 
 test('a missing budget month inherits live and paused schedules without copying deleted or purged placeholders',async()=>{
  const previous=budgetPlan();previous.id='2026-08';
