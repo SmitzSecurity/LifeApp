@@ -94,7 +94,7 @@ export function WorkoutHeaderTimer({ onOpen }: { onOpen: () => void }) {
   const { timer, now } = useWorkoutTimer();
   if (!timer?.restUntil) return null;
   const seconds = timerSeconds(timer, now);
-  return <Button className="workout-header-timer" variant="ghost" onClick={onOpen}
+  return <Button className="workout-header-timer" variant="ghost" onClick={()=>{onOpen();window.dispatchEvent(new Event('life:resume-workout'));}}
     title="Return to workout" aria-label={`Return to workout · ${seconds ? `rest ${timerText(seconds)}` : 'rest complete'}`}>
     <Timer aria-hidden="true"/><span>{seconds ? timerText(seconds) : 'Ready'}</span>
   </Button>;

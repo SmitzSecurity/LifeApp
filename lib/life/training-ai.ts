@@ -7,7 +7,7 @@ import {buildRoutines} from './routine-builder.ts';
 import {resolveExerciseName} from './exercise-names.ts';
 import type {Database} from './service.ts';
 import type {AISettings} from './ai-service.ts';
-import type {Exercise,WorkoutNote} from './modules.ts';
+import {workoutExercises,type Exercise,type WorkoutNote} from './modules.ts';
 export async function generateTraining(db:Database,userId:string,body:unknown,settings:AISettings,now:Date){
  const parsed=z.object({requestId:z.string().uuid(),consent:z.literal(true)}).strict().safeParse(body);
  if(!parsed.success)return Response.json({error:'Choose Analyze this week to use your training records.'},{status:400});
@@ -19,7 +19,7 @@ export async function generateTraining(db:Database,userId:string,body:unknown,se
  const activity=await readActivity(db,userId,addDays(from,-7),today);
  const current=activityTotals(activity,from,today);
  if(!current.strengthSessions&&!current.cardioSessions&&!current.workoutNotes&&!activity.workouts.some(w=>w.data.date>=from&&w.data.sets.length))return Response.json({error:'Log some training this week first.'},{status:409});
- const evidence={from,through:today,partialWeek:true,current,previous:activityTotals(activity,addDays(from,-7),addDays(from,-1)),coverage:volumeEvidence(activity.workouts,from,today),workouts:activity.workouts.map(w=>({date:w.data.date,name:w.data.name,finished:!!w.data.finishedAt,exercises:w.data.exercises.map(e=>({name:e.name,unit:e.unit,muscles:e.muscles,targets:{reps:e.reps,repMax:e.repMax,restSeconds:e.restSeconds},logged:w.data.sets.filter(s=>s.exerciseId===e.id).map(s=>({reps:s.reps,load:s.load,warmup:!!s.warmup}))}))})),cardio:activity.cardio.filter(c=>!c.data.voided).map(c=>c.data),notes:(activity.workoutNotes||[]).filter(n=>!n.data.voided).map(n=>({date:n.data.date,text:n.data.text.slice(0,1000),excerpt:n.data.text.length>1000,structuredSetsCounted:!!n.data.structured}))};
+ const evidence={from,through:today,partialWeek:true,current,previous:activityTotals(activity,addDays(from,-7),addDays(from,-1)),coverage:volumeEvidence(activity.workouts,from,today),workouts:activity.workouts.map(w=>({date:w.data.date,name:w.data.name,finished:!!w.data.finishedAt,exercises:workoutExercises(w.data).map(e=>({name:e.name,unit:e.unit,muscles:e.muscles,targets:{reps:e.reps,repMax:e.repMax,restSeconds:e.restSeconds},logged:w.data.sets.filter(s=>s.exerciseId===e.id).map(s=>({reps:s.reps,load:s.load,warmup:!!s.warmup}))}))})),cardio:activity.cardio.filter(c=>!c.data.voided).map(c=>c.data),notes:(activity.workoutNotes||[]).filter(n=>!n.data.voided).map(n=>({date:n.data.date,text:n.data.text.slice(0,1000),excerpt:n.data.text.length>1000,structuredSetsCounted:!!n.data.structured}))};
  return buildRoutines(db,userId,{...parsed.data,text:`Training week ${from} through ${today}`},settings,now,'training',evidence);
 }
 // Definitions are retained with their source log, including in Trash; copying a

@@ -54,6 +54,7 @@
 .life-compact-theme .training-workspace.workout-flow.workout-in-session{display:flex;flex:1;flex-direction:column;min-height:0;padding:0}
 .workout-in-session>:is(.error,.analysis-note,.notice){flex-shrink:0;margin:8px 16px}
 .workout-flow .workout-session-view{display:flex;flex:1;min-width:0;min-height:0}
+.workout-flow .workout-session-view[hidden]{display:none}
 @media(max-width:900px){
  .life-compact-theme .workout-flow .program-list{grid-template-columns:minmax(0,1fr)}
  .workout-flow .workout-preview-grid{grid-template-columns:minmax(0,1fr)}

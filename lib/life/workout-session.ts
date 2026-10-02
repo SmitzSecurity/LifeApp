@@ -1,4 +1,4 @@
-import {workoutSchema,routineSchema,nextSet,workingSetEntries,type Exercise,type Routine,type Saved,type Workout} from './modules.ts';
+import {workoutSchema,routineSchema,exerciseSchema,nextSet,workingSetEntries,workoutExercises,type Exercise,type Routine,type Saved,type Workout} from './modules.ts';
 import {resolveExerciseName} from './exercise-names.ts';
 import type {ExerciseHistory} from './exercise-performance.ts';
 
@@ -57,8 +57,8 @@ export function skipCurrentSet(workout:Workout):Workout{
 }
 
 export function withWorkingOrdinals(workout:Workout):Workout{
- const positions=new Map(workout.exercises.flatMap(e=>workingSetEntries(workout,e.id).map(({set,workingSetNumber})=>[`${e.id}:${set.setNumber}`,workingSetNumber] as const)));
- const lastSetSerials=workout.exercises.flatMap(e=>{const setNumber=Math.max(0,workout.lastSetSerials?.find(s=>s.exerciseId===e.id)?.setNumber??0,...workout.sets.filter(s=>s.exerciseId===e.id).map(s=>s.setNumber));return setNumber?[{exerciseId:e.id,setNumber}]:[];});
+ const exercises=workoutExercises(workout),positions=new Map(exercises.flatMap(e=>workingSetEntries(workout,e.id).map(({set,workingSetNumber})=>[`${e.id}:${set.setNumber}`,workingSetNumber] as const)));
+ const lastSetSerials=exercises.flatMap(e=>{const setNumber=Math.max(0,workout.lastSetSerials?.find(s=>s.exerciseId===e.id)?.setNumber??0,...workout.sets.filter(s=>s.exerciseId===e.id).map(s=>s.setNumber));return setNumber?[{exerciseId:e.id,setNumber}]:[];});
  return {...workout,lastSetSerials,sets:workout.sets.map(set=>set.warmup?set:{...set,workingSetNumber:positions.get(`${set.exerciseId}:${set.setNumber}`)!})};
 }
 
@@ -68,7 +68,7 @@ export function restoreSkippedSet(workout:Workout,exerciseId:string,workingSetNu
 }
 
 export function reviseWorkoutSet(workout:Workout,input:{exerciseId:string;setNumber?:number;workingSetNumber?:number;reps:number;load:number;warmup:boolean},now=new Date().toISOString()):Workout{
- const normalized=withWorkingOrdinals(workout),exercise=normalized.exercises.find(e=>e.id===input.exerciseId);
+ const normalized=withWorkingOrdinals(workout),exercise=workoutExercises(normalized).find(e=>e.id===input.exerciseId);
  if(!exercise)throw new Error('Choose an exercise from this workout.');
  const old=input.setNumber===undefined?undefined:normalized.sets.find(s=>s.exerciseId===input.exerciseId&&s.setNumber===input.setNumber);
  if(input.setNumber!==undefined&&!old)throw new Error('That set is no longer available.');
@@ -85,6 +85,16 @@ export function reviseWorkoutSet(workout:Workout,input:{exerciseId:string;setNum
 export function removeWorkoutSet(workout:Workout,exerciseId:string,setNumber:number):Workout{
  const normalized=withWorkingOrdinals(workout);
  return workoutSchema.parse({...normalized,sets:normalized.sets.filter(s=>s.exerciseId!==exerciseId||s.setNumber!==setNumber),restUntil:null});
+}
+
+// Freeze the extra definition and first actual set in the same versioned write.
+// This never changes the saved session plan or creates another planned target.
+export function appendWorkoutExercise(workout:Workout,exercise:Exercise,input:{reps:number;load:number;warmup:boolean;workingSetNumber?:number},now=new Date().toISOString()):Workout{
+ if(workout.deleted)throw new Error('Restore this workout before adding an exercise.');
+ const snapshot=exerciseSchema.parse(structuredClone(exercise));
+ if(workoutExercises(workout).some(e=>e.id===snapshot.id))throw new Error('Each added exercise needs its own identity.');
+ if(workoutExercises(workout).length>=30)throw new Error('Keep at most 30 exercises in one workout.');
+ return reviseWorkoutSet({...workout,additionalExercises:[...(workout.additionalExercises||[]),snapshot]},{...input,exerciseId:snapshot.id},now);
 }
 
 // Compute this once when the user extends rest, then retain the resulting

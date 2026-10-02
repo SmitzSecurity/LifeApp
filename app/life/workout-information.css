@@ -1,0 +1,24 @@
+.workout-information{display:grid;gap:16px;min-width:0}
+.workout-information .session-information-summary{margin:0}
+.workout-information fieldset{border:0;margin:0;padding:0;min-width:0}
+.workout-information .exercise-setup-notes{margin:0;padding:0;border:0}
+.session-information-exercise-heading{display:grid;gap:4px;text-align:left;min-width:0}
+.session-information-exercise-heading strong{overflow-wrap:anywhere}
+.session-information-exercise-heading small{font-weight:400;color:var(--muted-foreground);font-size:var(--ui-meta,.75rem)}
+.session-information-exercises button{min-height:44px;height:auto;white-space:normal}
+.session-information-sets{display:grid;gap:4px}
+.session-information-set{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:4px;padding:4px 0;border-bottom:1px solid var(--border)}
+.session-information-set>span{display:grid;gap:2px;overflow-wrap:anywhere}
+.session-information-set small{color:var(--muted-foreground);font-size:var(--ui-label,.8125rem)}
+.session-information-set button{padding-inline:8px}
+.session-information-correction{display:grid;gap:8px;border:1px solid var(--border);padding:10px;border-radius:8px}
+.session-information-inputs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.session-information-inputs label,.session-information-workout-notes label{display:grid;gap:5px;min-width:0}
+.workout-information input:not([type=checkbox]),.workout-information textarea{width:100%;min-width:0;font-size:max(16px,var(--ui-copy,1rem));min-height:44px}
+.session-information-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.session-information-setup{margin-top:12px}
+.session-information-setup label{display:grid;gap:6px}
+.session-information-workout-notes{border:1px solid var(--border);border-radius:8px;padding:0 12px}
+.session-information-workout-notes summary{min-height:44px;padding:10px 0;cursor:pointer}
+.session-information-workout-notes fieldset{display:grid;gap:10px;padding-bottom:12px}
+@media(max-width:360px){.session-information-set{grid-template-columns:minmax(0,1fr) auto}.session-information-set>span{grid-column:1/-1}.session-information-set>button{justify-self:start}}

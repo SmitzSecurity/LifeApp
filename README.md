@@ -29,7 +29,7 @@ The local migration checker is implemented: `npm run migration:preview -- SOURCE
 
 - [Offline saves](docs/offline-sync.md): core records save on the current device and sync in order when connectivity returns; account-bound retries and explicit conflict review protect pending work.
 
-- [Workout corrections and notes](docs/workout-session-flow.md): restore skipped sets, reuse exercise setup notes, focus rep entry, review the last set without another rest, and edit session summaries and history. [Rest timers](docs/workout-timer.md) remain in the app header with optional phone end-time notifications.
+- [Workout corrections and notes](docs/workout-session-flow.md): search presets, log individual exercises, add extra exercises from summary/history with an optional routine save, expand sets and setup notes in information, and leave/resume the focused workout with drafts intact. [Rest timers](docs/workout-timer.md) remain in the app header with optional phone end-time notifications.
 
 - [Prelaunch hardening](docs/prelaunch-hardening.md): explicit save-conflict recovery, lost-acknowledgement safeguards, request limits, dependency patches and narrow-screen corrections, with remaining paid-onboarding decisions documented.
 
