@@ -128,14 +128,17 @@ export async function saveResource(body:unknown,db:Database,userId:string,profil
   if(previous){
    const old=previous.data as Workout;
    if(old.date!==w.date||old.routineId!==w.routineId||old.name!==w.name||JSON.stringify(old.exercises)!==JSON.stringify(w.exercises))return json({error:'Saved workouts keep their original session plan.'},400);
+   const previousAdditional=old.additionalExercises||[],additional=w.additionalExercises||[];
+   if(previousAdditional.length>additional.length||previousAdditional.some((exercise,index)=>JSON.stringify(exercise)!==JSON.stringify(additional[index])))return previous.version!==version?conflict():json({error:'Keep the saved snapshots of added exercises.'},400);
+   if(additional.slice(previousAdditional.length).some(exercise=>!w.sets.some(set=>set.exerciseId===exercise.id)))return previous.version!==version?conflict():json({error:'Log an actual set when adding an exercise.'},400);
    if(old.finishedAt&&!w.finishedAt)return json({error:'A finished workout cannot be reopened.'},400);
-   if(old.lastSetSerials?.some(serial=>(w.lastSetSerials?.find(s=>s.exerciseId===serial.exerciseId)?.setNumber??0)<serial.setNumber))return json({error:'Keep saved set identities when correcting a workout.'},400);
+   if(old.lastSetSerials?.some(serial=>(w.lastSetSerials?.find(s=>s.exerciseId===serial.exerciseId)?.setNumber??0)<serial.setNumber))return previous.version!==version?conflict():json({error:'Keep saved set identities when correcting a workout.'},400);
    if(w.sets.some(set=>!old.sets.some(previous=>previous.exerciseId===set.exerciseId&&previous.setNumber===set.setNumber)&&set.setNumber<=Math.max(0,old.lastSetSerials?.find(serial=>serial.exerciseId===set.exerciseId)?.setNumber??0,...old.sets.filter(previous=>previous.exerciseId===set.exerciseId).map(previous=>previous.setNumber))))return previous.version!==version?conflict():json({error:'New sets must use a new logged-set identity.'},400);
   }else{
    const routine=(await readResource(db,userId,'routine',w.routineId))?.data as Routine|undefined;
    // A reviewed session may customize the template without overwriting it.
    // The validated plan becomes immutable as soon as this fresh start saves.
-   if(!routine||routine.archived||w.sets.length||w.skippedSets?.length||w.lastSetSerials?.length||w.finishedAt||w.restUntil||w.deleted)return json({error:'Start a fresh workout from one of your saved programs.'},400);
+   if(!routine||routine.archived||w.additionalExercises?.length||w.sets.length||w.skippedSets?.length||w.lastSetSerials?.length||w.finishedAt||w.restUntil||w.deleted)return json({error:'Start a fresh workout from one of your saved programs.'},400);
   }
   if(!w.finishedAt&&!w.deleted){const active=await db.prepare("SELECT resource_id FROM life_resources WHERE user_id=?1 AND kind='workout' AND active_slot='active'").bind(userId).first<{resource_id:string}>();if(active&&active.resource_id!==id)return json({error:'Finish your current workout before starting another.'},409);}
  }

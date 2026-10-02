@@ -1,4 +1,4 @@
-import type {Exercise,Routine,Workout,Saved} from './modules.ts';
+import {workoutExercises,type Exercise,type Routine,type Workout,type Saved} from './modules.ts';
 import {muscleIds,type MuscleId,type MuscleTargets} from './muscle-groups.ts';
 import {exerciseNameKey,resolveExerciseName} from './exercise-names.ts';
 // Curated movement-based defaults, not individualized measurements. Stabilization
@@ -56,7 +56,7 @@ export function plannedVolume(routines:Saved<Routine>[]){
 }
 export function recordedVolume(workouts:Saved<Workout>[],from:string,through:string){
  const inWindow=workouts.filter(w=>!w.data.deleted&&w.data.date>=from&&w.data.date<=through),items:{routineId:string;exercise:Exercise;sets:number}[]=[];let warmups=0,zeroRepSets=0;
- for(const w of inWindow){for(const e of w.data.exercises){const logged=w.data.sets.filter(s=>s.exerciseId===e.id);warmups+=logged.filter(s=>s.warmup).length;zeroRepSets+=logged.filter(s=>!s.warmup&&s.reps===0).length;items.push({routineId:w.data.routineId,exercise:e,sets:logged.filter(s=>!s.warmup&&s.reps>0).length});}}
+ for(const w of inWindow){for(const e of workoutExercises(w.data)){const logged=w.data.sets.filter(s=>s.exerciseId===e.id);warmups+=logged.filter(s=>s.warmup).length;zeroRepSets+=logged.filter(s=>!s.warmup&&s.reps===0).length;items.push({routineId:w.data.routineId,exercise:e,sets:logged.filter(s=>!s.warmup&&s.reps>0).length});}}
  return {...tallyVolume(items),from,through,sessions:inWindow.filter(w=>w.data.sets.some(s=>!s.warmup&&s.reps>0)).length,warmups,zeroRepSets};
 }
 export function volumeEvidence(workouts:Saved<Workout>[],from:string,through:string){const result=recordedVolume(workouts,from,through);return {from,through,muscles:result.muscles,workingSets:result.sets,unmappedSets:result.unmapped.reduce((n,e)=>n+e.sets,0),excludedWarmups:result.warmups,interpretation:'Estimated muscle volume = direct sets + half of indirect sets. Curated or user-selected mappings are estimates, not measured stimulus. Warmups and zero-rep sets are excluded; unmarked historical sets are treated as working sets. Written notes and cardio are not inferred into set counts. Around 10 weekly sets is a broad hypertrophy reference, not an individual optimum or a requirement for every small muscle. Do not scale this weekly reference to monthly/annual totals or interpret incomplete logging as failure.'};}

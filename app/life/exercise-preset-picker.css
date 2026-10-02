@@ -1,0 +1,10 @@
+.exercise-preset-picker{min-width:0;width:100%}
+.exercise-preset-picker .exercise-preset-toggle{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:10px 12px;text-align:left;border:1px solid var(--border);border-radius:6px;background:var(--input-background);color:var(--foreground);font:inherit;white-space:normal}
+.exercise-preset-picker .exercise-preset-panel{display:grid;gap:8px;margin-top:8px;padding:10px;border:1px solid var(--border);border-radius:6px;background:var(--card);min-width:0}
+.exercise-preset-picker .exercise-preset-results{max-height:260px;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.exercise-preset-picker .exercise-preset-results section{display:grid;gap:2px;min-width:0}
+.exercise-preset-picker .exercise-preset-results h4{margin:6px 0;font-size:calc(.8125rem * var(--ui-text-scale,1));color:var(--muted-foreground)}
+.exercise-preset-picker .exercise-preset-results button{width:100%;min-height:44px;height:auto;padding:8px;text-align:left;white-space:normal;overflow-wrap:anywhere;border:0;border-radius:4px;background:transparent;color:var(--foreground);font:inherit}
+.exercise-preset-picker .exercise-preset-results button:hover,.exercise-preset-picker .exercise-preset-results button:focus-visible{background:var(--accent)}
+.exercise-preset-picker .exercise-preset-panel input{width:100%;min-width:0;font-size:16px}
+.exercise-preset-picker .exercise-preset-panel p{margin:4px 0}

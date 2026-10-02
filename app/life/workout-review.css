@@ -1,0 +1,11 @@
+.workout-review .session-review-add-exercise{margin:12px 0 18px;padding-block:12px;border-top:1px solid var(--border);min-width:0}
+.workout-review .session-review-program-choice{display:flex;align-items:flex-start;gap:8px;min-height:44px;padding-block:6px;font-size:calc(.875rem * var(--ui-text-scale,1));line-height:1.45;cursor:pointer}
+.workout-review .session-review-program-choice input{width:20px;height:20px;flex-shrink:0;margin:1px 0 0;accent-color:var(--primary)}
+.workout-review .session-review-program-choice span{min-width:0;overflow-wrap:anywhere}
+.workout-review .session-review-program-choice small{display:block;color:var(--muted-foreground);font-size:calc(.75rem * var(--ui-text-scale,1))}
+.workout-review .session-review-inputs select{display:block;width:100%;min-width:0;min-height:44px;border:1px solid var(--input);border-radius:8px;background:var(--input-background);color:var(--foreground);font-size:max(16px,calc(1rem * var(--ui-text-scale,1)));padding:10px;box-sizing:border-box}
+.workout-review .session-review-inputs select:focus-visible{outline:2px solid var(--ring);outline-offset:-2px}
+.workout-review .session-review-actions button{white-space:normal;min-height:44px}
+.workout-review .session-review-row{flex-wrap:wrap}
+.workout-review .session-review-row>span{flex:1 1 110px}
+.workout-review .session-review-row button{max-width:100%;white-space:normal;min-height:44px}

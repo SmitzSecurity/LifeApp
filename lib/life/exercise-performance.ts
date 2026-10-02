@@ -1,6 +1,6 @@
 import {z} from 'zod/v3';
 import {resolveExerciseName} from './exercise-names.ts';
-import {workingSetEntries,type Routine,type Saved,type Workout} from './modules.ts';
+import {workingSetEntries,workoutExercises,type Routine,type Saved,type Workout} from './modules.ts';
 import type {Database} from './service.ts';
 
 export type ExercisePerformance={
@@ -19,7 +19,7 @@ const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{'Cac
 export function performanceInWorkout(record:Saved<Workout>,name:string,workingSetNumber:number):{matched:boolean;performance:ExercisePerformance|null}{
  const workout=record.data;
  if(workout.deleted||!workout.finishedAt)return {matched:false,performance:null};
- const key=resolveExerciseName(name),candidates=workout.exercises.filter(e=>resolveExerciseName(e.name)===key).map(exercise=>{
+ const key=resolveExerciseName(name),candidates=workoutExercises(workout).filter(e=>resolveExerciseName(e.name)===key).map(exercise=>{
   const sets=workout.sets.filter(s=>s.exerciseId===exercise.id&&!s.warmup).sort((a,b)=>a.setNumber-b.setNumber);
   const positive=sets.filter(s=>s.reps>0),last=positive.reduce((latest,s)=>Math.max(latest,Date.parse(s.completedAt)),0);
   return {exercise,sets,positive,last};
@@ -38,7 +38,7 @@ type Row={resource_id:string;payload:string;version:number;finished_sort:number}
 // plans and warm-ups alone do not replace a previous working performance.
 export function historyInWorkout(record:Saved<Workout>,name:string):ExerciseHistory|null{
  const workout=record.data;if(workout.deleted||!workout.finishedAt)return null;
- const key=resolveExerciseName(name),candidate=workout.exercises.filter(e=>resolveExerciseName(e.name)===key).map(exercise=>({exercise,entries:workingSetEntries(workout,exercise.id)})).filter(item=>item.entries.length).sort((a,b)=>Math.max(...b.entries.map(s=>Date.parse(s.set.completedAt)))-Math.max(...a.entries.map(s=>Date.parse(s.set.completedAt))))[0];
+ const key=resolveExerciseName(name),candidate=workoutExercises(workout).filter(e=>resolveExerciseName(e.name)===key).map(exercise=>({exercise,entries:workingSetEntries(workout,exercise.id)})).filter(item=>item.entries.length).sort((a,b)=>Math.max(...b.entries.map(s=>Date.parse(s.set.completedAt)))-Math.max(...a.entries.map(s=>Date.parse(s.set.completedAt))))[0];
  if(!candidate)return null;
  const {exercise,entries}=candidate;
  return {workoutId:record.id,workoutName:workout.name,exerciseName:exercise.name,date:workout.date,finishedAt:workout.finishedAt,plannedSets:exercise.sets,reps:exercise.reps,repMax:exercise.repMax??exercise.reps,unit:exercise.unit,sets:entries.map(({set,workingSetNumber})=>({workingSetNumber,reps:set.reps,load:set.load})).sort((a,b)=>a.workingSetNumber-b.workingSetNumber),skipped:(workout.skippedSets||[]).filter(s=>s.exerciseId===exercise.id).map(s=>s.workingSetNumber)};
@@ -52,7 +52,7 @@ export async function readExercisePerformance(request:Request,db:Database,userId
  const {workoutId,exerciseId,workingSetNumber}=parsed.data;
  const current=await db.prepare("SELECT payload FROM life_resources WHERE user_id=?1 AND kind='workout' AND resource_id=?2").bind(userId,workoutId).first<{payload:string}>();
  if(!current)return json({error:'This workout is no longer available.'},404);
- const workout=JSON.parse(current.payload) as Workout,exercise=workout.exercises.find(e=>e.id===exerciseId);
+ const workout=JSON.parse(current.payload) as Workout,exercise=workoutExercises(workout).find(e=>e.id===exerciseId);
  if(workout.deleted||workout.finishedAt)return json({error:'Open an active workout to compare its sets.'},409);
  if(!exercise||workingSetNumber>exercise.sets)return json({error:'Choose a working set from this workout.'},400);
  let cursor:{finished:number;id:string}|null=null,read=0;

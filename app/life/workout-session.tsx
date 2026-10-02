@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode } from 'react';
-import { Check, CircleHelp, Info, Plus, SkipForward, Vibrate, VibrateOff, Volume2, VolumeX, X } from 'lucide-react';
+import { Check, CircleHelp, Info, LayoutList, Plus, SkipForward, Vibrate, VibrateOff, Volume2, VolumeX, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/life/date-display';
 import { repTarget } from '@/lib/life/exercise-presets';
@@ -67,6 +67,7 @@ export type WorkoutSessionProps = {
   onPlan: () => void;
   onFinish: () => void;
   onExit: () => void;
+  onOverview?: () => void;
   onCancelCorrection: () => void;
   reviewing?: boolean;
   review?: ReactNode;
@@ -78,7 +79,7 @@ export default function WorkoutSession({
   workout, target, previousPerformance, previousHistory, previousPerformanceLoading = false, previousPerformanceUnavailable = false, saveWeight=true,programWeightChanged=false,onSaveWeight, reps, load, warmup, remaining, editing, busy,
   pending = false, setDirty, sound, onSound, vibration, onVibration, supportsVibration,
   onReps, onLoad, onWarmup, onSaveSet, onSkipSet, onSkipRest,
-  onExtendRest, onPlan, onFinish, onExit, onCancelCorrection,reviewing=false,review,visible=true,
+  onExtendRest, onPlan, onFinish, onExit, onOverview, onCancelCorrection,reviewing=false,review,visible=true,
 }: WorkoutSessionProps) {
   const id = useId();
   const plan = workout.data;
@@ -104,6 +105,7 @@ export default function WorkoutSession({
       <div className="session-focus">
         <div className="session-controls">
           <Button variant="ghost" size="icon" onClick={onExit} disabled={locked} aria-label="Workout options" title="Workout options"><X aria-hidden="true"/></Button>
+          {onOverview&&<Button className="session-overview-button" variant="ghost" onClick={onOverview} disabled={locked} aria-label="Workouts overview"><LayoutList aria-hidden="true"/><span>Workouts</span></Button>}
           <div className="session-utilities">
             <Button variant="ghost" size="icon" onClick={onPlan} disabled={locked} aria-label="Workout information" title="Workout information"><Info aria-hidden="true"/></Button>
             <Button variant="ghost" size="icon" onClick={onSound} aria-label="Rest sound" aria-pressed={sound} title={sound ? 'Rest sound on' : 'Rest sound off'}>{sound ? <Volume2 aria-hidden="true"/> : <VolumeX aria-hidden="true"/>}</Button>
@@ -138,7 +140,7 @@ export default function WorkoutSession({
               {previousPerformanceLoading ? 'Loading last performance…' : previousPerformanceUnavailable ? 'Previous set unavailable.' : previousPerformance
                 ? <>Last time <strong>{previousPerformance.reps} reps × {previousPerformance.load} {previousPerformance.unit}</strong><span> · {formatDate(previousPerformance.date)} · {previousPerformance.workoutName}</span></>
                 : previousHistory?<>Last workout · {formatDate(previousHistory.date)} · {previousHistory.workoutName}</>:'No previous performance for this set.'}
-            </p><table className="session-performance-table"><caption className="sr-only">Working sets for {target.exercise.name}</caption><thead><tr><th scope="col">Set</th><th scope="col">Last time</th><th scope="col">Today</th></tr></thead><tbody>{Array.from({length:historyRows},(_,index)=>{const ordinal=index+1,previous=previousHistory?.sets.find(s=>s.workingSetNumber===ordinal),logged=todaySets.find(s=>s.workingSetNumber===ordinal)?.set,skippedToday=plan.skippedSets?.some(s=>s.exerciseId===target.exercise.id&&s.workingSetNumber===ordinal);return <tr key={ordinal} aria-current={ordinal===(target.workingSetNumber??current?.workingSetNumber)?'step':undefined}><th scope="row">{ordinal}</th><td>{previous?<>{previous.reps} × {previous.load} {previousHistory?.unit}</>:previousHistory?.skipped.includes(ordinal)?'Skipped':'—'}</td><td>{logged?<>{logged.reps} × {logged.load} {target.exercise.unit}</>:skippedToday?'Skipped':'—'}</td></tr>;})}</tbody></table></>}
+            </p><table className="session-performance-table"><caption className="sr-only">Working sets for {target.exercise.name}</caption><thead><tr><th scope="col">Set</th><th scope="col">Today</th><th scope="col">Last time</th></tr></thead><tbody>{Array.from({length:historyRows},(_,index)=>{const ordinal=index+1,previous=previousHistory?.sets.find(s=>s.workingSetNumber===ordinal),logged=todaySets.find(s=>s.workingSetNumber===ordinal)?.set,skippedToday=plan.skippedSets?.some(s=>s.exerciseId===target.exercise.id&&s.workingSetNumber===ordinal);return <tr key={ordinal} aria-current={ordinal===(target.workingSetNumber??current?.workingSetNumber)?'step':undefined}><th scope="row">{ordinal}</th><td>{logged?<>{logged.reps} × {logged.load} {target.exercise.unit}</>:skippedToday?'Skipped':'—'}</td><td>{previous?<>{previous.reps} × {previous.load} {previousHistory?.unit}</>:previousHistory?.skipped.includes(ordinal)?'Skipped':'—'}</td></tr>;})}</tbody></table></>}
           </div>
           <fieldset className="session-set-entry" disabled={locked}>
             <legend className="sr-only">{editing ? 'Correct logged reps and load' : 'Log your completed set'}</legend>
