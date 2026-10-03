@@ -12,6 +12,7 @@ import * as presets from '../lib/life/exercise-presets.ts';
 import * as dates from '../lib/life/date-display.ts';
 import * as muscles from '../lib/life/muscle-groups.ts';
 import * as volume from '../lib/life/muscle-volume.ts';
+import * as muscleCatalog from '../lib/life/exercise-muscle-catalog.ts';
 import * as names from '../lib/life/exercise-names.ts';
 import * as symbols from '../lib/life/exercise-symbols.ts';
 import {definiteClientRejection} from '../lib/life/write-retry.ts';
@@ -42,7 +43,7 @@ function component(file,props,adapters={},globals={},transform=source=>source){
   setTimeout(fn){const id=++timerId;timers.set(id,fn);return id;},clearTimeout(id){timers.delete(id);},requestAnimationFrame(){return ++timerId;},cancelAnimationFrame(){},
   ...globals};
  const imports={react,'react/jsx-runtime':jsx,'./workout-timer':{useWorkoutTimer:()=>({setWorkoutTimer(){}}),WorkoutNotificationControl:'WorkoutNotificationControl'},'@/lib/life/modules':modules,'@/lib/life/domain':domain,'@/lib/life/workout-session':session,'@/lib/life/exercise-presets':presets,'@/lib/life/date-display':dates,'@/lib/life/muscle-groups':muscles,'@/lib/life/muscle-volume':volume,'@/lib/life/exercise-names':names,'@/lib/life/exercise-symbols':symbols,'@/lib/life/write-retry':{definiteClientRejection},
-  './shared':{request:async()=>({records:[]}),useUnsaved(){},useWorkoutCancel:fn=>fn},...adapters};
+  '@/lib/life/exercise-muscle-catalog':muscleCatalog,'./shared':{request:async()=>({records:[]}),useUnsaved(){},useWorkoutCancel:fn=>fn},...adapters};
  const output={},code=transpileModule(transform(readFileSync('app/life/'+file+'.tsx','utf8')),{compilerOptions:{module:ModuleKind.CommonJS,jsx:JsxEmit.ReactJSX}}).outputText;
  runInNewContext(code,{exports:output,crypto:{randomUUID},structuredClone,Date,console,...environment,require:name=>imports[name]||new Proxy({},{get:(_,key)=>key==='default'?name:String(key)})});
  function render(next=committedProps,commit=true){
@@ -218,6 +219,32 @@ test('drag completion uses committed program props; cancellation and write locks
  grip().props.onPointerDown(pointer());[...f.timers.values()][0]();f.render();const staleFinish=grip().props.onPointerUp;f.render({...f.props,busy:true});staleFinish(pointer(150));assert.equal(changes.length,1);assert.equal(captures.size,0);f.unmount();
 });
 
+
+test('using reviewed preset muscles changes only the selected local draft and respects committed state and save locks',()=>{
+ const first={...presets.presetExercise('Trap-bar deadlift'),muscles:{direct:['forearms'],indirect:[]},setupNote:'Keep my setup'},second={...presets.presetExercise('Biceps curl'),muscles:{direct:[],indirect:[]}};
+ const routine={id:randomUUID(),version:4,data:{name:'Original name',preferences:'Stored preference',exercises:[first,second],archived:false}},snapshot=structuredClone(routine),changes=[],abandoned=[];let saves=0;
+ const f=component('routine-editor',{routine,onChange:value=>changes.push(value),onSave(){saves++;},onCancel(){},busy:false,pending:false,error:''});
+ f.render();f.button('Muscle groups').props.onClick();f.render();
+ assert.equal(changes.length,0,'opening the editor never adopts revised defaults');
+ assert.equal(f.all(n=>n.props?.['aria-label']==='Forearms role')[0].props.value,'direct','custom assignment remains selected');
+ const apply=f.button('Use preset muscles').props.onClick;
+ f.render({...f.props,routine:{...routine,data:{...routine.data,name:'Committed title'}}});
+ f.render({...f.props,routine:{...routine,data:{...routine.data,name:'Abandoned title'}},onChange:value=>abandoned.push(value)},false);
+ apply();assert.equal(changes.length,1);assert.equal(abandoned.length,0);assert.equal(changes[0].name,'Committed title');
+ assert.deepEqual(structuredClone(changes[0].exercises[0].muscles),{direct:['quads','glutes'],indirect:['hamstrings','lower-back']});
+ assert.equal(changes[0].exercises[0].setupNote,'Keep my setup');assert.deepEqual(changes[0].exercises[1],second);
+ assert.deepEqual(routine,snapshot,'source program and saved snapshot remain untouched');assert.equal(saves,0,'adoption remains a draft until the existing save action');
+ f.render({...f.props,busy:true});apply();assert.equal(changes.length,1);
+ f.render({...f.props,busy:false,pending:true});apply();assert.equal(changes.length,1);
+ f.render({...f.props,pending:false});f.all(n=>n.props?.className==='routine-exercise-select')[1].props.onClick();f.render();
+ apply();assert.equal(changes.length,1,'a stale button cannot change an exercise after selection moves');
+ assert.equal(f.all(n=>n.props?.['aria-label']==='Biceps role')[0].props.value,'none','an explicit empty mapping survives opening');
+ f.button('Use preset muscles').props.onClick();assert.equal(changes.length,2);assert.deepEqual(changes[1].exercises[0],first);assert.deepEqual(structuredClone(changes[1].exercises[1].muscles),{direct:['biceps'],indirect:['forearms']});
+ const unknown={...first,name:'Custom rehab movement'};
+ f.render({...f.props,routine:{...routine,data:{...routine.data,exercises:[unknown]}}});apply();assert.equal(changes.length,2);
+ assert.equal(f.all(n=>n.props?.className==='preset-muscle-review').length,0,'unknown custom movements have no guessed preset review');
+ assert.equal(saves,0);f.unmount();
+});
 
 test('working weight uses two exact save stages and a lost set acknowledgement never repeats the program save',async()=>{
  let routine={id:randomUUID(),version:1,data:{name:'Weight stages',preferences:'',exercises:[{...presets.presetExercise('Bench press'),sets:3,load:100,restSeconds:0}],archived:false}};
