@@ -1,0 +1,3397 @@
+{
+  "schemaVersion": 1,
+  "auditedAt": "2026-10-03",
+  "scope": "All 79 built-in exercise presets; custom/personal assignments are not automatically overwritten.",
+  "definitions": {
+    "direct": "Major intended training target of the described variant.",
+    "indirect": "Meaningful assisting work; incidental stabilization alone does not earn credit.",
+    "estimate": "Direct + half indirect is an approximate counting convention, not a measured stimulus percentage.",
+    "preservation": "Explicit saved assignments, including empty assignments, win. No saved routine, session snapshot or historical record is automatically rewritten. Legacy records without muscle assignments continue using catalog defaults at read time. Existing intentional name edits clear draft assignments to avoid retaining another movement's targets."
+  },
+  "summary": {
+    "reviewed": 79,
+    "changed": 20,
+    "retained": 59
+  },
+  "allowedMuscleIds": [
+    "chest",
+    "lats",
+    "upper-back",
+    "shoulders",
+    "biceps",
+    "triceps",
+    "forearms",
+    "abs",
+    "lower-back",
+    "glutes",
+    "quads",
+    "hamstrings",
+    "calves",
+    "adductors"
+  ],
+  "reviewNotes": {
+    "lower": {
+      "definitions": {
+        "direct": "Major intended training target in the ordinary named variant.",
+        "indirect": "Meaningful assisting work. Do not include every anatomical agonist or generic stabilizer.",
+        "estimate": "Direct + half indirect remains an approximate counting convention, not evidence of exactly 50% stimulus.",
+        "loadedErectors": "Retain indirect lower-back for DL/RDL: purposeful, substantial anti-flexion loading is meaningful assisting work even when largely isometric. This does not automatically justify every bracing or grip muscle.",
+        "preservation": "Recommendations concern future preset defaults and explicit user-selected replacement only; never rewrite saved custom maps or historical snapshots."
+      },
+      "groupLimitations": [
+        "Calves aggregates gastrocnemius and soleus. Leg-curl indirect calf credit denotes gastrocnemius only.",
+        "Glutes aggregates gluteus maximus, medius and minimus. Hip abduction and hip extension are not equivalent for each subdivision.",
+        "Adductors aggregates multiple muscles; hinge assistance mainly denotes adductor magnus, not equal work by every medial-thigh muscle.",
+        "Quads and hamstrings likewise aggregate monoarticular and biarticular heads.",
+        "Tensor fasciae latae, hip flexors, tibialis and deep hip rotators have no dedicated represented IDs; do not relabel them as another muscle.",
+        "Forearms is literal hand/wrist/forearm musculature. Unstrapped holding can train grip, but ambiguous strap use does not justify universal default credit for every loaded leg exercise."
+      ],
+      "globalEvidenceLimits": [
+        "No opened study calibrates each exercise role to exactly one or half a set.",
+        "Small novice training trials inform defaults but do not cover all training histories, equipment or individual biomechanics.",
+        "Acute EMG, joint moments and modelling help identify roles but do not directly measure eventual hypertrophy.",
+        "Adductor magnus can assist hip extension; that anatomical capability does not automatically add hinge set credit.",
+        "Generic hack squat retains its existing map because one quad-focused machine reference cannot justify a universal glute downgrade.",
+        "Leg-curl calf assistance means gastrocnemius knee-flexion work only. The fixed half credit remains a practical counting assumption, not a measured calf-raise equivalence."
+      ]
+    },
+    "pull": {
+      "notes": {
+        "interpretation": "These are conservative movement defaults, not individual measurements. Direct means major intended target; indirect means meaningful dynamic assistance. A role describes an app group, not every muscle in that region.",
+        "groups": "Biceps means biceps brachii. Forearms includes brachioradialis and wrist muscles; elbow curls and wrist curls do not train identical forearm tissues. Upper back includes trapezius/rhomboid/scapular-elevator work. Shoulders refers here to deltoids; separate rotator-cuff muscle accounting is unavailable.",
+        "unrepresented": "Brachialis has no matching ID and is not credited as biceps. Teres major and individual rotator-cuff muscles cannot be separately represented. Do not invent IDs or silently reinterpret biceps.",
+        "stabilizers": "No automatic abs, erector-spinae, wrist-grip, leg or antagonist credit for merely maintaining position. Isometric work can train muscle, but these generic names provide insufficient individualized stimulus information.",
+        "inference": "The direct/indirect arrays are curated inferences from anatomy, intended movement and supporting studies. EMG amplitudes cannot be converted into hypertrophy or an exact half-set value. The app’s indirect multiplier remains an openly approximate convention.",
+        "pullDefault": "Conventional vertical pulls retain lats as the main target, with biceps and upper-back assistance. Grip/assistance changes do not by themselves justify new regional targets. Other active elbow flexors and posterior shoulder contributions are acknowledged without blanket additional volume.",
+        "rowDefault": "Conventional rows target shoulder extension and scapular retraction, with biceps and posterior-deltoid assistance. The exact distribution varies with arm path; deliberately flared elbows can increase shoulder emphasis.",
+        "curlDefault": "Strict supinated curls retain biceps direct and add forearms indirect for brachioradialis dynamic elbow-flexion assistance. This is not wrist-grip stabilizer credit. Brachialis remains explicitly unrepresented.",
+        "highRow": "Keep the current name only with the visible default: chest-supported horizontal row with elbows out around shoulder height. Remove assumed lat synergy for that path. A high-to-low lat machine needs an explicit customized mapping.",
+        "hammer": "Retain biceps direct and forearms indirect for dynamic brachioradialis assistance. Brachialis is unrepresented. Neutral grip does not establish greater brachioradialis stimulus or a different direct-target hierarchy.",
+        "savedData": "Existing explicit custom assignments and immutable saved workout snapshots must retain their values. Applying revised preset muscles should be an explicit draft action; no background overwrite or migration."
+      },
+      "accessLimits": [
+        "Several ExRx variant pages were unavailable through browsing and are not used as reviewed support.",
+        "Bot-blocked PubMed/PMC curl or pulldown pages were not treated as opened evidence.",
+        "No generic list of active muscles establishes the app’s indirect half-set coefficient."
+      ]
+    },
+    "push": {
+      "definitions": {
+        "direct": "Major intended training target in the stated ordinary variant.",
+        "indirect": "Meaningful active assistance. Anatomical participation or stabilization alone is not automatic credit.",
+        "intentionalCore": "Anti-extension, anti-rotation and deliberate spine control may be direct targets; this does not imply equal hypertrophy to a hard loaded set.",
+        "groups": "Shoulders denotes deltoid targets here. Upper-back assistance denotes trapezius scapular movement, not every upper-back muscle. Biceps means biceps brachii.",
+        "estimate": "Direct + half indirect remains an approximate accounting convention; no cited experiment calibrates these exercises to exactly one or half a hypertrophy set.",
+        "preservation": "Apply revised defaults only to new choices or explicit draft replacement. Preserve existing custom assignments and immutable saved workout snapshots."
+      },
+      "missingGroups": [
+        {
+          "name": "Hip flexors",
+          "handling": "Iliopsoas and other hip-flexor work cannot be credited as abs or as the whole quads group."
+        },
+        {
+          "name": "Serratus anterior",
+          "handling": "No dedicated ID; do not relabel it as chest, deltoids or upper back."
+        },
+        {
+          "name": "Separate rotator cuff",
+          "handling": "Do not turn cuff activity into deltoid credit. Lateral-raise supraspinatus assistance remains unrepresented."
+        },
+        {
+          "name": "Anconeus / pelvic floor",
+          "handling": "No dedicated ID. Their participation does not justify invented fields or another group."
+        }
+      ],
+      "globalEvidenceLimits": [
+        "All recommended roles are curated inferences from movement, intended targets and supporting evidence, not individualized measured stimulus.",
+        "Acute EMG informs participation and technique dependence but cannot establish longitudinal hypertrophy or coefficient equivalence.",
+        "Generic names omit grip, torso angle, machine geometry, range and intent; explicit form assumptions are necessary.",
+        "Primary source HTML access was limited for some MDPI/PMC/PubMed/ExRx pages. Listed readUrl PDFs and the institutional dip record were actually opened; no inaccessible abstract is represented as full text.",
+        "Standard unweighted core drills may provide control/endurance practice with little overload. Counting conventions should not promise hypertrophy from completion alone."
+      ]
+    }
+  },
+  "sources": [
+    {
+      "id": "lower-anatomy-openstax",
+      "title": "Appendicular Muscles of the Pelvic Girdle and Lower Limbs — Anatomy and Physiology 2e",
+      "url": "https://openstax.org/books/anatomy-and-physiology-2e/pages/11-6-appendicular-muscles-of-the-pelvic-girdle-and-lower-limbs",
+      "kind": "original educational anatomy reference",
+      "opened": true,
+      "notes": "Joint actions and attachments: hip extensors/abductors/adductors, knee extensors/flexors and plantarflexors. Not an exercise training trial."
+    },
+    {
+      "id": "lower-squat-depth-kubo-2019",
+      "title": "Effects of squat training with different depths on lower limb muscle volumes",
+      "url": "https://link.springer.com/article/10.1007/s00421-019-04181-y",
+      "kind": "primary longitudinal research; publisher abstract",
+      "opened": true,
+      "notes": "Seventeen men, ten weeks, MRI. Quads, gluteus maximus and adductors grew; hamstrings did not. Greater depth improved glute/adductor growth. Not proof of an exact fractional set coefficient."
+    },
+    {
+      "id": "lower-front-squat-ace",
+      "title": "Front Squat — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/22/front-squat/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Demonstrates dumbbell front squat, with hip and knee extension. Apply cautiously to barbell front squat; no claim that front loading abolishes glute work."
+    },
+    {
+      "id": "lower-goblet-squat-ace",
+      "title": "Goblet Squat — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/362/goblet-squat/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Chest-held dumbbell and squat below knee height; thigh and hip targets."
+    },
+    {
+      "id": "lower-deadlift-nasm",
+      "title": "Barbell Deadlift — NASM Exercise Library",
+      "url": "https://www.nasm.org/resource-center/exercise-library/barbell-deadlift",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Hip/knee extension with glutes, quads and hamstrings; erectors listed secondary. Provider primary/secondary labels are translated to the app's intended-target convention, not copied automatically."
+    },
+    {
+      "id": "lower-hex-swinton-2011",
+      "title": "A biomechanical analysis of straight and hexagonal barbell deadlifts using submaximal loads",
+      "url": "https://rke.abertay.ac.uk/en/publications/a-biomechanical-analysis-of-straight-and-hexagonal-barbell-deadli/",
+      "doi": "10.1519/JSC.0b013e3181e73f87",
+      "kind": "primary biomechanics; author institution abstract",
+      "opened": true,
+      "notes": "Nineteen male powerlifters. Hex bar increased knee moment and reduced hip/lumbar moments versus straight bar. Acute mechanics, not a hypertrophy trial; handle height and technique remain relevant."
+    },
+    {
+      "id": "lower-deadlift-rdl-lee-2018",
+      "title": "An electromyographic and kinetic comparison of conventional and Romanian deadlifts",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/30662500/",
+      "doi": "10.1016/j.jesf.2018.08.001",
+      "kind": "primary acute research; indexed author abstract",
+      "opened": true,
+      "notes": "Twenty-one men, equal absolute load set by RDL 1RM. Conventional showed greater rectus femoris activity and knee joint torque. Acute EMG/torque does not calibrate hypertrophy or a half-set rule."
+    },
+    {
+      "id": "lower-legpress-ke-kinoshita-2026",
+      "title": "Hypertrophic Effects of Single- versus Multi-Joint Exercise: A Direct Comparison between Knee Extension and Leg Press",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/41630124/",
+      "doi": "10.1249/MSS.0000000000003957",
+      "kind": "primary longitudinal research; indexed author abstract",
+      "opened": true,
+      "notes": "Seventeen untrained adults, twelve weeks, within-person MRI. Leg press grew gluteus maximus and adductor magnus plus vasti; knee extension better grew rectus femoris. Abstract does not establish meaningful hamstring growth."
+    },
+    {
+      "id": "lower-legpress-nasm",
+      "title": "Leg Press — NASM Exercise Library",
+      "url": "https://www.nasm.org/resource-center/exercise-library/leg-press",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Quads/glutes listed primary and adductors/hamstrings secondary. Supported pressing mechanics; secondary listings alone do not justify blanket hamstring set credit."
+    },
+    {
+      "id": "lower-hack-hammer",
+      "title": "Plate Loaded Hack Squat — Hammer Strength",
+      "url": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/hack-squat",
+      "kind": "equipment creator instructions",
+      "opened": true,
+      "notes": "Manufacturer describes a supported 45-degree quad-focused machine; glute involvement rises with depth. Product marketing is not comparative hypertrophy evidence."
+    },
+    {
+      "id": "lower-rdl-nasm",
+      "title": "Romanian Deadlift Barbell — NASM Exercise Library",
+      "url": "https://www.nasm.org/resource-center/exercise-library/romanian-deadlift-barbell",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Hamstrings/glutes primary; erectors and adductors secondary. Hip hinge with slightly bent, nearly fixed knees. Do not adopt its unsupported broad superiority claims."
+    },
+    {
+      "id": "lower-db-rdl-nasm",
+      "title": "Dumbbell Romanian Deadlift — NASM Exercise Library",
+      "url": "https://www.nasm.org/resource-center/exercise-library/dumbbell-romanian-deadlift",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Same principal hinge targets and erector/adductor assistance as barbell RDL. Resistance choice alone does not warrant different muscle groups."
+    },
+    {
+      "id": "lower-rdl-coratella-2022",
+      "title": "An Electromyographic Analysis of Romanian, Step-Romanian, and Stiff-Leg Deadlift: Implication for Resistance Training",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8835508/",
+      "kind": "primary acute research; full text",
+      "opened": true,
+      "notes": "Ten competitive bodybuilders. Assessed glute/hamstring/erector excitation across hinges. Supports loaded posterior-chain work; no measured adductor data and no longitudinal growth outcome."
+    },
+    {
+      "id": "lower-adductor-takahashi-2025",
+      "title": "Redefining muscular action: human \"adductor\" magnus is designed to act primarily for hip \"extension\" rather than adduction in living young individuals",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/40139264/",
+      "doi": "10.1152/japplphysiol.00600.2024",
+      "kind": "primary in vivo architecture research; indexed author abstract",
+      "opened": true,
+      "notes": "Fifteen young adults. Large posterior/distal portions favor extension torque. Supports a meaningful hip-extension role; extrapolating to particular hinge set credit is an inference, not measured training stimulus."
+    },
+    {
+      "id": "lower-hipthrust-plotkin-2023",
+      "title": "Hip thrust and back squat training elicit similar gluteus muscle hypertrophy and transfer similarly to the deadlift",
+      "url": "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2023.1279170/full",
+      "doi": "10.3389/fphys.2023.1279170",
+      "kind": "primary longitudinal research; full text",
+      "opened": true,
+      "notes": "Nine weeks in young novices. Both grew gluteus maximus; squat grew more thigh, hip thrust little non-glute thigh. Glute EMG superiority did not reliably predict growth. Not a trial of every bridge variation."
+    },
+    {
+      "id": "lower-bridge-ace",
+      "title": "Glute Bridge Exercise — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/49/glute-bridge/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Bent-knee bridge driven by glutes; avoid substituting lumbar arching. Abs are instructed to brace, not treated as a separate intended training target."
+    },
+    {
+      "id": "lower-lunge-ace",
+      "title": "Forward Lunge — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/94/forward-lunge/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Forward lunge thigh/hip targets. Balance and trunk bracing do not automatically add every stabilizing group."
+    },
+    {
+      "id": "lower-reverse-lunge-sussex",
+      "title": "Reverse Lunge — University of Sussex Sport",
+      "url": "https://www.sussex.ac.uk/sport/documents/8-reverse-lunge.pdf",
+      "kind": "official training provider instructions",
+      "opened": true,
+      "notes": "Lists gluteus maximus, quadriceps and adductor magnus; anterior leg extends hip/knee to return. Its extensive stabilizer list and rigid knee-over-toe rule are not adopted."
+    },
+    {
+      "id": "lower-split-squat-ace",
+      "title": "Bulgarian Split Squat — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/366/bulgarian-split-squat/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Rear-foot-elevated split squat with loaded front limb. Provider demonstration is not a quantified distribution of volume."
+    },
+    {
+      "id": "lower-split-squat-schellenberg-2017",
+      "title": "Towards evidence based strength training: a comparison of muscle forces during deadlifts, goodmornings and split squats",
+      "url": "https://link.springer.com/article/10.1186/s13102-017-0077-x",
+      "kind": "primary musculoskeletal modelling research; full text",
+      "opened": true,
+      "notes": "Individualized models for thirteen hinge and eleven split-squat participants. Front glute and knee-extensor demand varies with step length/tibia angle. Model forces do not prove hypertrophy or a fixed fractional coefficient."
+    },
+    {
+      "id": "lower-stepup-catalyst",
+      "title": "Step-up — Catalyst Athletics Exercise Library",
+      "url": "https://www.catalystathletics.com/exercise/560/Step-up/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Lead-leg drive; closer foot/forward knee emphasizes quads, farther foot/vertical shin glutes/hamstrings. Supports explicit technique notes instead of silently assuming a hip-dominant variant."
+    },
+    {
+      "id": "lower-unilateral-muyor-2020",
+      "title": "Electromyographic activity in the gluteus medius, gluteus maximus, biceps femoris, vastus lateralis, vastus medialis and rectus femoris during the Monopodal Squat, Forward Lunge and Lateral Step-Up exercises",
+      "url": "https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0230841",
+      "kind": "primary acute research; full text",
+      "opened": true,
+      "notes": "Twenty active participants. Vasti then gluteals had highest measured activation. Lateral step-up differs from generic forward step-up; acute recruitment cannot quantify training credit."
+    },
+    {
+      "id": "lower-curl-nasm",
+      "title": "Lying Leg Curl — NASM Exercise Library",
+      "url": "https://www.nasm.org/resource-center/exercise-library/lying-leg-curl",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Hamstrings primary; gastrocnemius secondary. Use these target listings, not its questionable FAQ claim that prone positioning inherently gives more hip involvement."
+    },
+    {
+      "id": "lower-seated-curl-nasm",
+      "title": "Seated Leg Curl — NASM Exercise Library",
+      "url": "https://www.nasm.org/resource-center/exercise-library/seated-leg-curl",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Hamstrings primary; gastrocnemius secondary. Soleus does not cross the knee and is not credited for knee flexion."
+    },
+    {
+      "id": "lower-curl-length-maeo-2021",
+      "title": "Greater Hamstrings Muscle Hypertrophy but Similar Damage Protection after Training at Long versus Short Muscle Lengths",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/33009197/",
+      "doi": "10.1249/MSS.0000000000002523",
+      "kind": "primary longitudinal research; indexed author abstract",
+      "opened": true,
+      "notes": "Hip-flexed seated curls lengthen biarticular hamstrings; greater growth than prone curls. Both remain hamstrings direct; broad group cannot represent differences among individual hamstrings."
+    },
+    {
+      "id": "lower-calf-kinoshita-2023",
+      "title": "Triceps surae muscle hypertrophy is greater after standing versus seated calf-raise training",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC10753835/",
+      "doi": "10.3389/fphys.2023.1272106",
+      "kind": "primary longitudinal research; full text",
+      "opened": true,
+      "notes": "Fourteen untrained adults, twelve-week within-person trial. Standing grew gastrocnemius more; soleus growth similar. Calves remains one group, not equal growth of every subdivision."
+    },
+    {
+      "id": "lower-abduction-ace",
+      "title": "Side Lying Hip Abduction — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/38/side-lying-hip-abduction/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Controlled hip abduction with pelvis still; avoid pelvic hiking/rotation that substitutes trunk work."
+    },
+    {
+      "id": "lower-adduction-ace",
+      "title": "Standing Hip Adduction — ACE Exercise Library",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/104/standing-hip-adduction/",
+      "kind": "exercise reference creator",
+      "opened": true,
+      "notes": "Loaded leg moves medially against cable; movement pattern supports adductor target without inferring standing-leg bracing credit."
+    },
+    {
+      "id": "lower-curl-marchetti-2019",
+      "title": "Different Knee and Ankle Positions Affect Force and Muscle Activation During Prone Leg Curl in Trained Subjects",
+      "url": "https://www.researchgate.net/profile/Paulo-Marchetti/publication/335511081_Different_Knee_and_Ankle_Positions_Affect_Force_and_Muscle_Activation_During_Prone_Leg_Curl_in_Trained_Subjects/links/5d70026ba6fdcc9961af870e/Different-Knee-and-Ankle-Positions-Affect-Force-and-Muscle-Activation-During-Prone-Leg-Curl-in-Trained-Subjects.pdf",
+      "doi": "10.1519/JSC.0000000000003333",
+      "kind": "primary acute research; original paper uploaded by an author",
+      "opened": true,
+      "notes": "Fifteen trained men; isometric prone curls. Knee-flexion force and gastrocnemius excitation changed with ankle/knee position. Supports actual knee-flexor assistance rather than posture alone; no longitudinal calf growth or fixed fractional dose was measured."
+    },
+    {
+      "id": "pull-lehman-2004",
+      "title": "Lehman et al. (2004): Variations in muscle activation levels during traditional latissimus dorsi weight training exercises",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC449729/",
+      "kind": "primary-study",
+      "reviewed": true,
+      "location": "Methods, Results, Discussion",
+      "support": "Twelve trained men; pulldown and seated-row lat, biceps and trapezius/rhomboid EMG.",
+      "limits": "Brief isometric trials. Muscle-to-muscle normalized EMG cannot establish relative stimulus or fractional set credit."
+    },
+    {
+      "id": "pull-ace-back-2018",
+      "title": "ACE-sponsored research: What Is the Best Back Exercise?",
+      "url": "https://www.acefitness.org/continuing-education/certified/april-2018/6959/ace-sponsored-research-what-is-the-best-back-exercise/",
+      "kind": "primary-study-sponsor-report",
+      "reviewed": true,
+      "location": "Study methods and results",
+      "support": "Pull-ups/chin-ups, bent-over, inverted and seated rows were tested; lats and scapular retractors contribute.",
+      "limits": "Acute EMG in nineteen young men, not longitudinal hypertrophy or every named variant."
+    },
+    {
+      "id": "pull-ace-shoulder-2014",
+      "title": "Sweeney et al. / ACE: Dynamite Delts—ACE Research Identifies Top Shoulder Exercises",
+      "url": "https://www.acefitness.org/continuing-education/prosource/september-2014/4972/dynamite-delts-ace-research-identifies-top-shoulder-exercises/",
+      "kind": "primary-study-sponsor-report",
+      "reviewed": true,
+      "location": "Study, Results, 45-degree Incline Row and Seated Rear Lateral Raise",
+      "support": "Elbows-out incline rowing and rear lateral raises strongly involve posterior deltoids.",
+      "limits": "Acute EMG in sixteen young men; the protocol did not measure rhomboids or all high-row machines."
+    },
+    {
+      "id": "pull-marcolin-2018",
+      "title": "Marcolin et al. (2018): Differences in electromyographic activity of biceps brachii and brachioradialis while performing three variants of curl",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC6047503/",
+      "kind": "primary-study",
+      "reviewed": true,
+      "location": "Methods, Results, Discussion",
+      "support": "Both biceps brachii and brachioradialis were active in straight-bar, EZ-bar and dumbbell curls.",
+      "limits": "Twelve trained men; brachialis was not measured. No hammer/reverse comparison or hypertrophy outcome."
+    },
+    {
+      "id": "pull-kleiber-2015",
+      "title": "Kleiber et al. (2015): Muscular coordination of biceps brachii and brachioradialis in elbow flexion with respect to hand position",
+      "url": "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2015.00215/full",
+      "kind": "primary-study",
+      "reviewed": true,
+      "location": "Methods, Results, Discussion",
+      "support": "Brachioradialis dynamically flexes the elbow; pronation changed its contribution. Neutral and supinated patterns did not significantly differ in this protocol.",
+      "limits": "Sixteen healthy subjects, controlled laboratory flexions, position-specific normalization; no proof that hammer curls always outperform supinated curls."
+    },
+    {
+      "id": "pull-hamill-upper-limb",
+      "title": "Hamill and Knutzen: Biomechanical Basis of Human Movement, Chapter 5—Functional Anatomy of the Upper Extremity (publisher sample)",
+      "url": "https://downloads.lww.com/wolterskluwer_vitalstream_com/sample-content/9780781791281_Hamill/samples/Hamill_ch05_137-186.pdf",
+      "kind": "publisher-anatomy-reference",
+      "reviewed": true,
+      "location": "Printed pp. 150, 159–162: shoulder horizontal abduction and elbow flexors; publisher sample ISBN 9780781791281",
+      "support": "Distinct elbow flexors have grip-dependent mechanics; horizontal abduction differs from arm-down extension/adduction.",
+      "limits": "Anatomy/mechanics reference, not a validated muscle-set accounting system."
+    },
+    {
+      "id": "pull-exrx-barbell-curl",
+      "title": "ExRx: Barbell Curl",
+      "url": "https://exrx.net/WeightExercises/Biceps/BBCurl",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Instructions; Muscles",
+      "support": "Biceps target; brachialis and brachioradialis synergists. Wrist/shoulder/posture stabilizers are listed separately.",
+      "limits": "Reference taxonomy; the generic preset must assume a strict supinated curl."
+    },
+    {
+      "id": "pull-exrx-cable-curl",
+      "title": "ExRx: Cable Curl",
+      "url": "https://exrx.net/WeightExercises/Biceps/CBCurl",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Instructions; Muscles",
+      "support": "Underhand low-pulley curl; biceps target with brachialis and brachioradialis synergists.",
+      "limits": "Does not describe a neutral-grip rope hammer curl."
+    },
+    {
+      "id": "pull-nasm-barbell-curl",
+      "title": "NASM Exercise Library: Barbell Bicep Curl",
+      "url": "https://www.nasm.org/resource-center/exercise-library/barbell-bicep-curl",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "How to Perform; Muscles Worked",
+      "support": "Supinated elbow flexion; biceps primary, brachialis and brachioradialis secondary.",
+      "limits": "Use anatomy/form sections; do not import unsupported precise grip-optimum claims."
+    },
+    {
+      "id": "pull-ace-hammer-curl",
+      "title": "ACE Exercise Library: Hammer Curl",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/10/hammer-curl/",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Steps",
+      "support": "Neutral palms, stationary upper arms and wrists during elbow flexion.",
+      "limits": "ACE labels the body part as arms; it does not establish a hierarchy among elbow flexors."
+    },
+    {
+      "id": "pull-ace-reverse-curl",
+      "title": "ACE Exercise Library: Reverse Bicep Curl",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/310/reverse-bicep-curl/",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Steps",
+      "support": "Pronated curl with elbows near the torso.",
+      "limits": "Form reference; target ranking is inferred with elbow anatomy and primary research."
+    },
+    {
+      "id": "pull-ace-wrist-flexion",
+      "title": "ACE Exercise Library: Wrist Curl—Flexion",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/30/wrist-curl-flexion/",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Steps",
+      "support": "Supported forearm, palm up; dynamic wrist flexion trains forearm flexors.",
+      "limits": "Forearms is a broad app group, not a claim to target brachioradialis."
+    },
+    {
+      "id": "pull-ace-wrist-extension",
+      "title": "ACE Exercise Library: Wrist Curl—Extension",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/29/wrist-curl-extension/",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Steps",
+      "support": "Supported forearm, palm down; dynamic wrist extension trains forearm extensors.",
+      "limits": "Forearms is a broad app group, not the same tissue as an elbow curl."
+    },
+    {
+      "id": "pull-nasm-face-pull",
+      "title": "NASM Exercise Library: Face Pull",
+      "url": "https://www.nasm.org/resource-center/exercise-library/face-pull",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "How to Perform; Muscles Worked",
+      "support": "Posterior deltoids and rhomboids primary; trapezius, infraspinatus and biceps secondary.",
+      "limits": "Different external-rotation and elbow-flexion styles alter contributions."
+    },
+    {
+      "id": "pull-nasm-machine-row",
+      "title": "NASM Exercise Library: Seated Machine Row—Close Grip",
+      "url": "https://www.nasm.org/resource-center/exercise-library/seated-machine-row-close-grip",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "How to Perform; Muscles Worked",
+      "support": "Lats and rhomboids primary; posterior deltoids and biceps assist the row.",
+      "limits": "The text inaccurately associates lats with horizontal abduction; rely on its conventional rowing path, corroborated by other sources."
+    },
+    {
+      "id": "pull-nasm-lat-pulldown",
+      "title": "NASM: The Biomechanics of the Lat Pulldown—Muscles, Grip and Form",
+      "url": "https://www.nasm.org/resource-center/blog/training/the-biomechanics-of-the-lat-pulldown-muscles-grip-and-form",
+      "kind": "reference-creator-biomechanics",
+      "reviewed": true,
+      "location": "Muscles worked; form and grip discussion",
+      "support": "Lats lead front pulldowns; elbow flexors and scapular muscles assist.",
+      "limits": "A list of active muscles is broader than a justified fractional-set default."
+    },
+    {
+      "id": "pull-ace-chin-up",
+      "title": "ACE Exercise Library: Chin-ups",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/190/chin-ups/",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Steps",
+      "support": "Supinated vertical pull, controlled torso and elbows travelling down.",
+      "limits": "Core bracing is a stability instruction, not automatic direct abdominal volume."
+    },
+    {
+      "id": "pull-ace-bent-row",
+      "title": "ACE Exercise Library: Bent-over Row",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/12/bent-over-row/",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Steps",
+      "support": "Stable hinge, elbow flexion and shoulder/scapular pulling.",
+      "limits": "The position requires erector work but does not alone justify counting lower-back lifting sets."
+    },
+    {
+      "id": "pull-life-optima-manual",
+      "title": "Life Fitness Optima Series Strength Owner’s Manual (2010)",
+      "url": "https://www.lifefitness.com.au/wp-content/uploads/2015/02/Optima_user_manual_for_all_strength_2_585_1371787541.pdf",
+      "kind": "manufacturer-instructions",
+      "reviewed": true,
+      "location": "Printed p. 11 rear deltoid; p. 14 pulldown/seated row",
+      "support": "Rear-deltoid machine uses scapular retraction and lists rhomboids/trapezius; rows list lats, upper back, rear deltoids and biceps.",
+      "limits": "Particular equipment paths; machine labels are not universal physiological rankings."
+    },
+    {
+      "id": "pull-life-spl-high-row",
+      "title": "Life Fitness Plate Loaded High Row (SPLHR)",
+      "url": "https://www.lifefitness.com/en-us/catalog/strength-training/plate-loaded/life-fitness-high-row",
+      "kind": "manufacturer-description",
+      "reviewed": true,
+      "location": "Product description",
+      "support": "A product called High Row uses a downward pulling path.",
+      "limits": "Demonstrates name ambiguity; page does not establish exact target-set fractions."
+    },
+    {
+      "id": "pull-life-il-high-row",
+      "title": "Hammer Strength Plate Loaded Iso-lateral High Row (IL-HR)",
+      "url": "https://www.lifefitness.com.au/commercial/iso-lateral-high-row-ilhr",
+      "kind": "manufacturer-description",
+      "reviewed": true,
+      "location": "Description; FAQs",
+      "support": "High-row description mixes lat and upper-back emphasis and discusses rear deltoids and biceps.",
+      "limits": "Marketing wording is internally broad. Actual arm path must select the mapping."
+    },
+    {
+      "id": "pull-life-preacher-curl",
+      "title": "Life Fitness Plate Loaded Biceps Curl (SPLBC)",
+      "url": "https://www.lifefitness.com/en-eu/catalog/strength-training/plate-loaded/life-fitness-biceps-curl",
+      "kind": "manufacturer-description",
+      "reviewed": true,
+      "location": "Product description",
+      "support": "A supported preacher position limits unwanted shoulder movement.",
+      "limits": "Brachioradialis synergist credit is anatomical extrapolation from supinated curls, not measured on this machine."
+    },
+    {
+      "id": "pull-exrx-shrug",
+      "title": "ExRx: Barbell Shrug",
+      "url": "https://exrx.net/WeightExercises/TrapeziusUpper/BBShrug",
+      "kind": "reference-creator-instructions",
+      "reviewed": true,
+      "location": "Instructions; Muscles",
+      "support": "Upper trapezius target; middle trapezius and levator scapulae assist scapular elevation.",
+      "limits": "Grip and erector stabilization are not automatically credited."
+    },
+    {
+      "id": "push-openstax-upper",
+      "title": "OpenStax Anatomy and Physiology 2e: Muscles of the Pectoral Girdle and Upper Limbs",
+      "url": "https://openstax.org/books/anatomy-and-physiology-2e/pages/11-5-muscles-of-the-pectoral-girdle-and-upper-limbs",
+      "kind": "anatomy-reference-creator",
+      "support": "Shoulder and elbow muscle actions; regional names do not imply identical head-level work.",
+      "limits": "Anatomical capability alone does not quantify training stimulus.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-bench",
+      "title": "ACE Exercise Library: Chest Press (barbell)",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/5/chest-press/",
+      "kind": "exercise-reference-creator",
+      "support": "Standard flat barbell pressing instructions and chest/arms/shoulders target categories.",
+      "limits": "Broad body-part categories are not direct/indirect coefficients.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-db-bench",
+      "title": "ACE Exercise Library: Chest Press (dumbbells)",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/19/chest-press/",
+      "kind": "exercise-reference-creator",
+      "support": "Supported flat dumbbell press; elbow path changes pectoral/triceps emphasis.",
+      "limits": "Not a universal grip or individual-stimulus estimate.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-incline",
+      "title": "ACE Exercise Library: Incline Chest Press",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/25/incline-chest-press/",
+      "kind": "exercise-reference-creator",
+      "support": "Inclined dumbbell chest press with shoulder motion and elbow extension.",
+      "limits": "Applying the same role hierarchy to barbell incline is a movement-based inference; angle affects emphasis.",
+      "reviewed": true
+    },
+    {
+      "id": "push-solstad-fly-2020",
+      "title": "Solstad et al. (2020): A Comparison of Muscle Activation between Barbell Bench Press and Dumbbell Flyes in Resistance-Trained Males",
+      "url": "https://www.jssm.org/volume19/iss4/cap/jssm-19-645.pdf",
+      "kind": "primary-study",
+      "support": "Seventeen men, 6RM; pectoral and anterior-deltoid participation in pressing/flyes; fixed elbow angle in flyes.",
+      "limits": "Acute EMG cannot determine growth or half-set stimulus. Biceps activity during flyes does not establish primary elbow-flexion training.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-machine-chest",
+      "title": "ACE Exercise Library: Seated Chest Press",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/188/seated-chest-press/",
+      "kind": "exercise-reference-creator",
+      "support": "Supported horizontal machine press with mid-chest handles and elbow extension.",
+      "limits": "An inclined/overhead machine path changes the assumption.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-push-up",
+      "title": "ACE Exercise Library: Push-up",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/41/push-up/",
+      "kind": "exercise-reference-creator",
+      "support": "Standard horizontal push-up involves chest, arms and shoulders while the trunk remains braced.",
+      "limits": "Decline, narrow-grip and push-up-plus variants are not separately represented.",
+      "reviewed": true
+    },
+    {
+      "id": "push-coratella-ohp-2022",
+      "title": "Coratella et al. (2022): Front vs Back and Barbell vs Machine Overhead Press: An Electromyographic Analysis and Implications For Resistance Training",
+      "url": "https://www.frontiersin.org/journals/physiology/articles/10.3389/fphys.2022.825880/full",
+      "kind": "primary-study",
+      "support": "Eight competitive bodybuilders; overhead pressing includes scapular upward rotation, humeral elevation and elbow extension. Upper trapezius, deltoids and triceps participate.",
+      "limits": "Small male sample and acute EMG; dumbbell extrapolation is mechanical, not an identical tested protocol. No exact fractional-set validation.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-db-ohp",
+      "title": "ACE Exercise Library: Seated Overhead Press",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/45/seated-overhead-press/",
+      "kind": "exercise-reference-creator",
+      "support": "Supported seated dumbbell shoulder press with elbow extension.",
+      "limits": "Backrest and torso angle matter; abdominal bracing is not automatically credited.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-shoulder-mechanics",
+      "title": "ACE Certified (September 2025): A Pro’s Guide to Muscle Mechanics: The Shoulders",
+      "url": "https://www.acefitness.org/continuing-education/certified/september-2025/8951/a-pro-s-guide-to-muscle-mechanics-the-shoulders/",
+      "kind": "anatomy-exercise-reference-creator",
+      "support": "Table 2 distinguishes deltoid humeral elevation, trapezius/serratus scapular rotation, and rotator-cuff stability.",
+      "limits": "Use the table for mechanics, not broad equal credit to all shoulder-region muscles.",
+      "reviewed": true
+    },
+    {
+      "id": "push-mckenzie-dips-2022",
+      "title": "McKenzie et al. (2022): Bench, Bar, and Ring Dips: Do Kinematics and Muscle Activity Differ?",
+      "url": "https://researchportal.scu.edu.au/esploro/outputs/journalArticle/Bench-Bar-and-Ring-Dips-Do/991013054212502368",
+      "doi": "10.3390/ijerph192013211",
+      "readUrl": "https://pdfs.semanticscholar.org/1640/606e956e51163d4c92b648e13327b87b3d03.pdf",
+      "kind": "primary-study",
+      "support": "Thirteen experienced men; bench, bar and ring dip mechanics differ. Bar/ring dips recruit pectoral, anterior deltoid and triceps with changing shoulder/elbow motion.",
+      "limits": "Self-selected moderate repetitions; assisted dips and every torso angle were not measured. Generic Dip needs a parallel-bar assumption.",
+      "reviewed": true
+    },
+    {
+      "id": "push-lifefitness-seated-dip",
+      "title": "Life Fitness: Hammer Strength Plate-Loaded Seated Dip",
+      "url": "https://shop.lifefitness.com/products/hammer-strength-plate-loaded-seated-dip",
+      "kind": "equipment-manufacturer-reference",
+      "support": "Manufacturer identifies triceps as primary with chest and anterior deltoid assistance.",
+      "limits": "Model-specific instructions, not independent training research.",
+      "reviewed": true
+    },
+    {
+      "id": "push-precor-seated-dip",
+      "title": "Precor: RSL0215 Seated Dip",
+      "url": "https://www.precor.com/en-GB/products/RSL0215",
+      "kind": "equipment-manufacturer-reference",
+      "support": "Manufacturer describes a guided dip path targeting triceps and pectoral muscles.",
+      "limits": "Different machine designs and intended targets can justify customized direct roles.",
+      "reviewed": true
+    },
+    {
+      "id": "push-coratella-lateral-2020",
+      "title": "Coratella et al. (2020): An Electromyographic Analysis of Lateral Raise Variations and Frontal Raise in Competitive Bodybuilders",
+      "url": "https://www.mdpi.com/1660-4601/17/17/6015",
+      "readUrl": "https://mdpi-res.com/d_attachment/ijerph/ijerph-17-06015/article_deploy/ijerph-17-06015-with-cover.pdf?version=1682759000",
+      "doi": "10.3390/ijerph17176015",
+      "kind": "primary-study",
+      "support": "Ten bodybuilders; humeral rotation alters deltoid/trapezius excitation. Triceps maintains a fixed elbow angle; scapular elevation/upward rotation explains trapezius contribution.",
+      "limits": "Internal rotation increases trapezius activity; neutral raises differ. No cable condition or hypertrophy trial. Indirect trapezius credit is a qualitative mechanical inference.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-lateral",
+      "title": "ACE Exercise Library: Lateral Raise",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/26/lateral-raise/",
+      "kind": "exercise-reference-creator",
+      "support": "Shoulder-targeted lateral arm elevation to approximately shoulder height with a consistent slight elbow bend.",
+      "limits": "A shrug or front raise is a different movement assumption.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-fly",
+      "title": "ACE Exercise Library: Lying Chest Fly",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/21/lying-chest-fly/",
+      "kind": "exercise-reference-creator",
+      "support": "Chest/shoulder target categories; inward arm arc with the elbow bend maintained.",
+      "limits": "Cable and pec-deck roles are extrapolated by shoulder action and supported by other sources.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-chest-study-2012",
+      "title": "ACE-sponsored Research (2012): Top 3 Most Effective Chest Exercises",
+      "url": "https://www.acefitness.org/certifiednews/images/article/pdfs/ACE_BestChestExercises.pdf",
+      "kind": "primary-study-sponsor-report",
+      "support": "Fourteen men; pectoral EMG assessed in pec deck, cable crossover, machine press, dips, push-ups, barbell press and dumbbell flyes.",
+      "limits": "Only pectoral measurement supports these chest targets; it cannot establish secondary-muscle roles or longitudinal growth.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-triceps-extension",
+      "title": "ACE Exercise Library: Triceps Extension",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/74/triceps-extension/",
+      "kind": "exercise-reference-creator",
+      "support": "Overhead dumbbell elbow extension with upper arms held in position.",
+      "limits": "Holding the arms overhead does not automatically yield indirect shoulder credit.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-triceps-pressdown",
+      "title": "ACE Exercise Library: Triceps Pressdown",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/3/triceps-pressdown/",
+      "kind": "exercise-reference-creator",
+      "support": "Cable elbow extension with elbows near the torso.",
+      "limits": "Torso movement or shoulder extension changes the strict pressdown assumption.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-skull-crusher",
+      "title": "ACE Exercise Library: Lying Barbell Triceps Extensions",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/36/lying-barbell-triceps-extensions/",
+      "kind": "exercise-reference-creator",
+      "support": "Lying elbow extension with upper arms maintained near vertical.",
+      "limits": "A pullover/press hybrid may need different assignments.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-cable-crunch",
+      "title": "ACE Exercise Library: Standing Crunch",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/331/standing-crunch/",
+      "kind": "exercise-reference-creator",
+      "support": "Cable resistance opposes rib-cage curling; arm position is held.",
+      "limits": "Kneeling cable-crunch inference uses the same trunk-flexion action; a hip hinge alone is different.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-crunch",
+      "title": "ACE Exercise Library: Crunch",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/52/crunch/",
+      "kind": "exercise-reference-creator",
+      "support": "Controlled trunk flexion with the pelvis supported.",
+      "limits": "Do not substitute a sit-up or credit hip-flexor work as abs.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-reverse-crunch",
+      "title": "ACE Exercise Library: Reverse Crunch",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/76/reverse-crunch/",
+      "kind": "exercise-reference-creator",
+      "support": "Pelvic curl lifts the hips and rolls the spine while knee/hip position is controlled.",
+      "limits": "Moving the thighs without curling the pelvis is a different exercise.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-ab-study-2001",
+      "title": "ACE-sponsored Research (2001): New Study Puts the Crunch on Ineffective Ab Exercises",
+      "url": "https://www.acefitness.org/getfit/studies/BestWorstAbExercises.pdf",
+      "kind": "primary-study-sponsor-report",
+      "support": "Thirty adults; abdominal EMG during multiple exercises including reverse crunch and captain’s-chair knee raises.",
+      "limits": "Captain’s chair is not a hanging-bar trial. Acute regional EMG is not set equivalence or isolated upper/lower-abs growth.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-dead-bug",
+      "title": "ACE Exercise Library: Supine Dead Bug",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/147/supine-dead-bug/",
+      "kind": "exercise-reference-creator",
+      "support": "Purposeful trunk/pelvic control while opposite limbs move.",
+      "limits": "Arm/leg movement alone does not justify limb-muscle set credit.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-bird-dog",
+      "title": "ACE Exercise Library: Bird-dog",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/14/bird-dog/",
+      "kind": "exercise-reference-creator",
+      "support": "Targets abdomen, back and hips while contralateral limbs move with a controlled spine.",
+      "limits": "The unweighted standard is not calibrated to a hard loaded hypertrophy set.",
+      "reviewed": true
+    },
+    {
+      "id": "push-stevens-quadruped-2007",
+      "title": "Stevens et al. (2007): Electromyographic activity of trunk and hip muscles during stabilization exercises in four-point kneeling in healthy volunteers",
+      "url": "https://link.springer.com/article/10.1007/s00586-006-0181-1",
+      "doi": "10.1007/s00586-006-0181-1",
+      "kind": "primary-study",
+      "support": "Thirty healthy volunteers; contralateral arm/leg extension involves obliques, lumbar multifidus/iliocostalis and gluteus maximus.",
+      "limits": "The publicly opened abstract supports participation. No longitudinal hypertrophy or exact direct/indirect coefficient; rectus abdominis and obliques are not equally recruited.",
+      "reviewed": true
+    },
+    {
+      "id": "push-ace-pallof",
+      "title": "ACE Exercise Library: Standing Anti-Rotation Press",
+      "url": "https://www.acefitness.org/resources/everyone/exercise-library/332/standing-anti-rotation-press/",
+      "kind": "exercise-reference-creator",
+      "support": "Sideways cable resistance is opposed while hands extend and the torso stays aligned.",
+      "limits": "Broad Arms/Chest labels do not mean those are the intended primary loaded target.",
+      "reviewed": true
+    },
+    {
+      "id": "push-nasm-core-2026",
+      "title": "NASM: Best Abs Exercises: Science-Based Core Training That Delivers Results",
+      "url": "https://www.nasm.org/resource-center/blog/training/best-abs-exercises",
+      "kind": "exercise-reference-creator",
+      "support": "Defines dead-bug anti-extension, Pallof anti-rotation, bird-dog trunk control, reverse-crunch pelvic curl and hanging-knee-raise posterior pelvic tilt.",
+      "limits": "Instructional synthesis, not a primary intervention trial. It supports the explicit form assumptions, not a half-set conversion.",
+      "reviewed": true
+    }
+  ],
+  "entries": [
+    {
+      "name": "Squat",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Knee and hip extensors are intended major targets. Adductor magnus assists hip extension rather than being credited merely for stance stabilization.",
+      "variantNotes": [
+        "Assume a normal barbell back squat, not a shallow partial or a sumo squat. Depth, stance and bar position change relative emphasis."
+      ],
+      "evidenceLimits": "Group labels do not mean equal stimulation of all quad/glute/adductor heads. No automatic hamstring, calf or abdominal set credit.",
+      "sourceIds": [
+        "lower-squat-depth-kubo-2019",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Depth and stance change emphasis.",
+      "changed": false
+    },
+    {
+      "name": "Front squat",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Front loading retains purposeful knee and hip extension. Keep quads/glutes direct and the hip-extension contribution of adductor magnus indirect.",
+      "variantNotes": [
+        "Barbell front rack is the assumed preset. ACE's opened demonstration uses dumbbells; loading geometry changes torque."
+      ],
+      "evidenceLimits": "Do not turn upper-back/core posture demands into automatic direct targets. Back-squat depth evidence is extrapolated for adductor assistance.",
+      "sourceIds": [
+        "lower-front-squat-ace",
+        "lower-squat-depth-kubo-2019",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Front loading changes emphasis, not the whole target list.",
+      "changed": false
+    },
+    {
+      "name": "Deadlift",
+      "current": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": [
+          "quads",
+          "hamstrings",
+          "lower-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": [
+          "quads",
+          "hamstrings",
+          "lower-back"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Conventional floor pull is primarily a hip-extension lift. Quads assist the floor break and hamstrings the hinge. Retain meaningful loaded erector assistance. Adductor magnus can extend the hip, but available anatomy/provider evidence does not establish enough exercise-specific training to add automatic credit.",
+      "variantNotes": [
+        "Assume conventional straight-bar, not sumo, RDL or stiff-leg. Greater knee bend can change quad emphasis. Grip and straps change forearm demand.",
+        "Adductor magnus assistance is plausible, especially with deeper or wider-stance hip extension; it remains an explicit custom choice rather than a generic default."
+      ],
+      "evidenceLimits": "Anatomical torque capacity is not measured exercise stimulus. No opened conventional-deadlift adductor training trial supports automatic half-set credit. Loaded erector assistance remains consistent with the existing posterior-chain convention; this does not count every stabilizer.",
+      "sourceIds": [
+        "lower-deadlift-nasm",
+        "lower-deadlift-rdl-lee-2018",
+        "lower-adductor-takahashi-2025",
+        "lower-rdl-coratella-2022"
+      ],
+      "catalogNote": "Conventional pull: glutes lead; quads, hamstrings and lower back assist. Stance and technique change emphasis.",
+      "changed": false
+    },
+    {
+      "name": "Trap-bar deadlift",
+      "current": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": [
+          "quads",
+          "hamstrings",
+          "lower-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "hamstrings",
+          "lower-back"
+        ]
+      },
+      "verdict": "change",
+      "confidence": "moderate",
+      "rationale": "Centered load and ordinary knee bend make quads a major intended target alongside glutes. Retain meaningful hamstring and loaded erector assistance. Hip-extension anatomy alone does not justify automatic adductor set credit.",
+      "variantNotes": [
+        "High handles shorten range; a deliberately hip-dominant trap-bar hinge reduces quad emphasis. Generic preset assumes a normal knee-bending floor pull.",
+        "Adductor magnus may assist hip extension, but its exercise-specific training amount is uncertain and may be customized."
+      ],
+      "evidenceLimits": "Greater knee moment supports a distinct quad default but does not prove an exact one-set versus half-set boundary. Lumbar demand is usually lower than straight bar but not absent. No opened trap-bar adductor training result supports automatic credit.",
+      "sourceIds": [
+        "lower-hex-swinton-2011",
+        "lower-deadlift-nasm",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes lead; hamstrings and lower back assist. Handle height and technique matter.",
+      "changed": true
+    },
+    {
+      "name": "Bench press",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Flat barbell chest press with a conventional grip.",
+      "rationale": "Retain chest target with dynamic elbow-extension and anterior-shoulder assistance.",
+      "sourceIds": [
+        "push-ace-bench",
+        "push-solstad-fly-2020"
+      ],
+      "evidenceLimits": [
+        "Close-grip or unusual elbow paths may alter intended targets."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Flat barbell chest press with a conventional grip."
+    },
+    {
+      "name": "Incline bench press",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Inclined barbell chest press, rather than a near-upright shoulder press.",
+      "rationale": "Retain chest emphasis; shoulder and elbow extension assistance remains meaningful.",
+      "sourceIds": [
+        "push-ace-incline",
+        "push-openstax-upper"
+      ],
+      "evidenceLimits": [
+        "Barbell roles inferred from the same pressing actions; incline angle changes emphasis."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Inclined barbell chest press, rather than a near-upright shoulder press."
+    },
+    {
+      "name": "Dumbbell bench press",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Supported flat dumbbell chest press.",
+      "rationale": "Retain pectoral target and active anterior-deltoid/triceps assistance.",
+      "sourceIds": [
+        "push-ace-db-bench",
+        "push-solstad-fly-2020"
+      ],
+      "evidenceLimits": [
+        "Elbow path and grip change relative emphasis."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Supported flat dumbbell chest press."
+    },
+    {
+      "name": "Incline dumbbell press",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Supported incline dumbbell chest press with a chest-focused arm path.",
+      "rationale": "Retain chest direct with shoulders/triceps assisting the press.",
+      "sourceIds": [
+        "push-ace-incline",
+        "push-openstax-upper"
+      ],
+      "evidenceLimits": [
+        "Very steep inclines may merit shoulder-primary custom assignments."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Supported incline dumbbell chest press with a chest-focused arm path."
+    },
+    {
+      "name": "Overhead press",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "triceps"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "triceps",
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Conventional front overhead barbell press with normal scapular movement.",
+      "rationale": "Add upper-back assistance for trapezius-driven scapular motion.",
+      "sourceIds": [
+        "push-coratella-ohp-2022",
+        "push-ace-shoulder-mechanics"
+      ],
+      "evidenceLimits": [
+        "Upper-back denotes trapezius contribution, not every upper-back muscle."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Conventional front overhead barbell press with normal scapular movement."
+    },
+    {
+      "name": "Seated dumbbell press",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "triceps"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "triceps",
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Seated upright dumbbell overhead press; no large incline-back lean.",
+      "rationale": "Use the same shoulder/elbow/scapular role hierarchy.",
+      "sourceIds": [
+        "push-ace-db-ohp",
+        "push-coratella-ohp-2022"
+      ],
+      "evidenceLimits": [
+        "Trapezius role extrapolated by movement; not the paper’s dumbbell trial."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Seated upright dumbbell overhead press; no large incline-back lean."
+    },
+    {
+      "name": "Dip",
+      "current": {
+        "direct": [
+          "chest",
+          "triceps"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest",
+          "triceps"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Parallel-bar dip with controlled elbow and shoulder motion.",
+      "rationale": "Retain both major targets and anterior-deltoid assistance.",
+      "sourceIds": [
+        "push-mckenzie-dips-2022"
+      ],
+      "evidenceLimits": [
+        "Bench dips and torso-angle variations need distinct assumptions; stabilization does not add biceps/lats."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Parallel-bar dip with controlled elbow and shoulder motion."
+    },
+    {
+      "name": "Assisted dip",
+      "current": {
+        "direct": [
+          "chest",
+          "triceps"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest",
+          "triceps"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Assisted parallel-bar dip with the same arm path as a standard dip.",
+      "rationale": "Assistance changes effective load without changing these intended targets.",
+      "sourceIds": [
+        "push-mckenzie-dips-2022"
+      ],
+      "evidenceLimits": [
+        "Assisted condition not directly tested; no equal stimulus or load fraction is implied."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Assisted parallel-bar dip with the same arm path as a standard dip."
+    },
+    {
+      "name": "Pull-up",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Controlled pronated vertical pull; no kipping.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-ace-back-2018",
+        "pull-nasm-lat-pulldown"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Grip-specific contribution and assistance level vary; no exact regional set fraction.",
+      "catalogNote": "Controlled pronated vertical pull; no kipping."
+    },
+    {
+      "name": "Chin-up",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Controlled supinated vertical pull; no kipping.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-ace-chin-up",
+        "pull-ace-back-2018"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Grip-specific contribution and assistance level vary; no exact regional set fraction.",
+      "catalogNote": "Controlled supinated vertical pull; no kipping."
+    },
+    {
+      "name": "Assisted pull-up",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Assisted pronated vertical pull through the same arm path.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-ace-back-2018",
+        "pull-nasm-lat-pulldown"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Assisted variant extrapolates the unassisted pattern; assistance changes demand, not automatically target identity.",
+      "catalogNote": "Assisted pronated vertical pull through the same arm path."
+    },
+    {
+      "name": "Barbell row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Stable hinged torso, moderate elbow path toward lower ribs.",
+      "rationale": "Retain row default; torso stabilization gets no added lower-back credit.",
+      "sourceIds": [
+        "pull-ace-bent-row",
+        "pull-ace-back-2018"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Stable hinged torso, moderate elbow path toward lower ribs."
+    },
+    {
+      "name": "Pendlay row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Horizontal torso; each repetition starts on the floor; pull toward lower chest.",
+      "rationale": "Paused row remains a row; no automatic posterior-chain set credit.",
+      "sourceIds": [
+        "pull-ace-back-2018",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "No opened study isolated the named Pendlay variant; extrapolated from rowing mechanics.",
+      "catalogNote": "Horizontal torso; each repetition starts on the floor; pull toward lower chest."
+    },
+    {
+      "name": "Leg press",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Supported knee/hip extension purposefully trains quads and glutes. Adductor magnus assistance has direct longitudinal support in leg-press training.",
+      "variantNotes": [
+        "Seat/back angle, foot position and achieved hip flexion affect glute/adductor demand. A shallow knee-dominant press can reduce hip work."
+      ],
+      "evidenceLimits": "Current conservative default omits hamstrings despite broad provider secondary lists; compound knee/hip extension is not interchangeable with curls or RDLs.",
+      "sourceIds": [
+        "lower-legpress-ke-kinoshita-2026",
+        "lower-legpress-nasm"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Foot placement and depth change emphasis.",
+      "changed": false
+    },
+    {
+      "name": "Hack squat",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Keep the generic squat-like knee/hip extension map. A supported machine often emphasizes quads, but that alone does not establish that glutes should universally receive less credit than in squats or leg presses. The generic name leaves depth and machine geometry unspecified.",
+      "variantNotes": [
+        "Assume supported machine hack squat. Depth, foot placement and machine geometry change hip versus knee demand.",
+        "A particularly shallow or knee-dominant version may justify glutes indirect through an explicit custom map. Barbell hack squat is a distinct variant."
+      ],
+      "evidenceLimits": "Manufacturer instruction for one quad-focused machine is not comparative glute hypertrophy evidence for all hack squats. Retention is a practical generic default, not proof of equal glute stimulus across squat variants. Adductor assistance extrapolates from hip-extension/squat evidence.",
+      "sourceIds": [
+        "lower-hack-hammer",
+        "lower-squat-depth-kubo-2019",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Supported machines often bias quads; depth and foot placement matter.",
+      "changed": false
+    },
+    {
+      "name": "Goblet squat",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "The chest-held load still requires purposeful knee/hip extension. Adductor magnus assistance is retained; holding the weight does not automatically make biceps, forearms or core direct targets.",
+      "variantNotes": [
+        "Assume controlled squat to useful depth, not a narrow shallow partial. Kettlebell or dumbbell grip may become limiting separately."
+      ],
+      "evidenceLimits": "Adductor classification extrapolates from squat/hip-extension evidence rather than a goblet-specific growth trial.",
+      "sourceIds": [
+        "lower-goblet-squat-ace",
+        "lower-squat-depth-kubo-2019"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Depth matters.",
+      "changed": false
+    },
+    {
+      "name": "Romanian deadlift",
+      "current": {
+        "direct": [
+          "hamstrings",
+          "glutes"
+        ],
+        "indirect": [
+          "lower-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "hamstrings",
+          "glutes"
+        ],
+        "indirect": [
+          "lower-back"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Nearly fixed knees focus the intended major work on hamstrings and glutes. Erectors bear substantial anti-flexion load. Adductor magnus is a plausible hip-extension synergist, but anatomy plus a provider secondary listing does not establish enough RDL-specific training to add default half-set credit.",
+      "variantNotes": [
+        "Assume neutral-spine soft-knee hinge with controlled hamstring lengthening. Excess knee bending changes the exercise; do not default to quad credit.",
+        "Hip flexion and stance may alter adductor magnus contribution; any extra adductor credit should be an explicit custom choice."
+      ],
+      "evidenceLimits": "Opened acute RDL research measured hamstrings, glutes and erectors rather than adductors. Adductor architecture establishes torque capability, not RDL training dose. Meaningful erector credit does not imply counting every bracing muscle.",
+      "sourceIds": [
+        "lower-rdl-nasm",
+        "lower-rdl-coratella-2022",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Hamstrings and glutes lead; lower back assists. Keep knees nearly fixed; stance changes assistance.",
+      "changed": false
+    },
+    {
+      "name": "Dumbbell Romanian deadlift",
+      "current": {
+        "direct": [
+          "hamstrings",
+          "glutes"
+        ],
+        "indirect": [
+          "lower-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "hamstrings",
+          "glutes"
+        ],
+        "indirect": [
+          "lower-back"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "The same soft-knee hip hinge preserves hamstring/glute targets and loaded erector assistance. Dumbbells alone do not require a different lower-body map. Possible adductor magnus assistance remains too uncertain for automatic credit.",
+      "variantNotes": [
+        "Load position, range, stance and grip vary. Strap-free forearm work may be meaningful but is not universal enough to add from the name alone.",
+        "Any extra adductor credit should be an explicit custom choice with the particular technique."
+      ],
+      "evidenceLimits": "Barbell acute research is extrapolated; no exact dumbbell-specific set coefficient or adductor training amount was established. Provider secondary labels do not automatically become half a hypertrophy set.",
+      "sourceIds": [
+        "lower-db-rdl-nasm",
+        "lower-rdl-coratella-2022",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Hamstrings and glutes lead; lower back assists. Grip, stance and range vary.",
+      "changed": false
+    },
+    {
+      "name": "Hip thrust",
+      "current": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Retain glutes as the intended major target. Bent knees and pelvis-applied load can limit non-glute thigh stimulus enough that universal hamstring/adductor credit would overstate the standard variant.",
+      "variantNotes": [
+        "Assume shoulders supported and bent knees with shin approximately upright near the top. Longer foot distance can increase hamstring involvement."
+      ],
+      "evidenceLimits": "Standard hip-thrust training evidence does not establish every machine/stance. Glutes group hides max versus med/min differences.",
+      "sourceIds": [
+        "lower-hipthrust-plotkin-2023"
+      ],
+      "catalogNote": "Glutes target; foot position can change hamstring assistance.",
+      "changed": false
+    },
+    {
+      "name": "Glute bridge",
+      "current": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Bent-knee bridge deliberately targets glute-driven hip extension. Keep a conservative glute-only default; abdominal bracing and avoiding lumbar arch do not make abs/lower back routine targets.",
+      "variantNotes": [
+        "Assume feet near hips and knees bent. Long-lever, straight-leg or heel-elevated bridges can substantially shift work toward hamstrings."
+      ],
+      "evidenceLimits": "Hip-thrust longitudinal results cannot be treated as a trial of all floor bridges; hamstring absence means no default set credit, not zero muscular activity.",
+      "sourceIds": [
+        "lower-bridge-ace",
+        "lower-hipthrust-plotkin-2023"
+      ],
+      "catalogNote": "Bent-knee bridge targets glutes. Long-lever versions change hamstring involvement.",
+      "changed": false
+    },
+    {
+      "name": "Lunge",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Normal sagittal lunge intentionally loads knee and hip extensors. Retain adductor magnus assistance as hip-extension work rather than all single-leg stabilizers.",
+      "variantNotes": [
+        "Assume forward or walking lunge. Longer stride/forward torso increase hip emphasis; shorter upright stride increases quad emphasis. Side lunge is distinct."
+      ],
+      "evidenceLimits": "EMG demonstrates recruitment, not an exact growth fraction. Generic name cannot identify every stride/load technique.",
+      "sourceIds": [
+        "lower-lunge-ace",
+        "lower-unilateral-muyor-2020",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Stride and torso angle change emphasis.",
+      "changed": false
+    },
+    {
+      "name": "Reverse lunge",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "The front leg extends knee/hip to return; quads/glutes are major intended targets and adductor magnus a meaningful assistant.",
+      "variantNotes": [
+        "Normal backward step with loaded lead leg. Long stride/torso lean shifts hip demand; balance assistance from the rear leg changes loading."
+      ],
+      "evidenceLimits": "Official provider lists many assisting/stabilizing muscles; that does not require app credit for all of them. Adductor amount is not calibrated.",
+      "sourceIds": [
+        "lower-reverse-lunge-sussex",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Lead-leg technique changes emphasis.",
+      "changed": false
+    },
+    {
+      "name": "Bulgarian split squat",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Rear-foot elevation retains substantial front-leg knee/hip extension targets. Adductor magnus assists hip extension. Quads/glutes direct remains defensible despite variable emphasis.",
+      "variantNotes": [
+        "Longer stance/torso lean biases hips; shorter stance/forward knee biases quads. Rear-leg effort and elevation vary."
+      ],
+      "evidenceLimits": "Split-squat models and ACE technique support major targets; adductor credit is inferred, not a Bulgarian-specific fractional-set trial.",
+      "sourceIds": [
+        "lower-split-squat-ace",
+        "lower-split-squat-schellenberg-2017",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Stance length and torso angle matter.",
+      "changed": false
+    },
+    {
+      "name": "Step-up",
+      "current": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "quads",
+          "glutes"
+        ],
+        "indirect": [
+          "adductors"
+        ]
+      },
+      "verdict": "retain",
+      "confidence": "moderate",
+      "rationale": "Lead-leg knee and hip extension make quads/glutes the normal intended targets. Retain adductor magnus assistance with lower certainty rather than automatically adding every balance muscle.",
+      "variantNotes": [
+        "Box height, foot distance, shin angle and push-off from trailing leg change work. Far-foot/vertical-shin variants can justify user-selected hamstrings indirect."
+      ],
+      "evidenceLimits": "Opened primary research studied lateral step-up; generic forward-step default is a biomechanics/provider inference. No universal hamstring credit.",
+      "sourceIds": [
+        "lower-stepup-catalyst",
+        "lower-unilateral-muyor-2020",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Quads and glutes; inner thighs assist. Box height, shin angle and trailing-leg push matter.",
+      "changed": false
+    },
+    {
+      "name": "Lat pulldown",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Pronated front pulldown; stable torso with small lean.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-nasm-lat-pulldown",
+        "pull-lehman-2004"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Grip-specific contribution and assistance level vary; no exact regional set fraction.",
+      "catalogNote": "Pronated front pulldown; stable torso with small lean."
+    },
+    {
+      "name": "Cable row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Seated cable row to torso with moderate/tucked elbows and natural scapular movement.",
+      "rationale": "Retain row default.",
+      "sourceIds": [
+        "pull-lehman-2004",
+        "pull-life-optima-manual"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Seated cable row to torso with moderate/tucked elbows and natural scapular movement."
+    },
+    {
+      "name": "Dumbbell row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Supported torso; elbow travels toward hip/lower ribs without twisting.",
+      "rationale": "Retain row default; support/grip do not add regional targets.",
+      "sourceIds": [
+        "pull-ace-bent-row",
+        "pull-nasm-machine-row"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Dumbbell setup extrapolates conventional shoulder extension and scapular retraction.",
+      "catalogNote": "Supported torso; elbow travels toward hip/lower ribs without twisting."
+    },
+    {
+      "name": "Chest-supported row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Chest remains on pad; moderate/tucked elbows, not a deliberately flared high row.",
+      "rationale": "Retain row default.",
+      "sourceIds": [
+        "pull-nasm-machine-row",
+        "pull-life-optima-manual"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Chest remains on pad; moderate/tucked elbows, not a deliberately flared high row."
+    },
+    {
+      "name": "Machine row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Conventional seated horizontal row to torso with moderate/tucked elbows.",
+      "rationale": "Retain row default; actual machine path may require custom assignment.",
+      "sourceIds": [
+        "pull-nasm-machine-row",
+        "pull-life-optima-manual"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Conventional seated horizontal row to torso with moderate/tucked elbows."
+    },
+    {
+      "name": "Machine chest press",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Supported horizontal chest-press machine with mid-chest handles.",
+      "rationale": "Retain chest primary; shoulder motion and elbow extension assist.",
+      "sourceIds": [
+        "push-ace-machine-chest",
+        "push-ace-chest-study-2012",
+        "push-openstax-upper"
+      ],
+      "evidenceLimits": [
+        "Machine trajectory and seat setup can change emphasis."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Supported horizontal chest-press machine with mid-chest handles."
+    },
+    {
+      "name": "Machine shoulder press",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "triceps"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "triceps",
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Upright overhead shoulder-press machine with normal scapular movement.",
+      "rationale": "Add trapezius scapular assistance while retaining deltoid emphasis.",
+      "sourceIds": [
+        "push-coratella-ohp-2022"
+      ],
+      "evidenceLimits": [
+        "Machine geometry varies; upper-back credit describes trapezius, not all grouped muscles."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Upright overhead shoulder-press machine with normal scapular movement."
+    },
+    {
+      "name": "Push-up",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "triceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Standard horizontal push-up; no special narrow-grip or push-up-plus emphasis.",
+      "rationale": "Retain pressing targets; exclude incidental trunk bracing.",
+      "sourceIds": [
+        "push-ace-push-up",
+        "push-ace-chest-study-2012"
+      ],
+      "evidenceLimits": [
+        "Separate serratus-focused protraction variant is not implied."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior"
+      ],
+      "catalogNote": "Standard horizontal push-up; no special narrow-grip or push-up-plus emphasis."
+    },
+    {
+      "name": "Inverted row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Controlled bodyweight row toward chest; rigid torso, moderate elbows.",
+      "rationale": "Retain row default; holding a plank does not add abdominal sets.",
+      "sourceIds": [
+        "pull-ace-back-2018",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Controlled bodyweight row toward chest; rigid torso, moderate elbows."
+    },
+    {
+      "name": "Biceps curl",
+      "current": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": [
+          "forearms"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Strict supinated barbell curl with upper arms stationary.",
+      "rationale": "Add dynamic brachioradialis synergy; see curlDefault.",
+      "sourceIds": [
+        "pull-exrx-barbell-curl",
+        "pull-nasm-barbell-curl"
+      ],
+      "unrepresented": [
+        "brachialis"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Strict supinated barbell curl with upper arms stationary. Brachialis also contributes but has no separate app group."
+    },
+    {
+      "name": "Dumbbell curl",
+      "current": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": [
+          "forearms"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Strict supinated or supinating dumbbell curl; no shoulder swing.",
+      "rationale": "Add dynamic brachioradialis synergy; see curlDefault.",
+      "sourceIds": [
+        "pull-marcolin-2018",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Strict supinated or supinating dumbbell curl; no shoulder swing. Brachialis also contributes but has no separate app group."
+    },
+    {
+      "name": "Hammer curl",
+      "current": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": [
+          "forearms"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": [
+          "forearms"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Neutral palms throughout; elbows remain near torso and wrists still.",
+      "rationale": "Retain conservative curl default: biceps target with dynamic brachioradialis assistance, not grip-only credit.",
+      "sourceIds": [
+        "pull-ace-hammer-curl",
+        "pull-kleiber-2015",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis"
+      ],
+      "evidenceLimits": "Neutral grip and acute EMG do not establish a different direct-target hierarchy or exact set fraction.",
+      "catalogNote": "Neutral palms and stationary upper arms. Brachioradialis (Forearms) assists elbow flexion; brachialis also contributes but has no separate app group. Grip alone does not establish a precise stimulus split."
+    },
+    {
+      "name": "Preacher curl",
+      "current": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": [
+          "forearms"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Supinated curl with upper arms supported on preacher pad.",
+      "rationale": "Add elbow-flexor synergy by anatomical transfer; support mainly removes shoulder/posture motion.",
+      "sourceIds": [
+        "pull-life-preacher-curl",
+        "pull-exrx-barbell-curl",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis"
+      ],
+      "evidenceLimits": "Forearm synergy is inferred from the same supinated elbow-flexion action; no opened preacher-specific brachioradialis trial.",
+      "catalogNote": "Supinated curl with upper arms supported on preacher pad. Brachialis also contributes but has no separate app group."
+    },
+    {
+      "name": "Cable curl",
+      "current": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "biceps"
+        ],
+        "indirect": [
+          "forearms"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Underhand low-pulley curl; upper arms stationary beside torso.",
+      "rationale": "Add dynamic brachioradialis synergy; see curlDefault.",
+      "sourceIds": [
+        "pull-exrx-cable-curl"
+      ],
+      "unrepresented": [
+        "brachialis"
+      ],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Underhand low-pulley curl; upper arms stationary beside torso. Brachialis also contributes but has no separate app group."
+    },
+    {
+      "name": "Triceps extension",
+      "current": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Strict elbow extension with upper-arm position kept steady.",
+      "rationale": "Retain the intended elbow-extensor target.",
+      "sourceIds": [
+        "push-ace-triceps-extension",
+        "push-openstax-upper"
+      ],
+      "evidenceLimits": [
+        "The generic name spans positions; no automatic shoulder credit for holding a position."
+      ],
+      "unrepresentedMuscles": [
+        "anconeus"
+      ],
+      "catalogNote": "Strict elbow extension with upper-arm position kept steady."
+    },
+    {
+      "name": "Triceps pushdown",
+      "current": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Cable pressdown with elbows near the torso and little shoulder movement.",
+      "rationale": "Retain triceps direct without torso or shoulder-motion credit.",
+      "sourceIds": [
+        "push-ace-triceps-pressdown"
+      ],
+      "evidenceLimits": [],
+      "unrepresentedMuscles": [
+        "anconeus"
+      ],
+      "catalogNote": "Cable pressdown with elbows near the torso and little shoulder movement."
+    },
+    {
+      "name": "Overhead triceps extension",
+      "current": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Overhead elbow extension with upper arms held steady.",
+      "rationale": "Retain triceps; shoulder positioning alone is not indirect training credit.",
+      "sourceIds": [
+        "push-ace-triceps-extension"
+      ],
+      "evidenceLimits": [
+        "No head-level accounting or guaranteed identical stimulus across positions."
+      ],
+      "unrepresentedMuscles": [
+        "anconeus"
+      ],
+      "catalogNote": "Overhead elbow extension with upper arms held steady."
+    },
+    {
+      "name": "Skull crusher",
+      "current": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Lying elbow extension; no pullover or pressing phase.",
+      "rationale": "Retain triceps as the intended primary target.",
+      "sourceIds": [
+        "push-ace-skull-crusher"
+      ],
+      "evidenceLimits": [
+        "Adding substantial shoulder motion changes the exercise assumption."
+      ],
+      "unrepresentedMuscles": [
+        "anconeus"
+      ],
+      "catalogNote": "Lying elbow extension; no pullover or pressing phase."
+    },
+    {
+      "name": "Leg curl",
+      "current": {
+        "direct": [
+          "hamstrings"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "hamstrings"
+        ],
+        "indirect": [
+          "calves"
+        ]
+      },
+      "verdict": "change",
+      "confidence": "moderate",
+      "rationale": "Hamstrings remain major intended knee-flexion targets. Add calf-group indirect solely for the gastrocnemius crossing the knee and meaningfully assisting curls, not for soleus or calf stabilization.",
+      "variantNotes": [
+        "Assume prone/lying machine curl for generic Leg curl. Ankle plantarflexion shortens gastrocnemius and can reduce assistance; custom variants can override."
+      ],
+      "evidenceLimits": "Moderate-confidence assisting-work classification: gastrocnemius contributes knee-flexion torque, not merely posture. Ankle position changes assistance. Acute isometric prone-curl data are extrapolated to dynamic/seated curls. The calves group cannot separate gastrocnemius from soleus; no evidence establishes half a calf-raise set of hypertrophy.",
+      "sourceIds": [
+        "lower-curl-nasm",
+        "lower-anatomy-openstax",
+        "lower-curl-length-maeo-2021",
+        "lower-curl-marchetti-2019"
+      ],
+      "catalogNote": "Hamstrings target; gastrocnemius assists knee flexion. This does not credit soleus.",
+      "changed": true
+    },
+    {
+      "name": "Seated leg curl",
+      "current": {
+        "direct": [
+          "hamstrings"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "hamstrings"
+        ],
+        "indirect": [
+          "calves"
+        ]
+      },
+      "verdict": "change",
+      "confidence": "moderate",
+      "rationale": "Hip-flexed knee curling targets hamstrings directly. Gastrocnemius meaningfully assists knee flexion, so calf-group indirect is reasonable with an explicit gastrocnemius-only qualification.",
+      "variantNotes": [
+        "Hip flexion lengthens biarticular hamstrings; ankle position affects gastrocnemius contribution. Do not assume all hamstring heads receive equal work."
+      ],
+      "evidenceLimits": "Moderate-confidence assisting-work classification: gastrocnemius contributes knee-flexion torque, not merely posture. Ankle position changes assistance. Acute isometric prone-curl data are extrapolated to dynamic/seated curls. The calves group cannot separate gastrocnemius from soleus; no evidence establishes half a calf-raise set of hypertrophy.",
+      "sourceIds": [
+        "lower-seated-curl-nasm",
+        "lower-curl-length-maeo-2021",
+        "lower-anatomy-openstax",
+        "lower-curl-marchetti-2019"
+      ],
+      "catalogNote": "Hamstrings target; gastrocnemius assists. Seated position lengthens biarticular hamstrings.",
+      "changed": true
+    },
+    {
+      "name": "Leg extension",
+      "current": {
+        "direct": [
+          "quads"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "quads"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Single-joint knee extension purposefully trains quadriceps. No other represented muscle group needs default credit for positioning or machine support.",
+      "variantNotes": [
+        "Assume seated knee-extension machine. Hip angle changes rectus femoris length; range and resistance profile vary."
+      ],
+      "evidenceLimits": "Quads is a broad group: individual heads respond differently, and knee extension is not identical to squat/press work.",
+      "sourceIds": [
+        "lower-legpress-ke-kinoshita-2026",
+        "lower-anatomy-openstax"
+      ],
+      "catalogNote": "Quads target. Hip angle and range affect individual quadriceps heads.",
+      "changed": false
+    },
+    {
+      "name": "Standing calf raise",
+      "current": {
+        "direct": [
+          "calves"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "calves"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Keep calves direct for loaded plantarflexion with the knee extended. Both gastrocnemius and soleus contribute; upright balance alone does not add quads/glutes/core.",
+      "variantNotes": [
+        "Assume mostly straight knees through the set. Deliberately bent knees change muscle lengths and emphasis."
+      ],
+      "evidenceLimits": "Single calves group cannot express subdivisions. The trial supports standing gastrocnemius emphasis, not an individual growth prediction.",
+      "sourceIds": [
+        "lower-calf-kinoshita-2023"
+      ],
+      "catalogNote": "Straight-knee calf raise trains gastrocnemius and soleus.",
+      "changed": false
+    },
+    {
+      "name": "Calf raise",
+      "current": {
+        "direct": [
+          "calves"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "calves"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Loaded plantarflexion is a direct calf target. Keep broad mapping but make unspecified knee position explicit rather than silently equating all calf-raise variants.",
+      "variantNotes": [
+        "Generic name is ambiguous: standing, seated, leg-press and bent-knee versions differ. Choose a specific preset when that distinction matters."
+      ],
+      "evidenceLimits": "No gastrocnemius/soleus split exists in the 14 groups; identical arrays do not imply identical subdivision stimulus.",
+      "sourceIds": [
+        "lower-calf-kinoshita-2023",
+        "lower-anatomy-openstax"
+      ],
+      "catalogNote": "Calves target. Straight versus bent knees changes gastrocnemius/soleus emphasis.",
+      "changed": false
+    },
+    {
+      "name": "Seated calf raise",
+      "current": {
+        "direct": [
+          "calves"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "calves"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Keep calves direct while noting the knee-flexed variant emphasizes soleus and shortens gastrocnemius. It remains calf work but is not equivalent to standing gastrocnemius work.",
+      "variantNotes": [
+        "Assume about 90-degree knee bend. More extended knees change the comparison."
+      ],
+      "evidenceLimits": "The broad group cannot show soleus separately. Similar soleus growth in one trial does not mean seated is universally superior for soleus.",
+      "sourceIds": [
+        "lower-calf-kinoshita-2023"
+      ],
+      "catalogNote": "Bent-knee calf raise emphasizes soleus; gastrocnemius is shortened.",
+      "changed": false
+    },
+    {
+      "name": "Hip abduction",
+      "current": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "glutes"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Gluteus medius/minimus and relevant upper gluteus maximus fibers are intended abductors. Glutes direct is the closest literal represented group.",
+      "variantNotes": [
+        "Assume controlled machine, cable or side-lying abduction. Hip flexion/rotation and pelvic hiking alter emphasis and may increase TFL/trunk contribution."
+      ],
+      "evidenceLimits": "Tensor fasciae latae is an unrepresented participant, not an invented glute or quad field. Group cannot distinguish glute max from med/min.",
+      "sourceIds": [
+        "lower-abduction-ace",
+        "lower-anatomy-openstax"
+      ],
+      "catalogNote": "Glute abductors target. Hip angle changes emphasis; TFL has no separate app group.",
+      "changed": false
+    },
+    {
+      "name": "Hip adduction",
+      "current": {
+        "direct": [
+          "adductors"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "adductors"
+        ],
+        "indirect": []
+      },
+      "verdict": "retain",
+      "confidence": "high",
+      "rationale": "Loaded medial thigh movement purposefully targets the hip adductors. Keep direct adductors without adding abs/glutes merely for standing posture.",
+      "variantNotes": [
+        "Assume seated machine or controlled standing cable adduction. Hip angle changes which adductor portions contribute."
+      ],
+      "evidenceLimits": "Adductors aggregate magnus/longus/brevis/gracilis/pectineus; subdivision coverage is not equal. Hip-extension capability of magnus does not negate adduction work.",
+      "sourceIds": [
+        "lower-adduction-ace",
+        "lower-anatomy-openstax",
+        "lower-adductor-takahashi-2025"
+      ],
+      "catalogNote": "Inner thighs target. Hip angle changes the contribution of individual adductors.",
+      "changed": false
+    },
+    {
+      "name": "Lateral raise",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Neutral-rotation lateral raise to shoulder height with normal scapular motion.",
+      "rationale": "Add trapezius scapular assistance; static elbow holding earns no triceps credit.",
+      "sourceIds": [
+        "push-coratella-lateral-2020",
+        "push-ace-lateral",
+        "push-ace-shoulder-mechanics"
+      ],
+      "evidenceLimits": [
+        "Neutral raises recruit trapezius differently from internally rotated raises; indirect amount remains approximate."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "supraspinatus / separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Neutral-rotation lateral raise to shoulder height with normal scapular motion."
+    },
+    {
+      "name": "Cable lateral raise",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Cable-resisted lateral arm raise; neutral rotation and normal scapular motion.",
+      "rationale": "Same intended deltoid target and dynamic scapular assistance.",
+      "sourceIds": [
+        "push-ace-lateral",
+        "push-ace-shoulder-mechanics",
+        "push-coratella-lateral-2020"
+      ],
+      "evidenceLimits": [
+        "Cable-specific excitation was not measured in the cited study; role is a mechanical inference."
+      ],
+      "unrepresentedMuscles": [
+        "serratus anterior",
+        "supraspinatus / separate rotator-cuff muscles"
+      ],
+      "catalogNote": "Cable-resisted lateral arm raise; neutral rotation and normal scapular motion."
+    },
+    {
+      "name": "Rear-delt fly",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Arms move outward near shoulder height with softly bent fixed elbows; natural scapular retraction.",
+      "rationale": "Add upper-back synergy for the assumed scapular motion.",
+      "sourceIds": [
+        "pull-ace-shoulder-2014",
+        "pull-life-optima-manual"
+      ],
+      "unrepresented": [
+        "infraspinatus",
+        "teres minor"
+      ],
+      "evidenceLimits": "Upper-back inference transfers from the rear-deltoid machine and scapular mechanics; deliberately fixed scapulae reduce this contribution.",
+      "catalogNote": "Near shoulder-height fly with fixed softly bent elbows and natural scapular retraction. Upper-back assistance decreases if shoulder blades are deliberately held still."
+    },
+    {
+      "name": "Reverse pec deck",
+      "current": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "shoulders"
+        ],
+        "indirect": [
+          "upper-back"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Chest supported, arms open near shoulder height; shoulder blades naturally retract.",
+      "rationale": "Add upper-back synergy; manufacturer instructions include scapular retraction.",
+      "sourceIds": [
+        "pull-life-optima-manual"
+      ],
+      "unrepresented": [
+        "infraspinatus",
+        "teres minor"
+      ],
+      "evidenceLimits": "Machine-specific path and scapular instructions matter; no exact half-set validation.",
+      "catalogNote": "Assumes chest support and natural scapular retraction while opening the arms near shoulder height. Deliberately fixed shoulder blades reduce upper-back assistance."
+    },
+    {
+      "name": "Face pull",
+      "current": {
+        "direct": [
+          "shoulders",
+          "upper-back"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "shoulders",
+          "upper-back"
+        ],
+        "indirect": [
+          "biceps"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Eye-height rope pull with elbows bending and travelling outward/back.",
+      "rationale": "Add biceps as a dynamic elbow-flexion synergist.",
+      "sourceIds": [
+        "pull-nasm-face-pull"
+      ],
+      "unrepresented": [
+        "infraspinatus",
+        "teres minor",
+        "brachialis"
+      ],
+      "evidenceLimits": "A straighter-arm external-rotation variant may provide less elbow-flexor stimulus.",
+      "catalogNote": "Eye-height rope pull with elbows bending and travelling outward/back."
+    },
+    {
+      "name": "Cable fly",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Chest-height cable fly with a consistent slight elbow bend.",
+      "rationale": "Add anterior-deltoid horizontal-adduction assistance; no elbow-extension target.",
+      "sourceIds": [
+        "push-ace-chest-study-2012",
+        "push-openstax-upper",
+        "push-solstad-fly-2020"
+      ],
+      "evidenceLimits": [
+        "Cable role inferred from shoulder action; changing pulley height alters emphasis."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Chest-height cable fly with a consistent slight elbow bend."
+    },
+    {
+      "name": "Pec deck",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Chest fly machine moving upper arms inward with elbows held at a consistent bend.",
+      "rationale": "Add anterior-deltoid assistance to the pectoral movement.",
+      "sourceIds": [
+        "push-ace-chest-study-2012",
+        "push-openstax-upper"
+      ],
+      "evidenceLimits": [
+        "Fixed-pad and handle machines vary; secondary role is anatomical inference, not the pec-only trial result."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Chest fly machine moving upper arms inward with elbows held at a consistent bend."
+    },
+    {
+      "name": "Dumbbell fly",
+      "current": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "chest"
+        ],
+        "indirect": [
+          "shoulders"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Supported lying dumbbell fly with elbow bend maintained.",
+      "rationale": "Anterior deltoid assists the inward arm arc; no dynamic triceps credit.",
+      "sourceIds": [
+        "push-ace-fly",
+        "push-solstad-fly-2020"
+      ],
+      "evidenceLimits": [
+        "Measured antagonist/stabilizer biceps activity does not establish a biceps-targeting set."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Supported lying dumbbell fly with elbow bend maintained."
+    },
+    {
+      "name": "Shrug",
+      "current": {
+        "direct": [
+          "upper-back"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "upper-back"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Controlled shoulder-blade elevation with straight elbows; no rolling.",
+      "rationale": "Retain upper-back target; no grip/erector stabilizer additions.",
+      "sourceIds": [
+        "pull-exrx-shrug"
+      ],
+      "unrepresented": [],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Controlled shoulder-blade elevation with straight elbows; no rolling."
+    },
+    {
+      "name": "Cable crunch",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Cable-resisted trunk curl; rib cage moves toward pelvis rather than only hinging hips.",
+      "rationale": "Retain deliberate spinal-flexion abdominal work.",
+      "sourceIds": [
+        "push-ace-cable-crunch"
+      ],
+      "evidenceLimits": [
+        "Standing reference supports the action; kneeling execution is a mechanical inference."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Cable-resisted trunk curl; rib cage moves toward pelvis rather than only hinging hips."
+    },
+    {
+      "name": "Crunch",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Controlled trunk curl with pelvis supported; not a full sit-up.",
+      "rationale": "Retain the abdominal-flexion target.",
+      "sourceIds": [
+        "push-ace-crunch"
+      ],
+      "evidenceLimits": [
+        "Core group does not imply equal recruitment of every abdominal subdivision."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Controlled trunk curl with pelvis supported; not a full sit-up."
+    },
+    {
+      "name": "Reverse crunch",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Curl pelvis toward ribs and lift hips; do not only swing the thighs.",
+      "rationale": "Retain abs for pelvic curling; hip-flexor involvement remains separate.",
+      "sourceIds": [
+        "push-ace-reverse-crunch",
+        "push-ace-ab-study-2001",
+        "push-nasm-core-2026"
+      ],
+      "evidenceLimits": [
+        "Hip-only motion is not evidence of abdominal flexion."
+      ],
+      "unrepresentedMuscles": [
+        "iliopsoas / other hip flexors"
+      ],
+      "catalogNote": "Curl pelvis toward ribs and lift hips; do not only swing the thighs."
+    },
+    {
+      "name": "Hanging knee raise",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Controlled hanging knee raise with posterior pelvic curl toward the ribs.",
+      "rationale": "Abs direct is conditional on deliberate pelvic curl; hip flexors lack an ID.",
+      "sourceIds": [
+        "push-nasm-core-2026",
+        "lower-anatomy-openstax",
+        "push-ace-ab-study-2001"
+      ],
+      "evidenceLimits": [
+        "Captain’s-chair data do not prove identical hanging-bar demand. Static grip/shoulder support earns no automatic sets."
+      ],
+      "unrepresentedMuscles": [
+        "iliopsoas / other hip flexors"
+      ],
+      "variantCaution": "A hip-only knee raise with pelvis stationary chiefly trains unrepresented hip flexors. Do not silently turn that action into direct abs or whole-quads sets; intentional anti-extension work would require its own explicit assumption.",
+      "catalogNote": "Controlled hanging knee raise with posterior pelvic curl toward the ribs. Hip-only raises chiefly target hip flexors, which have no separate app group."
+    },
+    {
+      "name": "Dead bug",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Opposite arm/leg movement while deliberately resisting lumbar extension.",
+      "rationale": "Purposeful anti-extension is the core training target.",
+      "sourceIds": [
+        "push-ace-dead-bug",
+        "push-nasm-core-2026"
+      ],
+      "evidenceLimits": [
+        "A rep is not proven equivalent to a hard loaded hypertrophy set."
+      ],
+      "unrepresentedMuscles": [
+        "hip flexors",
+        "pelvic-floor muscles"
+      ],
+      "catalogNote": "Opposite arm/leg movement while deliberately resisting lumbar extension."
+    },
+    {
+      "name": "Bird dog",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": [
+          "lower-back",
+          "glutes"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "abs",
+          "lower-back"
+        ],
+        "indirect": [
+          "glutes"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Quadruped opposite arm/leg extension with deliberate neutral-spine and pelvic control.",
+      "rationale": "Move spinal extensors to direct: trunk control is a major intended target; hip extension assists.",
+      "sourceIds": [
+        "push-ace-bird-dog",
+        "push-stevens-quadruped-2007",
+        "push-nasm-core-2026"
+      ],
+      "evidenceLimits": [
+        "Abs here primarily denotes purposeful oblique/core control; not uniform rectus-abdominis work. Unloaded movement cannot quantify a half hypertrophy set."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Quadruped opposite arm/leg extension with deliberate neutral-spine and pelvic control."
+    },
+    {
+      "name": "Pallof press",
+      "current": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "abs"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Sideways cable or band resistance; resist trunk rotation as hands extend.",
+      "rationale": "Intentional anti-rotation makes core direct; no blanket arm/chest set credit.",
+      "sourceIds": [
+        "push-ace-pallof",
+        "push-nasm-core-2026"
+      ],
+      "evidenceLimits": [
+        "Difficulty depends on load, lever arm and hold; no fixed hypertrophy-equivalence evidence."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Sideways cable or band resistance; resist trunk rotation as hands extend."
+    },
+    {
+      "name": "Medium-grip lat pulldown",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Front pulldown with pronated grip around shoulder width.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-nasm-lat-pulldown",
+        "pull-lehman-2004"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Grip-specific contribution and assistance level vary; no exact regional set fraction.",
+      "catalogNote": "Front pulldown with pronated grip around shoulder width."
+    },
+    {
+      "name": "Neutral-grip lat pulldown",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Front pulldown using parallel handles; elbows travel down toward ribs.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-nasm-lat-pulldown",
+        "pull-lehman-2004"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Neutral grip does not alone establish a different direct-muscle hierarchy.",
+      "catalogNote": "Front pulldown using parallel handles; elbows travel down toward ribs."
+    },
+    {
+      "name": "Chest-supported high row",
+      "current": {
+        "direct": [
+          "upper-back",
+          "shoulders"
+        ],
+        "indirect": [
+          "lats",
+          "biceps"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "upper-back",
+          "shoulders"
+        ],
+        "indirect": [
+          "biceps"
+        ]
+      },
+      "changed": true,
+      "formAssumption": "Horizontal, elbows-out row around shoulder height with chest supported.",
+      "rationale": "Remove generic lat credit for the explicit elbows-out horizontal path; publish highRow note.",
+      "sourceIds": [
+        "pull-ace-shoulder-2014",
+        "pull-life-spl-high-row",
+        "pull-life-il-high-row",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "infraspinatus",
+        "teres minor"
+      ],
+      "evidenceLimits": "Horizontal abduction differs from high-to-low extension/adduction. Exact machine path, elbow angle and stimulus still vary.",
+      "alternativeAssumption": {
+        "form": "Chest-supported high-to-low machine pull with elbows travelling down toward ribs.",
+        "recommended": {
+          "direct": [
+            "lats",
+            "upper-back"
+          ],
+          "indirect": [
+            "biceps",
+            "shoulders"
+          ]
+        },
+        "reason": "Treat this as the conventional row/pulldown path; select an explicit custom mapping rather than assuming elbows-out form."
+      },
+      "catalogNote": "Assumes a chest-supported horizontal row with elbows out near shoulder height, emphasizing rear deltoids and scapular retractors. High-to-low lat machines use a different arm path; choose explicit muscle assignments for that variation."
+    },
+    {
+      "name": "Assisted neutral-grip chin-up",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Assisted vertical pull on parallel handles; no kipping.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-ace-chin-up",
+        "pull-nasm-lat-pulldown"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Assisted neutral variation is a biomechanical extrapolation; no identical opened protocol.",
+      "catalogNote": "Assisted vertical pull on parallel handles; no kipping."
+    },
+    {
+      "name": "Neutral-grip chin-up",
+      "current": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "lats"
+        ],
+        "indirect": [
+          "biceps",
+          "upper-back"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Controlled vertical pull on parallel handles; no kipping.",
+      "rationale": "Retain conventional vertical-pull default; see pullDefault.",
+      "sourceIds": [
+        "pull-ace-chin-up",
+        "pull-nasm-lat-pulldown"
+      ],
+      "unrepresented": [
+        "brachialis",
+        "teres major"
+      ],
+      "evidenceLimits": "Neutral grip extrapolates the vertical-pull pattern; exact regional distribution remains uncertain.",
+      "catalogNote": "Controlled vertical pull on parallel handles; no kipping."
+    },
+    {
+      "name": "Seated dip machine",
+      "current": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": [
+          "chest",
+          "shoulders"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "triceps"
+        ],
+        "indirect": [
+          "chest",
+          "shoulders"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Seated triceps-dominant dip machine with upper-body position held steady.",
+      "rationale": "Retain manufacturer-supported triceps emphasis and chest/anterior-deltoid assistance.",
+      "sourceIds": [
+        "push-lifefitness-seated-dip",
+        "push-precor-seated-dip"
+      ],
+      "evidenceLimits": [
+        "Some machines intentionally co-target chest; permit explicit customization instead of universal direct chest."
+      ],
+      "unrepresentedMuscles": [],
+      "catalogNote": "Seated triceps-dominant dip machine with upper-body position held steady."
+    },
+    {
+      "name": "Reverse curl",
+      "current": {
+        "direct": [
+          "forearms"
+        ],
+        "indirect": [
+          "biceps"
+        ]
+      },
+      "recommended": {
+        "direct": [
+          "forearms"
+        ],
+        "indirect": [
+          "biceps"
+        ]
+      },
+      "changed": false,
+      "formAssumption": "Pronated elbow curl with stationary upper arms and neutral wrists.",
+      "rationale": "Retain forearm target and biceps assistance; not a wrist-extension exercise.",
+      "sourceIds": [
+        "pull-ace-reverse-curl",
+        "pull-kleiber-2015",
+        "pull-hamill-upper-limb"
+      ],
+      "unrepresented": [
+        "brachialis"
+      ],
+      "evidenceLimits": "Grip changes mechanics; experimental findings are protocol dependent and do not establish exact set fractions.",
+      "catalogNote": "Pronated elbow curl with stationary upper arms and neutral wrists. Brachialis also contributes but has no separate app group."
+    },
+    {
+      "name": "Wrist curl",
+      "current": {
+        "direct": [
+          "forearms"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "forearms"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Forearms supported, palms up; movement occurs at wrists.",
+      "rationale": "Retain forearms direct, specifically wrist flexors.",
+      "sourceIds": [
+        "pull-ace-wrist-flexion"
+      ],
+      "unrepresented": [],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Supported, palm-up wrist flexion targets forearm wrist flexors; it does not represent every forearm muscle."
+    },
+    {
+      "name": "Reverse wrist curl",
+      "current": {
+        "direct": [
+          "forearms"
+        ],
+        "indirect": []
+      },
+      "recommended": {
+        "direct": [
+          "forearms"
+        ],
+        "indirect": []
+      },
+      "changed": false,
+      "formAssumption": "Forearms supported, palms down; movement occurs at wrists.",
+      "rationale": "Retain forearms direct, specifically wrist extensors.",
+      "sourceIds": [
+        "pull-ace-wrist-extension"
+      ],
+      "unrepresented": [],
+      "evidenceLimits": "Movement-based inference; regional set fractions were not measured.",
+      "catalogNote": "Supported, palm-down wrist extension targets forearm wrist extensors; it does not represent every forearm muscle."
+    }
+  ]
+}

@@ -27,3 +27,11 @@
 .routine-conflict li span{display:block;color:var(--muted-foreground)}
 .routine-conflict .action-row{flex-wrap:wrap}
 .routine-conflict button{height:auto;min-height:44px;white-space:normal}
+.preset-muscle-review{display:grid;gap:8px;margin:12px 0;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--card);min-width:0;overflow-wrap:anywhere}
+.preset-muscle-review p{margin:0;line-height:1.5}
+.preset-muscle-review>button{justify-self:start;height:auto;min-height:44px;max-width:100%;white-space:normal}
+.preset-muscle-review>small{color:var(--muted-foreground);line-height:1.5}
+.preset-muscle-review summary{min-height:44px;cursor:pointer;align-content:center;font-weight:600}
+.preset-muscle-review details p{margin:8px 0}
+.preset-muscle-review ul{padding-left:20px;margin:8px 0;display:grid;gap:6px}
+.preset-muscle-review li a{display:inline-flex;align-items:center;min-height:44px;color:var(--primary)}
