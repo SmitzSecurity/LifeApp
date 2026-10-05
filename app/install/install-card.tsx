@@ -1,6 +1,5 @@
 'use client';
 import {useState, useSyncExternalStore} from 'react';
-import Link from 'next/link';
 import {createInstallController} from '@/lib/life/pwa-install';
 import styles from './install.module.css';
 
@@ -20,7 +19,9 @@ export default function InstallCard() {
       <p>Add LifeApp to your home screen and open it in its own app window. This is the same LifeApp, not a separate account.</p>
       <div className={styles.actions}>
         {!state.installed && state.secure && (state.canPrompt || state.status === 'prompting') && <button type="button" className={styles.primary} disabled={state.status === 'prompting'} onClick={() => {void controller.requestInstall();}}>{state.status === 'prompting' ? 'Check your browser prompt…' : 'Install LifeApp'}</button>}
-        <Link className={styles.secondary} href="/" prefetch={false}>Open LifeApp</Link>
+        {/* Obtain a fresh authenticated document. The current Vinext router import adds an unsupported dynamic module to the Worker bundle; this guide has no editable drafts to discard. */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a className={styles.secondary} href="/">Open LifeApp</a>
       </div>
       <p className={styles.status} role="status" aria-live="polite">{message}</p>
       {!state.secure && <p role="alert">Installation needs a secure connection. Open the normal HTTPS LifeApp address in your browser.</p>}
@@ -33,7 +34,7 @@ export default function InstallCard() {
         </details>
         <details className={styles.guide} open={state.platform === 'android'}>
           <summary>Android</summary>
-          <ol><li>Open this page in Chrome.</li><li>Open the browser menu and choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li><li>Confirm installation, then open the <strong>LifeApp</strong> icon.</li></ol>
+          <ol><li>Open this page in Chrome.</li><li>Open the browser menu and choose <strong>Install app</strong> or <strong>Add to home screen</strong>.</li><li>Confirm installation, then open the <strong>LifeApp</strong> icon.</li></ol>
           <p className={styles.muted}>Other Android browsers may use different wording or create a browser shortcut instead.</p>
         </details>
         <details className={styles.guide} open={state.platform === 'desktop'}>
