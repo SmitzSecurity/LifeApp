@@ -2,11 +2,11 @@
 // No production account, Google login, provider request, or real installation.
 import assert from 'node:assert/strict';
 import {spawn} from 'node:child_process';
-import {createRequire} from 'node:module';
+import {pathToFileURL} from 'node:url';
 import {resolve} from 'node:path';
 
-const require = createRequire(resolve(process.env.LIFEAPP_BROWSER_TOOLS || '.', 'package.json'));
-const {chromium} = require('playwright');
+const tools = resolve(process.env.LIFEAPP_BROWSER_TOOLS || '.', 'node_modules/playwright/index.mjs');
+const {chromium} = await import(pathToFileURL(tools).href);
 const fixture = spawn(process.execPath, ['scripts/browser-smoke.mjs'], {stdio: ['ignore', 'pipe', 'pipe']});
 let fixtureLog = '';
 fixture.stderr.on('data', data => {fixtureLog += data.toString();});
@@ -68,7 +68,7 @@ try {
   await page.getByRole('button', {name: 'Open menu', exact: true}).waitFor();
   assert.equal(new URL(page.url()).pathname, '/');
   assert.deepEqual(errors, [], 'Uncaught browser errors');
-  console.log('PASS: compiled install page hydrates; five viewport sizes fit; touch targets and zoom preserved; explicit install cancellation works; router returns to signed-in app.');
+  console.log('PASS: compiled install page hydrates; five viewport sizes fit; touch targets and zoom preserved; explicit install cancellation works; full navigation returns to signed-in app.');
   await context.close();
 
   const ios = await browser.newContext({viewport: {width: 390, height: 844}, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1', isMobile: true, hasTouch: true});
