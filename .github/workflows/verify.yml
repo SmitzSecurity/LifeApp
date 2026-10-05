@@ -23,3 +23,11 @@ jobs:
       - run: npm test
       - run: npx tsc --noEmit
       - run: npm run lint
+      - name: Prepare isolated browser tools
+        run: |
+          npm install --prefix "$RUNNER_TEMP/lifeapp-browser" --no-package-lock --no-audit --no-fund --ignore-scripts playwright@1.63.0
+          node "$RUNNER_TEMP/lifeapp-browser/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Check compiled mobile installation flow
+        env:
+          LIFEAPP_BROWSER_TOOLS: ${{ runner.temp }}/lifeapp-browser
+        run: node scripts/pwa-browser-check.mjs
