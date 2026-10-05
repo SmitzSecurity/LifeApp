@@ -1,5 +1,6 @@
 'use client';
 import {useState, useSyncExternalStore} from 'react';
+import Link from 'next/link';
 import {createInstallController} from '@/lib/life/pwa-install';
 import styles from './install.module.css';
 
@@ -19,7 +20,7 @@ export default function InstallCard() {
       <p>Add LifeApp to your home screen and open it in its own app window. This is the same LifeApp, not a separate account.</p>
       <div className={styles.actions}>
         {!state.installed && state.secure && (state.canPrompt || state.status === 'prompting') && <button type="button" className={styles.primary} disabled={state.status === 'prompting'} onClick={() => {void controller.requestInstall();}}>{state.status === 'prompting' ? 'Check your browser prompt…' : 'Install LifeApp'}</button>}
-        <a className={styles.secondary} href="/">Open LifeApp</a>
+        <Link className={styles.secondary} href="/" prefetch={false}>Open LifeApp</Link>
       </div>
       <p className={styles.status} role="status" aria-live="polite">{message}</p>
       {!state.secure && <p role="alert">Installation needs a secure connection. Open the normal HTTPS LifeApp address in your browser.</p>}
